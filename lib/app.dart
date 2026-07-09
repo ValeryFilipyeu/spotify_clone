@@ -1,34 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-import 'counter/counter.dart';
+import 'auth/bloc/auth_bloc.dart';
+import 'auth/repository/auth_repository.dart';
+import 'router/app_router.dart';
+import 'theme/spotify_theme.dart';
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.authRepository});
 
-  // This widget is the root of your application.
+  final AuthRepository authRepository;
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+    return RepositoryProvider<AuthRepository>.value(
+      value: authRepository,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthBloc>(
+            create: (context) => AuthBloc(authRepository: context.read<AuthRepository>()),
+          ),
+        ],
+        child: const AppView(),
       ),
-      home: const CounterPage(),
+    );
+  }
+}
+
+/// Owns the GoRouter instance so the whole Navigator/route stack is never
+/// torn down just because auth state changed -- only redirect re-runs,
+/// driven by refreshListenable.
+class AppView extends StatefulWidget {
+  const AppView({super.key});
+
+  @override
+  State<AppView> createState() => _AppViewState();
+}
+
+class _AppViewState extends State<AppView> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = createRouter(context.read<AuthBloc>());
+  }
+
+  @override
+  void dispose() {
+    _router.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      title: 'Spotify Clone',
+      theme: SpotifyTheme.dark(),
+      routerConfig: _router,
     );
   }
 }
