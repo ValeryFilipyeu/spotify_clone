@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'auth/bloc/auth_bloc.dart';
 import 'auth/repository/auth_repository.dart';
+import 'catalog/repository/catalog_repository.dart';
+import 'catalog/repository/fake_catalog_repository.dart';
 import 'router/app_router.dart';
 import 'theme/spotify_theme.dart';
 
@@ -14,8 +16,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider<AuthRepository>.value(
-      value: authRepository,
+    return MultiRepositoryProvider(
+      providers: [
+        // Auth is provided by value: it was built and async-restored in
+        // main() before runApp. Catalog needs no bootstrap, so it is created
+        // lazily here -- still the single composition point that names the
+        // concrete fake.
+        RepositoryProvider<AuthRepository>.value(value: authRepository),
+        RepositoryProvider<CatalogRepository>(create: (_) => const FakeCatalogRepository()),
+      ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider<AuthBloc>(
