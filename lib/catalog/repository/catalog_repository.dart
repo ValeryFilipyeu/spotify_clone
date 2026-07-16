@@ -1,3 +1,4 @@
+import '../models/catalog_detail.dart';
 import '../models/catalog_section.dart';
 
 /// The seam a real catalog backend (a REST API, Spotify's Web API, ...) would
@@ -7,4 +8,8 @@ import '../models/catalog_section.dart';
 abstract class CatalogRepository {
   /// Loads the sections shown on the home screen.
   Future<List<CatalogSection>> fetchHomeSections();
+
+  /// Loads a single album/playlist (its header item plus its tracks).
+  /// Throws [CatalogItemNotFound] if no item matches [itemId].
+  Future<CatalogDetail> fetchDetail(String itemId);
 }

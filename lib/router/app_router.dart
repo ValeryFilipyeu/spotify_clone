@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/bloc/auth_bloc.dart';
 import '../auth/bloc/auth_state.dart';
+import '../detail/view/detail_page.dart';
 import '../home/view/home_page.dart';
 import '../landing/view/landing_page.dart';
 import '../log_in/view/log_in_page.dart';
@@ -32,6 +33,10 @@ GoRouter createRouter(AuthBloc authBloc) {
       GoRoute(path: Routes.signUp, builder: (context, state) => const SignUpPage()),
       GoRoute(path: Routes.logIn, builder: (context, state) => const LogInPage()),
       GoRoute(path: Routes.home, builder: (context, state) => const HomePage()),
+      GoRoute(
+        path: Routes.detail,
+        builder: (context, state) => DetailPage(itemId: state.pathParameters['id']!),
+      ),
     ],
   );
 }

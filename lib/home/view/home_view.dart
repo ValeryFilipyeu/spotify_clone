@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
-import '../../catalog/models/catalog_section.dart';
+import '../../router/app_routes.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/spotify_wordmark.dart';
 import '../cubit/home_cubit.dart';
@@ -48,9 +49,9 @@ class HomeView extends StatelessWidget {
                   final section = state.sections[index];
                   return CatalogSectionRow(
                     section: section,
-                    onItemTap: (itemId) => ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Opening "${_titleFor(section, itemId)}" — coming soon')),
-                    ),
+                    // push (not go) so the detail screen sits on top of Home
+                    // and the back button returns here.
+                    onItemTap: (itemId) => context.push(Routes.detailFor(itemId)),
                   );
                 },
               );
@@ -59,9 +60,6 @@ class HomeView extends StatelessWidget {
       ),
     );
   }
-
-  String _titleFor(CatalogSection section, String itemId) =>
-      section.items.firstWhere((item) => item.id == itemId).title;
 }
 
 class _ErrorRetry extends StatelessWidget {

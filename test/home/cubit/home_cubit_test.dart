@@ -12,6 +12,11 @@ class _ThrowingCatalogRepository implements CatalogRepository {
   Future<List<CatalogSection>> fetchHomeSections() async {
     throw Exception('network down');
   }
+
+  @override
+  Future<CatalogDetail> fetchDetail(String itemId) async {
+    throw Exception('network down');
+  }
 }
 
 void main() {
