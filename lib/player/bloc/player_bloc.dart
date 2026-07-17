@@ -26,20 +26,27 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<PlayerBufferingChanged>(_onBufferingChanged);
     on<PlayerCompleted>(_onCompleted);
 
-    // NOTE: we deliberately do NOT drive `position` from
-    // audioController.positionStream. just_audio's position getter clamps to
-    // the engine-reported duration while playing, and on iOS that duration is
-    // 0 -- so its position is pinned to 0:00 during playback (it only reveals
-    // the true position when paused). Instead we run our own wall-clock ticker
-    // below, which is smooth and consistent on every platform.
+    // We drive `position` from our own wall-clock ticker (see _onPlayingChanged
+    // / _onPositionTicked), NOT from audioController.positionStream. just_audio
+    // has no usable position source that works on every platform: on iOS it
+    // clamps position to the engine duration (which iOS reports as 0, pinning
+    // it to 0:00), and on web its position getter interpolates off the wall
+    // clock while the audio-element `timeupdate` handler is a no-op -- so its
+    // stream either freezes or drifts. The ticker is smooth and consistent.
     _durationSub = _audioController.durationStream.listen((d) {
       // Ignore null and 0 -- iOS reports duration as Duration.zero, which
       // would clobber the seeded track duration.
       if (d != null && d > Duration.zero) add(PlayerDurationChanged(d));
     });
-    _playingSub = _audioController.playingStream.listen((playing) => add(PlayerPlayingChanged(playing)));
-    _bufferingSub = _audioController.bufferingStream.listen((b) => add(PlayerBufferingChanged(b)));
-    _completedSub = _audioController.completedStream.listen((_) => add(const PlayerCompleted()));
+    _playingSub = _audioController.playingStream.listen((playing) {
+      add(PlayerPlayingChanged(playing));
+    });
+    _bufferingSub = _audioController.bufferingStream.listen((b) {
+      add(PlayerBufferingChanged(b));
+    });
+    _completedSub = _audioController.completedStream.listen((_) {
+      add(const PlayerCompleted());
+    });
   }
 
   static const _tick = Duration(milliseconds: 250);
@@ -125,8 +132,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     // `playing` stays true across a track boundary, so it can't tell us when
     // the next track has finished loading.
     emit(state.copyWith(isPlaying: event.isPlaying));
-    // Drive the position ticker off play/pause. (We can't use just_audio's
-    // position stream -- see the note in the constructor.)
+    // Drive the wall-clock position ticker off play/pause. (See the note in the
+    // constructor for why we use a ticker instead of the engine's position.)
     if (event.isPlaying) {
       _ticker ??= Timer.periodic(_tick, (_) => add(const PlayerPositionTicked()));
     } else {
@@ -158,7 +165,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       // Only override the seeded duration with a real engine value (iOS
       // returns 0 here).
       if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
-    } catch (_) {
+    } catch (e) {
       emit(state.copyWith(isLoading: false, isPlaying: false));
       return;
     }

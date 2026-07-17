@@ -39,13 +39,14 @@ void main() {
       expect(ab1Urls, isNot(equals(ab2Urls)));
     });
 
-    test('each track duration is the real (short demo) length, not an invented one', () async {
+    test('each track duration is a real (probed) audio length, not an invented one', () async {
       final detail = await repository.fetchDetail('dm1');
-      // Real demo clips are all well under 5 minutes; the old invented
-      // durations (e.g. 4:21) did not match the audio.
+      // Durations are the real lengths of the demo audio files (probed with
+      // afinfo), so they're positive and within a sane range -- never the old
+      // invented values that didn't match the audio.
       for (final track in detail.tracks) {
-        expect(track.duration.inMinutes, lessThan(5));
         expect(track.duration, greaterThan(Duration.zero));
+        expect(track.duration.inMinutes, lessThan(10));
       }
     });
 

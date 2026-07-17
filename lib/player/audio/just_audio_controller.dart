@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:just_audio/just_audio.dart';
 
 import 'audio_controller.dart';
@@ -28,7 +29,23 @@ class JustAudioController implements AudioController {
       .map((_) {});
 
   @override
-  Future<Duration?> setUrl(String url) => _player.setUrl(url);
+  Future<Duration?> setUrl(String url) async {
+    // WEB-ONLY WORKAROUND. just_audio_web caches the player for the root
+    // playlist by its id -- which just_audio hard-codes to the empty string and
+    // reuses for the app's whole lifetime -- and never rebuilds it. So every
+    // setUrl after the first keeps the ORIGINAL source: it replays the first
+    // track and reports the first track's duration. (Native ExoPlayer/AVPlayer
+    // rebuild the source correctly, so this only bites on web.)
+    //
+    // stop() deactivates the platform; the setUrl below reactivates it, and on
+    // reactivation just_audio disposes the old web player and creates a fresh
+    // one with an empty source cache -- so the new url actually loads. Gated on
+    // kIsWeb so native playback timing is byte-for-byte unchanged.
+    if (kIsWeb) {
+      await _player.stop();
+    }
+    return _player.setUrl(url);
+  }
 
   @override
   Future<void> play() => _player.play();

@@ -70,23 +70,28 @@ class FakeCatalogRepository implements CatalogRepository {
   // Royalty-free demo audio, paired with each file's REAL duration (probed
   // with afinfo, floored to whole seconds to match how the UI renders m:ss).
   // Using the real length means the tracklist, the Now Playing screen, and
-  // actual playback all show the same time -- previously the list showed
-  // invented durations (e.g. 4:21) that didn't match the ~39s audio.
+  // actual playback all show the same time.
   //
-  // Ten GENUINELY DIFFERENT recordings from reliable hosts (all verified to
-  // return HTTP 200 + an audio content-type and to serve with a browser
-  // Referer, so no hotlink blocking).
+  // Ten GENUINELY DIFFERENT recordings. Every host is verified to:
+  //   * return HTTP 200 + audio on a normal GET (no hotlink blocking), AND
+  //   * return HTTP 206 to a Range request (Accept-Ranges: bytes).
+  // The range requirement is NOT optional: on web the browser can only SEEK a
+  // media element (and therefore resume after a pause, or move the scrubber)
+  // if the server honours Range. Hosts that answer 200 to a Range request
+  // (e.g. filesamples.com, samplelib.com) force the browser to refetch from
+  // byte 0, so every seek/resume restarts the track from 0:00. Do not add a
+  // URL here without confirming `curl -I -H 'Range: bytes=0-1' <url>` is 206.
   static const List<(String url, Duration duration)> _audioPool = [
-    ('https://download.samplelib.com/mp3/sample-15s.mp3', Duration(seconds: 19)),
     ('https://storage.googleapis.com/exoplayer-test-media-0/play.mp3', Duration(seconds: 59)),
     ('https://www.kozco.com/tech/LRMonoPhase4.mp3', Duration(seconds: 38)),
-    ('https://filesamples.com/samples/audio/mp3/sample1.mp3', Duration(minutes: 2, seconds: 2)),
-    ('https://filesamples.com/samples/audio/mp3/sample3.mp3', Duration(minutes: 1, seconds: 45)),
-    ('https://archive.org/download/testmp3testfile/mpthreetest.mp3', Duration(seconds: 12)),
-    ('https://filesamples.com/samples/audio/mp3/sample2.mp3', Duration(minutes: 3, seconds: 37)),
-    ('https://filesamples.com/samples/audio/mp3/sample4.mp3', Duration(minutes: 4, seconds: 4)),
-    ('https://www.kozco.com/tech/organfinale.mp3', Duration(seconds: 13)),
     ('https://www.kozco.com/tech/32.mp3', Duration(seconds: 32)),
+    ('https://www.kozco.com/tech/organfinale.mp3', Duration(seconds: 13)),
+    ('https://archive.org/download/testmp3testfile/mpthreetest.mp3', Duration(seconds: 12)),
+    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', Duration(minutes: 6, seconds: 12)),
+    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', Duration(minutes: 7, seconds: 5)),
+    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', Duration(minutes: 5, seconds: 44)),
+    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', Duration(minutes: 5, seconds: 53)),
+    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', Duration(minutes: 7)),
   ];
 
   static final Map<String, List<Track>> _tracksByItemId = _buildTracks();

@@ -84,15 +84,27 @@ class FullPlayerPage extends StatelessWidget {
   }
 }
 
-class _Scrubber extends StatelessWidget {
+class _Scrubber extends StatefulWidget {
   const _Scrubber({required this.state});
 
   final PlayerState state;
 
   @override
+  State<_Scrubber> createState() => _ScrubberState();
+}
+
+class _ScrubberState extends State<_Scrubber> {
+  // While the user is dragging, the slider follows this local value instead of
+  // state.position -- otherwise the position ticker keeps overwriting the
+  // slider value mid-drag, fighting the finger and making the final seek land
+  // at the wrong spot. We seek exactly once, on release.
+  double? _dragValue;
+
+  @override
   Widget build(BuildContext context) {
-    final totalMs = state.duration.inMilliseconds;
-    final positionMs = state.position.inMilliseconds.clamp(0, totalMs == 0 ? 0 : totalMs);
+    final totalMs = widget.state.duration.inMilliseconds;
+    final positionMs = widget.state.position.inMilliseconds.clamp(0, totalMs == 0 ? 0 : totalMs);
+    final sliderValue = _dragValue ?? positionMs.toDouble();
 
     return Column(
       children: [
@@ -106,11 +118,15 @@ class _Scrubber extends StatelessWidget {
             thumbColor: Colors.white,
           ),
           child: Slider(
-            value: positionMs.toDouble(),
+            value: sliderValue.clamp(0, totalMs == 0 ? 1 : totalMs.toDouble()),
             max: totalMs == 0 ? 1 : totalMs.toDouble(),
-            onChanged: totalMs == 0
+            onChanged: totalMs == 0 ? null : (value) => setState(() => _dragValue = value),
+            onChangeEnd: totalMs == 0
                 ? null
-                : (value) => context.read<PlayerBloc>().add(PlayerSeekRequested(Duration(milliseconds: value.round()))),
+                : (value) {
+                    context.read<PlayerBloc>().add(PlayerSeekRequested(Duration(milliseconds: value.round())));
+                    setState(() => _dragValue = null);
+                  },
           ),
         ),
         Padding(
@@ -118,9 +134,9 @@ class _Scrubber extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(formatDuration(state.position),
+              Text(formatDuration(_dragValue != null ? Duration(milliseconds: _dragValue!.round()) : widget.state.position),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
-              Text(formatDuration(state.duration),
+              Text(formatDuration(widget.state.duration),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
             ],
           ),

@@ -10,7 +10,16 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final authRepository = FakeAuthRepository(
-    sessionStorage: const SecureSessionStorage(FlutterSecureStorage()),
+    sessionStorage: SecureSessionStorage(
+      FlutterSecureStorage(
+        // macOS defaults to the Data Protection Keychain, which needs a
+        // keychain-access-group entitlement tied to a real Apple Developer
+        // Team ID -- this project is signed ad-hoc (no team), so that check
+        // fails with errSecMissingEntitlement (-34018). The legacy Keychain
+        // API below doesn't require it. macOS-only; iOS/Android/web unaffected.
+        mOptions: const MacOsOptions(usesDataProtectionKeychain: false),
+      ),
+    ),
   );
   await authRepository.restoreSession();
 
