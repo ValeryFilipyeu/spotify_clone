@@ -101,11 +101,40 @@ void main() {
     );
 
     blocTest<PlayerBloc, PlayerState>(
-      'a position stream event updates state.position',
+      'seeking updates state.position and seeks the engine',
       build: () => PlayerBloc(audioController: audio),
       seed: () => const PlayerState(queue: _queue, currentIndex: 0),
-      act: (bloc) => audio.emitPosition(const Duration(seconds: 42)),
-      verify: (bloc) => expect(bloc.state.position, const Duration(seconds: 42)),
+      act: (bloc) => bloc.add(const PlayerSeekRequested(Duration(seconds: 42))),
+      verify: (bloc) {
+        expect(bloc.state.position, const Duration(seconds: 42));
+        expect(audio.seeks, [const Duration(seconds: 42)]);
+      },
+    );
+
+    // The position ticker (not the engine's position stream, which is broken
+    // on iOS) advances position while playing.
+    blocTest<PlayerBloc, PlayerState>(
+      'the position ticker advances position while playing',
+      build: () => PlayerBloc(audioController: audio),
+      seed: () => const PlayerState(queue: _queue, currentIndex: 0, duration: Duration(minutes: 3)),
+      act: (bloc) => audio.emitPlaying(true),
+      wait: const Duration(milliseconds: 700),
+      verify: (bloc) {
+        expect(bloc.state.isPlaying, isTrue);
+        expect(bloc.state.position, greaterThan(Duration.zero));
+      },
+    );
+
+    // Regression: while a track is still buffering (isLoading), the ticker
+    // must NOT advance -- otherwise the scrubber moves before the auto-advanced
+    // track's audio has started.
+    blocTest<PlayerBloc, PlayerState>(
+      'the position ticker does not advance while buffering',
+      build: () => PlayerBloc(audioController: audio),
+      seed: () => const PlayerState(queue: _queue, currentIndex: 0, duration: Duration(minutes: 3), isLoading: true),
+      act: (bloc) => audio.emitPlaying(true),
+      wait: const Duration(milliseconds: 700),
+      verify: (bloc) => expect(bloc.state.position, Duration.zero),
     );
 
     // Regression: the loader must clear from the buffering stream, not from

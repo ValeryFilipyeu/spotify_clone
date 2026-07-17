@@ -20,27 +20,36 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<PlayerPreviousRequested>(_onPreviousRequested);
     on<PlayerSeekRequested>(_onSeekRequested);
     on<PlayerStopped>(_onStopped);
-    on<PlayerPositionChanged>(_onPositionChanged);
+    on<PlayerPositionTicked>(_onPositionTicked);
     on<PlayerDurationChanged>(_onDurationChanged);
     on<PlayerPlayingChanged>(_onPlayingChanged);
     on<PlayerBufferingChanged>(_onBufferingChanged);
     on<PlayerCompleted>(_onCompleted);
 
-    _positionSub = _audioController.positionStream.listen((p) => add(PlayerPositionChanged(p)));
+    // NOTE: we deliberately do NOT drive `position` from
+    // audioController.positionStream. just_audio's position getter clamps to
+    // the engine-reported duration while playing, and on iOS that duration is
+    // 0 -- so its position is pinned to 0:00 during playback (it only reveals
+    // the true position when paused). Instead we run our own wall-clock ticker
+    // below, which is smooth and consistent on every platform.
     _durationSub = _audioController.durationStream.listen((d) {
-      if (d != null) add(PlayerDurationChanged(d));
+      // Ignore null and 0 -- iOS reports duration as Duration.zero, which
+      // would clobber the seeded track duration.
+      if (d != null && d > Duration.zero) add(PlayerDurationChanged(d));
     });
     _playingSub = _audioController.playingStream.listen((playing) => add(PlayerPlayingChanged(playing)));
     _bufferingSub = _audioController.bufferingStream.listen((b) => add(PlayerBufferingChanged(b)));
     _completedSub = _audioController.completedStream.listen((_) => add(const PlayerCompleted()));
   }
 
+  static const _tick = Duration(milliseconds: 250);
+
   final AudioController _audioController;
-  late final StreamSubscription<Duration> _positionSub;
   late final StreamSubscription<Duration?> _durationSub;
   late final StreamSubscription<bool> _playingSub;
   late final StreamSubscription<bool> _bufferingSub;
   late final StreamSubscription<void> _completedSub;
+  Timer? _ticker;
 
   Future<void> _onTrackStarted(PlayerTrackStarted event, Emitter<PlayerState> emit) async {
     emit(state.copyWith(
@@ -48,7 +57,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       currentIndex: event.startIndex,
       isLoading: true,
       position: Duration.zero,
-      duration: Duration.zero,
+      // Seed from the track's known duration so the scrubber has a scale
+      // immediately. On iOS the audio engine reports duration as 0 (never the
+      // real value), so this seed is what the timeline relies on there; on
+      // Android/web the engine's real duration overrides it (see below).
+      duration: event.queue[event.startIndex].duration,
     ));
     await _playCurrent(emit);
   }
@@ -69,13 +82,15 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   Future<void> _onNextRequested(PlayerNextRequested event, Emitter<PlayerState> emit) async {
     if (!state.hasNext) return;
-    emit(state.copyWith(currentIndex: state.currentIndex + 1, isLoading: true, position: Duration.zero, duration: Duration.zero));
+    final next = state.currentIndex + 1;
+    emit(state.copyWith(currentIndex: next, isLoading: true, position: Duration.zero, duration: state.queue[next].duration));
     await _playCurrent(emit);
   }
 
   Future<void> _onPreviousRequested(PlayerPreviousRequested event, Emitter<PlayerState> emit) async {
     if (!state.hasPrevious) return;
-    emit(state.copyWith(currentIndex: state.currentIndex - 1, isLoading: true, position: Duration.zero, duration: Duration.zero));
+    final prev = state.currentIndex - 1;
+    emit(state.copyWith(currentIndex: prev, isLoading: true, position: Duration.zero, duration: state.queue[prev].duration));
     await _playCurrent(emit);
   }
 
@@ -89,8 +104,16 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     emit(const PlayerState());
   }
 
-  void _onPositionChanged(PlayerPositionChanged event, Emitter<PlayerState> emit) {
-    emit(state.copyWith(position: event.position));
+  void _onPositionTicked(PlayerPositionTicked event, Emitter<PlayerState> emit) {
+    // Don't advance while a (new) track is still buffering -- on auto-advance
+    // just_audio keeps `playing` true across the track boundary, so without
+    // this guard the scrubber would move before the next track's audio has
+    // actually started.
+    if (!state.isPlaying || state.isLoading) return;
+    final next = state.position + _tick;
+    // Cap at the (known) duration so the thumb never runs past the end.
+    final capped = state.duration > Duration.zero && next > state.duration ? state.duration : next;
+    emit(state.copyWith(position: capped));
   }
 
   void _onDurationChanged(PlayerDurationChanged event, Emitter<PlayerState> emit) {
@@ -102,6 +125,14 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     // `playing` stays true across a track boundary, so it can't tell us when
     // the next track has finished loading.
     emit(state.copyWith(isPlaying: event.isPlaying));
+    // Drive the position ticker off play/pause. (We can't use just_audio's
+    // position stream -- see the note in the constructor.)
+    if (event.isPlaying) {
+      _ticker ??= Timer.periodic(_tick, (_) => add(const PlayerPositionTicked()));
+    } else {
+      _ticker?.cancel();
+      _ticker = null;
+    }
   }
 
   void _onBufferingChanged(PlayerBufferingChanged event, Emitter<PlayerState> emit) {
@@ -110,7 +141,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   Future<void> _onCompleted(PlayerCompleted event, Emitter<PlayerState> emit) async {
     if (state.hasNext) {
-      emit(state.copyWith(currentIndex: state.currentIndex + 1, isLoading: true, position: Duration.zero, duration: Duration.zero));
+      final next = state.currentIndex + 1;
+      emit(state.copyWith(currentIndex: next, isLoading: true, position: Duration.zero, duration: state.queue[next].duration));
       await _playCurrent(emit);
     } else {
       emit(state.copyWith(isPlaying: false, position: Duration.zero));
@@ -121,10 +153,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final track = state.currentTrack;
     if (track == null) return;
     try {
-      // setUrl returns the duration when the engine knows it at load time,
-      // which is more reliable than durationStream on web.
+      // setUrl returns the duration when the engine knows it at load time.
       final duration = await _audioController.setUrl(track.audioUrl);
-      if (duration != null) emit(state.copyWith(duration: duration));
+      // Only override the seeded duration with a real engine value (iOS
+      // returns 0 here).
+      if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
     } catch (_) {
       emit(state.copyWith(isLoading: false, isPlaying: false));
       return;
@@ -137,7 +170,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   @override
   Future<void> close() {
-    _positionSub.cancel();
+    _ticker?.cancel();
     _durationSub.cancel();
     _playingSub.cancel();
     _bufferingSub.cancel();

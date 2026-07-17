@@ -50,13 +50,12 @@ class PlayerStopped extends PlayerEvent {
 
 // --- Internal events, dispatched by the bloc from AudioController streams ---
 
-class PlayerPositionChanged extends PlayerEvent {
-  const PlayerPositionChanged(this.position);
-
-  final Duration position;
-
-  @override
-  List<Object?> get props => [position];
+/// Emitted by PlayerBloc's own wall-clock ticker (~4x/sec while playing) to
+/// advance the displayed position. We don't use the audio engine's position
+/// stream because just_audio pins position to 0 while playing on iOS (it
+/// clamps to the engine duration, which iOS reports as 0).
+class PlayerPositionTicked extends PlayerEvent {
+  const PlayerPositionTicked();
 }
 
 class PlayerDurationChanged extends PlayerEvent {
