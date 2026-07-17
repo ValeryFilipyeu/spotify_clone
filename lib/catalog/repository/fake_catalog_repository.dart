@@ -67,92 +67,135 @@ class FakeCatalogRepository implements CatalogRepository {
     ),
   ];
 
-  static const Map<String, List<Track>> _tracksByItemId = {
-    // --- Albums: real tracklists, single album artist ---
-    'ab1': [
-      Track(id: 'ab1-1', title: 'Let It Happen', artist: 'Tame Impala', duration: Duration(minutes: 7, seconds: 47)),
-      Track(id: 'ab1-2', title: 'The Less I Know the Better', artist: 'Tame Impala', duration: Duration(minutes: 3, seconds: 36)),
-      Track(id: 'ab1-3', title: 'Eventually', artist: 'Tame Impala', duration: Duration(minutes: 5, seconds: 19)),
-      Track(id: 'ab1-4', title: "Cause I'm a Man", artist: 'Tame Impala', duration: Duration(minutes: 3, seconds: 54)),
-      Track(id: 'ab1-5', title: 'New Person, Same Old Mistakes', artist: 'Tame Impala', duration: Duration(minutes: 6, seconds: 3)),
-    ],
-    'ab2': [
-      Track(id: 'ab2-1', title: '15 Step', artist: 'Radiohead', duration: Duration(minutes: 3, seconds: 57)),
-      Track(id: 'ab2-2', title: 'Bodysnatchers', artist: 'Radiohead', duration: Duration(minutes: 4, seconds: 2)),
-      Track(id: 'ab2-3', title: 'Nude', artist: 'Radiohead', duration: Duration(minutes: 4, seconds: 15)),
-      Track(id: 'ab2-4', title: 'Weird Fishes/Arpeggi', artist: 'Radiohead', duration: Duration(minutes: 5, seconds: 18)),
-      Track(id: 'ab2-5', title: 'Reckoner', artist: 'Radiohead', duration: Duration(minutes: 4, seconds: 50)),
-    ],
-    'ab3': [
-      Track(id: 'ab3-1', title: 'Give Life Back to Music', artist: 'Daft Punk', duration: Duration(minutes: 4, seconds: 34)),
-      Track(id: 'ab3-2', title: 'Instant Crush', artist: 'Daft Punk', duration: Duration(minutes: 5, seconds: 37)),
-      Track(id: 'ab3-3', title: 'Get Lucky', artist: 'Daft Punk', duration: Duration(minutes: 6, seconds: 7)),
-      Track(id: 'ab3-4', title: 'Lose Yourself to Dance', artist: 'Daft Punk', duration: Duration(minutes: 5, seconds: 53)),
-      Track(id: 'ab3-5', title: "Doin' It Right", artist: 'Daft Punk', duration: Duration(minutes: 4, seconds: 11)),
-    ],
-    'ab4': [
-      Track(id: 'ab4-1', title: 'Nikes', artist: 'Frank Ocean', duration: Duration(minutes: 5, seconds: 14)),
-      Track(id: 'ab4-2', title: 'Ivy', artist: 'Frank Ocean', duration: Duration(minutes: 4, seconds: 9)),
-      Track(id: 'ab4-3', title: 'Pink + White', artist: 'Frank Ocean', duration: Duration(minutes: 3, seconds: 4)),
-      Track(id: 'ab4-4', title: 'Solo', artist: 'Frank Ocean', duration: Duration(minutes: 4, seconds: 17)),
-      Track(id: 'ab4-5', title: 'Self Control', artist: 'Frank Ocean', duration: Duration(minutes: 4, seconds: 9)),
-    ],
-    // --- Mixes / playlists: varied artists per track ---
-    'dm1': [
-      Track(id: 'dm1-1', title: 'Time to Pretend', artist: 'MGMT', duration: Duration(minutes: 4, seconds: 21)),
-      Track(id: 'dm1-2', title: 'Feels Like We Only Go Backwards', artist: 'Tame Impala', duration: Duration(minutes: 3, seconds: 12)),
-      Track(id: 'dm1-3', title: 'Electric Feel', artist: 'MGMT', duration: Duration(minutes: 3, seconds: 49)),
-      Track(id: 'dm1-4', title: 'The Moment', artist: 'Tame Impala', duration: Duration(minutes: 4, seconds: 19)),
-      Track(id: 'dm1-5', title: 'Kids', artist: 'MGMT', duration: Duration(minutes: 5, seconds: 2)),
-    ],
-    'dm2': [
-      Track(id: 'dm2-1', title: 'Evil', artist: 'Interpol', duration: Duration(minutes: 3, seconds: 39)),
-      Track(id: 'dm2-2', title: 'Karma Police', artist: 'Radiohead', duration: Duration(minutes: 4, seconds: 21)),
-      Track(id: 'dm2-3', title: 'Obstacle 1', artist: 'Interpol', duration: Duration(minutes: 4, seconds: 11)),
-      Track(id: 'dm2-4', title: 'No Surprises', artist: 'Radiohead', duration: Duration(minutes: 3, seconds: 48)),
-      Track(id: 'dm2-5', title: 'Slow Hands', artist: 'Interpol', duration: Duration(minutes: 3, seconds: 4)),
-    ],
-    'dw': [
-      Track(id: 'dw-1', title: 'Midnight City', artist: 'M83', duration: Duration(minutes: 4, seconds: 3)),
-      Track(id: 'dw-2', title: 'Redbone', artist: 'Childish Gambino', duration: Duration(minutes: 5, seconds: 27)),
-      Track(id: 'dw-3', title: 'Breathe', artist: 'Télépopmusik', duration: Duration(minutes: 4, seconds: 40)),
-      Track(id: 'dw-4', title: 'Strobe', artist: 'deadmau5', duration: Duration(minutes: 10, seconds: 33)),
-      Track(id: 'dw-5', title: 'Innerbloom', artist: 'RÜFÜS DU SOL', duration: Duration(minutes: 9, seconds: 38)),
-    ],
-    'rr': [
-      Track(id: 'rr-1', title: 'Saturn', artist: 'SZA', duration: Duration(minutes: 3, seconds: 2)),
-      Track(id: 'rr-2', title: 'Vampire', artist: 'Olivia Rodrigo', duration: Duration(minutes: 3, seconds: 39)),
-      Track(id: 'rr-3', title: 'Paint the Town Red', artist: 'Doja Cat', duration: Duration(minutes: 3, seconds: 51)),
-      Track(id: 'rr-4', title: 'Flowers', artist: 'Miley Cyrus', duration: Duration(minutes: 3, seconds: 20)),
-      Track(id: 'rr-5', title: 'Snooze', artist: 'SZA', duration: Duration(minutes: 3, seconds: 22)),
-    ],
-    'lofi': [
-      Track(id: 'lofi-1', title: 'Snowfall', artist: 'Øfdream', duration: Duration(minutes: 2, seconds: 14)),
-      Track(id: 'lofi-2', title: 'Affection', artist: 'Jinsang', duration: Duration(minutes: 2, seconds: 1)),
-      Track(id: 'lofi-3', title: 'Coffee', artist: 'Beabadoobee', duration: Duration(minutes: 3, seconds: 8)),
-      Track(id: 'lofi-4', title: 'Sleepless', artist: 'Nymano', duration: Duration(minutes: 2, seconds: 33)),
-      Track(id: 'lofi-5', title: 'Reflections', artist: 'Idealism', duration: Duration(minutes: 2, seconds: 45)),
-    ],
-    'focus': [
-      Track(id: 'focus-1', title: 'Weightless', artist: 'Marconi Union', duration: Duration(minutes: 8, seconds: 8)),
-      Track(id: 'focus-2', title: 'An Ending (Ascent)', artist: 'Brian Eno', duration: Duration(minutes: 4, seconds: 24)),
-      Track(id: 'focus-3', title: 'Avril 14th', artist: 'Aphex Twin', duration: Duration(minutes: 2, seconds: 5)),
-      Track(id: 'focus-4', title: 'Saman', artist: 'Ólafur Arnalds', duration: Duration(minutes: 6, seconds: 21)),
-      Track(id: 'focus-5', title: 'Nuvole Bianche', artist: 'Ludovico Einaudi', duration: Duration(minutes: 5, seconds: 58)),
-    ],
-    'run': [
-      Track(id: 'run-1', title: 'Titanium', artist: 'David Guetta, Sia', duration: Duration(minutes: 4, seconds: 5)),
-      Track(id: 'run-2', title: "Can't Hold Us", artist: 'Macklemore & Ryan Lewis', duration: Duration(minutes: 4, seconds: 18)),
-      Track(id: 'run-3', title: 'Stronger', artist: 'Kanye West', duration: Duration(minutes: 5, seconds: 12)),
-      Track(id: 'run-4', title: 'Believer', artist: 'Imagine Dragons', duration: Duration(minutes: 3, seconds: 24)),
-      Track(id: 'run-5', title: 'Physical', artist: 'Dua Lipa', duration: Duration(minutes: 3, seconds: 13)),
-    ],
-    'jazz': [
-      Track(id: 'jazz-1', title: 'So What', artist: 'Miles Davis', duration: Duration(minutes: 9, seconds: 22)),
-      Track(id: 'jazz-2', title: 'Take Five', artist: 'The Dave Brubeck Quartet', duration: Duration(minutes: 5, seconds: 24)),
-      Track(id: 'jazz-3', title: 'My Favorite Things', artist: 'John Coltrane', duration: Duration(minutes: 13, seconds: 41)),
-      Track(id: 'jazz-4', title: 'Feeling Good', artist: 'Nina Simone', duration: Duration(minutes: 2, seconds: 58)),
-      Track(id: 'jazz-5', title: 'Blue in Green', artist: 'Miles Davis', duration: Duration(minutes: 5, seconds: 37)),
-    ],
-  };
+  // Royalty-free demo audio, paired with each file's REAL duration (probed
+  // with afinfo, floored to whole seconds to match how the UI renders m:ss).
+  // Using the real length means the tracklist, the Now Playing screen, and
+  // actual playback all show the same time -- previously the list showed
+  // invented durations (e.g. 4:21) that didn't match the ~39s audio.
+  //
+  // Ten GENUINELY DIFFERENT recordings from reliable hosts (all verified to
+  // return HTTP 200 + an audio content-type and to serve with a browser
+  // Referer, so no hotlink blocking).
+  static const List<(String url, Duration duration)> _audioPool = [
+    ('https://download.samplelib.com/mp3/sample-15s.mp3', Duration(seconds: 19)),
+    ('https://storage.googleapis.com/exoplayer-test-media-0/play.mp3', Duration(seconds: 59)),
+    ('https://www.kozco.com/tech/LRMonoPhase4.mp3', Duration(seconds: 38)),
+    ('https://filesamples.com/samples/audio/mp3/sample1.mp3', Duration(minutes: 2, seconds: 2)),
+    ('https://filesamples.com/samples/audio/mp3/sample3.mp3', Duration(minutes: 1, seconds: 45)),
+    ('https://archive.org/download/testmp3testfile/mpthreetest.mp3', Duration(seconds: 12)),
+    ('https://filesamples.com/samples/audio/mp3/sample2.mp3', Duration(minutes: 3, seconds: 37)),
+    ('https://filesamples.com/samples/audio/mp3/sample4.mp3', Duration(minutes: 4, seconds: 4)),
+    ('https://www.kozco.com/tech/organfinale.mp3', Duration(seconds: 13)),
+    ('https://www.kozco.com/tech/32.mp3', Duration(seconds: 32)),
+  ];
+
+  static final Map<String, List<Track>> _tracksByItemId = _buildTracks();
+
+  /// Builds the tracklists once. Each playlist starts at a different offset
+  /// into [_audioPool] (via [_playlist]'s `offset`), so different playlists
+  /// use different audio rather than all sharing the same few files. Every
+  /// track's [Track.duration] is the real length of its assigned audio.
+  static Map<String, List<Track>> _buildTracks() {
+    return {
+      // --- Albums: real tracklists, single album artist ---
+      'ab1': _playlist(0, const [
+        ('ab1-1', 'Let It Happen', 'Tame Impala'),
+        ('ab1-2', 'The Less I Know the Better', 'Tame Impala'),
+        ('ab1-3', 'Eventually', 'Tame Impala'),
+        ('ab1-4', "Cause I'm a Man", 'Tame Impala'),
+        ('ab1-5', 'New Person, Same Old Mistakes', 'Tame Impala'),
+      ]),
+      'ab2': _playlist(1, const [
+        ('ab2-1', '15 Step', 'Radiohead'),
+        ('ab2-2', 'Bodysnatchers', 'Radiohead'),
+        ('ab2-3', 'Nude', 'Radiohead'),
+        ('ab2-4', 'Weird Fishes/Arpeggi', 'Radiohead'),
+        ('ab2-5', 'Reckoner', 'Radiohead'),
+      ]),
+      'ab3': _playlist(2, const [
+        ('ab3-1', 'Give Life Back to Music', 'Daft Punk'),
+        ('ab3-2', 'Instant Crush', 'Daft Punk'),
+        ('ab3-3', 'Get Lucky', 'Daft Punk'),
+        ('ab3-4', 'Lose Yourself to Dance', 'Daft Punk'),
+        ('ab3-5', "Doin' It Right", 'Daft Punk'),
+      ]),
+      'ab4': _playlist(3, const [
+        ('ab4-1', 'Nikes', 'Frank Ocean'),
+        ('ab4-2', 'Ivy', 'Frank Ocean'),
+        ('ab4-3', 'Pink + White', 'Frank Ocean'),
+        ('ab4-4', 'Solo', 'Frank Ocean'),
+        ('ab4-5', 'Self Control', 'Frank Ocean'),
+      ]),
+      // --- Mixes / playlists: varied artists per track ---
+      'dm1': _playlist(4, const [
+        ('dm1-1', 'Time to Pretend', 'MGMT'),
+        ('dm1-2', 'Feels Like We Only Go Backwards', 'Tame Impala'),
+        ('dm1-3', 'Electric Feel', 'MGMT'),
+        ('dm1-4', 'The Moment', 'Tame Impala'),
+        ('dm1-5', 'Kids', 'MGMT'),
+      ]),
+      'dm2': _playlist(5, const [
+        ('dm2-1', 'Evil', 'Interpol'),
+        ('dm2-2', 'Karma Police', 'Radiohead'),
+        ('dm2-3', 'Obstacle 1', 'Interpol'),
+        ('dm2-4', 'No Surprises', 'Radiohead'),
+        ('dm2-5', 'Slow Hands', 'Interpol'),
+      ]),
+      'dw': _playlist(6, const [
+        ('dw-1', 'Midnight City', 'M83'),
+        ('dw-2', 'Redbone', 'Childish Gambino'),
+        ('dw-3', 'Breathe', 'Télépopmusik'),
+        ('dw-4', 'Strobe', 'deadmau5'),
+        ('dw-5', 'Innerbloom', 'RÜFÜS DU SOL'),
+      ]),
+      'rr': _playlist(7, const [
+        ('rr-1', 'Saturn', 'SZA'),
+        ('rr-2', 'Vampire', 'Olivia Rodrigo'),
+        ('rr-3', 'Paint the Town Red', 'Doja Cat'),
+        ('rr-4', 'Flowers', 'Miley Cyrus'),
+        ('rr-5', 'Snooze', 'SZA'),
+      ]),
+      'lofi': _playlist(8, const [
+        ('lofi-1', 'Snowfall', 'Øfdream'),
+        ('lofi-2', 'Affection', 'Jinsang'),
+        ('lofi-3', 'Coffee', 'Beabadoobee'),
+        ('lofi-4', 'Sleepless', 'Nymano'),
+        ('lofi-5', 'Reflections', 'Idealism'),
+      ]),
+      'focus': _playlist(9, const [
+        ('focus-1', 'Weightless', 'Marconi Union'),
+        ('focus-2', 'An Ending (Ascent)', 'Brian Eno'),
+        ('focus-3', 'Avril 14th', 'Aphex Twin'),
+        ('focus-4', 'Saman', 'Ólafur Arnalds'),
+        ('focus-5', 'Nuvole Bianche', 'Ludovico Einaudi'),
+      ]),
+      'run': _playlist(10, const [
+        ('run-1', 'Titanium', 'David Guetta, Sia'),
+        ('run-2', "Can't Hold Us", 'Macklemore & Ryan Lewis'),
+        ('run-3', 'Stronger', 'Kanye West'),
+        ('run-4', 'Believer', 'Imagine Dragons'),
+        ('run-5', 'Physical', 'Dua Lipa'),
+      ]),
+      'jazz': _playlist(11, const [
+        ('jazz-1', 'So What', 'Miles Davis'),
+        ('jazz-2', 'Take Five', 'The Dave Brubeck Quartet'),
+        ('jazz-3', 'My Favorite Things', 'John Coltrane'),
+        ('jazz-4', 'Feeling Good', 'Nina Simone'),
+        ('jazz-5', 'Blue in Green', 'Miles Davis'),
+      ]),
+    };
+  }
+
+  /// Maps a playlist's (id, title, artist) metadata to [Track]s, assigning
+  /// audio starting at [offset] in [_audioPool] and taking each track's
+  /// duration from its assigned audio file.
+  static List<Track> _playlist(int offset, List<(String, String, String)> metas) {
+    final tracks = <Track>[];
+    for (var i = 0; i < metas.length; i++) {
+      final (id, title, artist) = metas[i];
+      final (url, duration) = _audioPool[(offset + i) % _audioPool.length];
+      tracks.add(Track(id: id, title: title, artist: artist, duration: duration, audioUrl: url));
+    }
+    return tracks;
+  }
 }

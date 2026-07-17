@@ -31,6 +31,24 @@ void main() {
       expect(ids.toSet().length, ids.length);
     });
 
+    test('different playlists use different audio (not all the same sample)', () async {
+      final ab1 = await repository.fetchDetail('ab1');
+      final ab2 = await repository.fetchDetail('ab2');
+      final ab1Urls = ab1.tracks.map((t) => t.audioUrl).toList();
+      final ab2Urls = ab2.tracks.map((t) => t.audioUrl).toList();
+      expect(ab1Urls, isNot(equals(ab2Urls)));
+    });
+
+    test('each track duration is the real (short demo) length, not an invented one', () async {
+      final detail = await repository.fetchDetail('dm1');
+      // Real demo clips are all well under 5 minutes; the old invented
+      // durations (e.g. 4:21) did not match the audio.
+      for (final track in detail.tracks) {
+        expect(track.duration.inMinutes, lessThan(5));
+        expect(track.duration, greaterThan(Duration.zero));
+      }
+    });
+
     // Guards against a home card that would open to an empty/erroring screen:
     // every item shown on the home screen must resolve to a real detail.
     test('every home item id resolves to a detail with tracks', () async {

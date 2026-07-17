@@ -4,6 +4,8 @@ import 'package:spotify_clone/app.dart';
 import 'package:spotify_clone/auth/repository/fake_auth_repository.dart';
 import 'package:spotify_clone/auth/repository/session_storage.dart';
 
+import 'player/fake_audio_controller.dart';
+
 /// A pure in-memory SessionStorage so this test never touches a real
 /// platform channel.
 class _InMemorySessionStorage implements SessionStorage {
@@ -27,8 +29,9 @@ void main() {
 
   testWidgets('MyApp boots to the Landing screen with no restored session', (tester) async {
     final repository = FakeAuthRepository(sessionStorage: _InMemorySessionStorage());
+    final audioController = FakeAudioController();
 
-    await tester.pumpWidget(MyApp(authRepository: repository));
+    await tester.pumpWidget(MyApp(authRepository: repository, audioController: audioController));
     await tester.pumpAndSettle();
 
     expect(find.text('Sign up free'), findsOneWidget);

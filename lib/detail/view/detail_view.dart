@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../catalog/models/catalog_detail.dart';
+import '../../catalog/models/track.dart';
+import '../../player/bloc/player_bloc.dart';
+import '../../player/bloc/player_event.dart';
 import '../../theme/spotify_colors.dart';
 import '../cubit/detail_cubit.dart';
 import '../cubit/detail_state.dart';
@@ -107,7 +110,7 @@ class _DetailContent extends StatelessWidget {
         ),
         SliverList(
           delegate: SliverChildBuilderDelegate(
-            (context, index) => TrackTile(position: index + 1, track: detail.tracks[index]),
+            (context, index) => _TrackRow(tracks: detail.tracks, index: index),
             childCount: detail.tracks.length,
           ),
         ),
@@ -118,4 +121,30 @@ class _DetailContent extends StatelessWidget {
 
   /// Formats a playlist's total length as "X min" (e.g. 42 min).
   static String _formatTotal(Duration duration) => '${duration.inMinutes} min';
+}
+
+/// One tracklist row. Extracted into its own widget so `context.select` is
+/// legal here -- provider forbids `select` directly inside a SliverList's
+/// itemBuilder (it would rebuild the whole list instead of one row).
+class _TrackRow extends StatelessWidget {
+  const _TrackRow({required this.tracks, required this.index});
+
+  final List<Track> tracks;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final track = tracks[index];
+    // select (not watch) so this row rebuilds only when the current track id
+    // changes -- not on every position tick.
+    final currentId = context.select<PlayerBloc, String?>((bloc) => bloc.state.currentTrack?.id);
+    return TrackTile(
+      position: index + 1,
+      track: track,
+      isCurrent: track.id == currentId,
+      onTap: () => context.read<PlayerBloc>().add(
+            PlayerTrackStarted(queue: tracks, startIndex: index),
+          ),
+    );
+  }
 }

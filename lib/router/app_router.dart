@@ -6,6 +6,7 @@ import '../detail/view/detail_page.dart';
 import '../home/view/home_page.dart';
 import '../landing/view/landing_page.dart';
 import '../log_in/view/log_in_page.dart';
+import '../player/view/full_player_page.dart';
 import '../sign_up/view/sign_up_page.dart';
 import 'app_routes.dart';
 import 'go_router_refresh_stream.dart';
@@ -37,6 +38,7 @@ GoRouter createRouter(AuthBloc authBloc) {
         path: Routes.detail,
         builder: (context, state) => DetailPage(itemId: state.pathParameters['id']!),
       ),
+      GoRoute(path: Routes.player, builder: (context, state) => const FullPlayerPage()),
     ],
   );
 }
