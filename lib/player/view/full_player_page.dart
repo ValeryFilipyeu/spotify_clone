@@ -100,6 +100,15 @@ class _ScrubberState extends State<_Scrubber> {
   // at the wrong spot. We seek exactly once, on release.
   double? _dragValue;
 
+  // Tabular figures so every digit is the same width -- the elapsed-time label
+  // updates continuously while dragging, and with Poppins' default
+  // proportional figures the number visibly wiggles as the digits change.
+  TextStyle? _timeStyle(BuildContext context) =>
+      Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: SpotifyColors.textSecondary,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      );
+
   @override
   Widget build(BuildContext context) {
     final totalMs = widget.state.duration.inMilliseconds;
@@ -135,9 +144,8 @@ class _ScrubberState extends State<_Scrubber> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(formatDuration(_dragValue != null ? Duration(milliseconds: _dragValue!.round()) : widget.state.position),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
-              Text(formatDuration(widget.state.duration),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
+                  style: _timeStyle(context)),
+              Text(formatDuration(widget.state.duration), style: _timeStyle(context)),
             ],
           ),
         ),
@@ -151,33 +159,54 @@ class _Controls extends StatelessWidget {
 
   final PlayerState state;
 
+  // Every control lives in a fixed-size box so nothing reflows when the
+  // play/pause glyph swaps to a spinner (they differ in size) or when a button
+  // enables/disables -- otherwise the center circle resizes and, with
+  // spaceEvenly, shoves prev/next sideways during a scrub/seek.
+  static const double _sideButton = 56;
+  static const double _playButton = 64;
+
   @override
   Widget build(BuildContext context) {
     final bloc = context.read<PlayerBloc>();
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        IconButton(
-          iconSize: 40,
-          icon: const Icon(Icons.skip_previous),
-          color: state.hasPrevious ? Colors.white : Colors.white38,
-          onPressed: state.hasPrevious ? () => bloc.add(const PlayerPreviousRequested()) : null,
-        ),
-        Container(
-          decoration: const BoxDecoration(color: SpotifyColors.green, shape: BoxShape.circle),
+        SizedBox(
+          width: _sideButton,
+          height: _sideButton,
           child: IconButton(
-            iconSize: 44,
-            icon: state.isLoading
-                ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black))
-                : Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.black),
-            onPressed: () => bloc.add(const PlayerPlayPauseToggled()),
+            iconSize: 40,
+            icon: const Icon(Icons.skip_previous),
+            color: state.hasPrevious ? Colors.white : Colors.white38,
+            onPressed: state.hasPrevious ? () => bloc.add(const PlayerPreviousRequested()) : null,
           ),
         ),
-        IconButton(
-          iconSize: 40,
-          icon: const Icon(Icons.skip_next),
-          color: state.hasNext ? Colors.white : Colors.white38,
-          onPressed: state.hasNext ? () => bloc.add(const PlayerNextRequested()) : null,
+        SizedBox(
+          width: _playButton,
+          height: _playButton,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: SpotifyColors.green, shape: BoxShape.circle),
+            child: IconButton(
+              iconSize: 32,
+              // The outer 64x64 SizedBox pins the circle, so swapping the glyph
+              // for the spinner (different intrinsic size) can't reflow anything.
+              icon: state.isLoading
+                  ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black))
+                  : Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.black),
+              onPressed: () => bloc.add(const PlayerPlayPauseToggled()),
+            ),
+          ),
+        ),
+        SizedBox(
+          width: _sideButton,
+          height: _sideButton,
+          child: IconButton(
+            iconSize: 40,
+            icon: const Icon(Icons.skip_next),
+            color: state.hasNext ? Colors.white : Colors.white38,
+            onPressed: state.hasNext ? () => bloc.add(const PlayerNextRequested()) : null,
+          ),
         ),
       ],
     );

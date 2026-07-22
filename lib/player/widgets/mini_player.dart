@@ -61,6 +61,14 @@ class MiniPlayer extends StatelessWidget {
                           : Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
                       onPressed: () => context.read<PlayerBloc>().add(const PlayerPlayPauseToggled()),
                     ),
+                    // Dismiss the player: stop playback and clear the queue.
+                    // PlayerStopped empties the queue, so currentTrack becomes
+                    // null and this whole bar collapses to nothing (above).
+                    IconButton(
+                      icon: const Icon(Icons.close, color: SpotifyColors.textSecondary),
+                      tooltip: 'Stop',
+                      onPressed: () => context.read<PlayerBloc>().add(const PlayerStopped()),
+                    ),
                   ],
                 ),
                 LinearProgressIndicator(

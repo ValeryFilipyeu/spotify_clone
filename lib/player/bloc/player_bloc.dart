@@ -102,8 +102,13 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   }
 
   Future<void> _onSeekRequested(PlayerSeekRequested event, Emitter<PlayerState> emit) async {
-    await _audioController.seek(event.position);
+    // Reflect the target position IMMEDIATELY, before the (async) engine seek.
+    // On release the scrubber drops its local drag value and falls back to
+    // state.position; if we emitted only after the await, the thumb would snap
+    // back to the pre-seek position for a frame and then jump to the target --
+    // a visible flicker. Emitting first makes the thumb stay put.
     emit(state.copyWith(position: event.position));
+    await _audioController.seek(event.position);
   }
 
   Future<void> _onStopped(PlayerStopped event, Emitter<PlayerState> emit) async {
