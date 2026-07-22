@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../theme/spotify_colors.dart';
+import '../../widgets/marquee_text.dart';
 import '../bloc/player_bloc.dart';
 import '../bloc/player_event.dart';
 import '../bloc/player_state.dart';
@@ -48,9 +49,9 @@ class MiniPlayer extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          MarqueeText(track.title,
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                          Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          MarqueeText(track.artist,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
                         ],
                       ),

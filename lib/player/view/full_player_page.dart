@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../theme/spotify_colors.dart';
 import '../../widgets/duration_format.dart';
+import '../../widgets/marquee_text.dart';
 import '../bloc/player_bloc.dart';
 import '../bloc/player_event.dart';
 import '../bloc/player_state.dart';
@@ -57,14 +58,16 @@ class FullPlayerPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  Align(
-                    alignment: Alignment.centerLeft,
+                  // Full width so the marquee measures overflow against the
+                  // whole row, not the (shrink-wrapped) text width.
+                  SizedBox(
+                    width: double.infinity,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        MarqueeText(track.title,
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                        Text(track.artist,
+                        MarqueeText(track.artist,
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(color: SpotifyColors.textSecondary)),
                       ],
                     ),
