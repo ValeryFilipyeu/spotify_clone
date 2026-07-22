@@ -18,6 +18,19 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<List<CatalogItem>> fetchAllItems() async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    // Flatten every section's items, keeping the first occurrence of each id
+    // (an item could in principle appear in more than one section).
+    final seen = <String>{};
+    return [
+      for (final section in _sections)
+        for (final item in section.items)
+          if (seen.add(item.id)) item,
+    ];
+  }
+
+  @override
   Future<CatalogDetail> fetchDetail(String itemId) async {
     await Future<void>.delayed(const Duration(milliseconds: 500));
     // Find the header item by scanning the same sections the home screen uses,

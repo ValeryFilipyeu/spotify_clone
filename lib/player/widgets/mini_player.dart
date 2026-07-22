@@ -27,11 +27,12 @@ class MiniPlayer extends StatelessWidget {
             ? 0.0
             : (state.position.inMilliseconds / state.duration.inMilliseconds).clamp(0.0, 1.0);
 
+        // No SafeArea here: the mini-player sits directly above the tab bar
+        // (see ScaffoldWithNavBar), and the NavigationBar below it owns the
+        // bottom safe-area inset.
         return Material(
           color: SpotifyColors.surfaceBright,
-          child: SafeArea(
-            top: false,
-            child: InkWell(
+          child: InkWell(
             onTap: onTap,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -70,7 +71,6 @@ class MiniPlayer extends StatelessWidget {
                 ),
               ],
             ),
-          ),
           ),
         );
       },

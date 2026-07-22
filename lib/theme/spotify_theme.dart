@@ -83,6 +83,22 @@ abstract final class SpotifyTheme {
         contentTextStyle: textTheme.bodyMedium?.copyWith(color: SpotifyColors.white),
         behavior: SnackBarBehavior.floating,
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: SpotifyColors.surfaceDim,
+        surfaceTintColor: Colors.transparent,
+        // No pill behind the selected icon -- Spotify just brightens it.
+        indicatorColor: Colors.transparent,
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => textTheme.labelSmall?.copyWith(
+            color: states.contains(WidgetState.selected) ? SpotifyColors.white : SpotifyColors.textSecondary,
+          ),
+        ),
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected) ? SpotifyColors.white : SpotifyColors.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }

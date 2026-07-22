@@ -10,9 +10,7 @@ import 'catalog/repository/fake_catalog_repository.dart';
 import 'player/audio/audio_controller.dart';
 import 'player/bloc/player_bloc.dart';
 import 'player/bloc/player_event.dart';
-import 'player/widgets/mini_player.dart';
 import 'router/app_router.dart';
-import 'router/app_routes.dart';
 import 'theme/spotify_theme.dart';
 
 class MyApp extends StatelessWidget {
@@ -82,29 +80,15 @@ class _AppViewState extends State<AppView> {
       // Stop playback and clear the queue when the user logs out.
       listenWhen: (previous, current) => current.status == AuthStatus.unauthenticated,
       listener: (context, state) => context.read<PlayerBloc>().add(const PlayerStopped()),
+      // The mini-player is no longer injected here: it's part of the tab
+      // shell's chrome now (see ScaffoldWithNavBar), sitting above the bottom
+      // navigation bar. That keeps it inside the authenticated shell and out of
+      // the auth screens, and it's automatically hidden under the full-screen
+      // "Now Playing" route (which covers the shell).
       child: MaterialApp.router(
         title: 'Spotify Clone',
         theme: SpotifyTheme.dark(),
         routerConfig: _router,
-        // The mini-player is persistent chrome sitting below every route.
-        // It renders nothing until a track is loaded, and hides itself while
-        // the full "Now Playing" screen is open (so that screen is truly
-        // full-height).
-        builder: (context, child) {
-          return Column(
-            children: [
-              Expanded(child: child!),
-              AnimatedBuilder(
-                animation: _router.routerDelegate,
-                builder: (context, _) {
-                  final location = _router.routerDelegate.currentConfiguration.uri.path;
-                  if (location == Routes.player) return const SizedBox.shrink();
-                  return MiniPlayer(onTap: () => _router.push(Routes.player));
-                },
-              ),
-            ],
-          );
-        },
       ),
     );
   }

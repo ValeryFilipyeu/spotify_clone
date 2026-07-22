@@ -1,3 +1,4 @@
+import '../models/catalog_item.dart';
 import '../models/catalog_detail.dart';
 import '../models/catalog_section.dart';
 
@@ -8,6 +9,10 @@ import '../models/catalog_section.dart';
 abstract class CatalogRepository {
   /// Loads the sections shown on the home screen.
   Future<List<CatalogSection>> fetchHomeSections();
+
+  /// Loads every browsable item once, de-duplicated across sections. Backs the
+  /// Search (client-side filtered) and Library screens.
+  Future<List<CatalogItem>> fetchAllItems();
 
   /// Loads a single album/playlist (its header item plus its tracks).
   /// Throws [CatalogItemNotFound] if no item matches [itemId].

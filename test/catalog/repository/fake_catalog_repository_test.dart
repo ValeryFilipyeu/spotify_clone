@@ -29,5 +29,17 @@ void main() {
       final second = await repository.fetchHomeSections();
       expect(first, second);
     });
+
+    test('fetchAllItems returns every section item, de-duplicated', () async {
+      final sections = await repository.fetchHomeSections();
+      final all = await repository.fetchAllItems();
+
+      final expectedIds = sections.expand((s) => s.items).map((i) => i.id).toSet();
+      final actualIds = all.map((i) => i.id).toList();
+
+      expect(all, isNotEmpty);
+      expect(actualIds.toSet(), expectedIds); // same set of ids
+      expect(actualIds.toSet().length, actualIds.length); // no duplicates
+    });
   });
 }
