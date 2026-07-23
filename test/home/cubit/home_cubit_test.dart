@@ -19,7 +19,7 @@ class _ThrowingCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<CatalogItem>> search(String query) async {
+  Future<SearchResults> search(String query) async {
     throw Exception('network down');
   }
 

@@ -46,7 +46,7 @@ void main() {
     // Switch to Search -> its (lazily built) screen appears.
     await tester.tap(find.text('Search'));
     await tester.pumpAndSettle();
-    expect(find.text('Search playlists and albums'), findsOneWidget);
+    expect(find.text('Search songs, playlists and albums'), findsOneWidget);
 
     // Switch to Library -> its screen appears.
     await tester.tap(find.text('Library'));

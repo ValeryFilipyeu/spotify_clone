@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../catalog/models/catalog_item.dart';
+import '../../catalog/models/search_results.dart';
 
 /// - [initial]: nothing searched yet (blank query) -> the view shows a prompt.
 /// - [loading]: a debounced search is in flight.
@@ -10,25 +10,26 @@ import '../../catalog/models/catalog_item.dart';
 enum SearchStatus { initial, loading, success, failure }
 
 /// [query] is the raw text currently in the field; [results] is the matches for
-/// the most recently completed search. The two can briefly disagree while a
-/// debounced search is pending or in flight -- the cubit reconciles them.
+/// the most recently completed search (albums/playlists and songs). The two can
+/// briefly disagree while a debounced search is pending or in flight -- the
+/// cubit reconciles them.
 class SearchState extends Equatable {
   const SearchState({
     this.status = SearchStatus.initial,
     this.query = '',
-    this.results = const [],
+    this.results = const SearchResults(),
     this.errorMessage,
   });
 
   final SearchStatus status;
   final String query;
-  final List<CatalogItem> results;
+  final SearchResults results;
   final String? errorMessage;
 
   SearchState copyWith({
     SearchStatus? status,
     String? query,
-    List<CatalogItem>? results,
+    SearchResults? results,
     String? errorMessage,
   }) {
     return SearchState(

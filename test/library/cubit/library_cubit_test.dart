@@ -9,7 +9,7 @@ class _ThrowingCatalogRepository implements CatalogRepository {
   Future<List<CatalogItem>> fetchAllItems() async => throw Exception('down');
 
   @override
-  Future<List<CatalogItem>> search(String query) => throw UnimplementedError();
+  Future<SearchResults> search(String query) => throw UnimplementedError();
 
   @override
   Future<List<CatalogSection>> fetchHomeSections() => throw UnimplementedError();

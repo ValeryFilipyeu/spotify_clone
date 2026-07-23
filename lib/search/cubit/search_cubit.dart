@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../catalog/models/search_results.dart';
 import '../../catalog/repository/catalog_repository.dart';
 import 'search_state.dart';
 
@@ -35,7 +36,7 @@ class SearchCubit extends Cubit<SearchState> {
 
     if (query.trim().isEmpty) {
       // Blank query: abandon any pending search and fall back to the prompt.
-      emit(state.copyWith(query: query, status: SearchStatus.initial, results: const []));
+      emit(state.copyWith(query: query, status: SearchStatus.initial, results: const SearchResults()));
       return;
     }
 

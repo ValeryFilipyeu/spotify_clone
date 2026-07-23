@@ -2,6 +2,7 @@ import '../models/catalog_detail.dart';
 import '../models/catalog_failure.dart';
 import '../models/catalog_item.dart';
 import '../models/catalog_section.dart';
+import '../models/search_results.dart';
 import '../models/track.dart';
 import 'catalog_repository.dart';
 
@@ -24,18 +25,32 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<CatalogItem>> search(String query) async {
+  Future<SearchResults> search(String query) async {
     // A real network round-trip's worth of latency, so a per-keystroke search
     // would visibly thrash -- this is what debouncing in SearchCubit avoids.
     await Future<void>.delayed(const Duration(milliseconds: 400));
     final needle = query.trim().toLowerCase();
-    if (needle.isEmpty) return const [];
-    return [
+    if (needle.isEmpty) return const SearchResults();
+
+    // Albums/playlists: match on title or subtitle.
+    final items = [
       for (final item in _allItems)
         if (item.title.toLowerCase().contains(needle) ||
             item.subtitle.toLowerCase().contains(needle))
           item,
     ];
+
+    // Songs: scan every catalog's tracklist, matching on title or artist, and
+    // carry each hit's containing album along for context.
+    final tracks = [
+      for (final item in _allItems)
+        for (final track in _tracksByItemId[item.id] ?? const <Track>[])
+          if (track.title.toLowerCase().contains(needle) ||
+              track.artist.toLowerCase().contains(needle))
+            TrackHit(track: track, album: item),
+    ];
+
+    return SearchResults(items: items, tracks: tracks);
   }
 
   @override

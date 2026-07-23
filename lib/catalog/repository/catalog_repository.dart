@@ -1,6 +1,7 @@
 import '../models/catalog_item.dart';
 import '../models/catalog_detail.dart';
 import '../models/catalog_section.dart';
+import '../models/search_results.dart';
 
 /// The seam a real catalog backend (a REST API, Spotify's Web API, ...) would
 /// plug into later. As with [AuthRepository], nothing above this interface
@@ -14,12 +15,13 @@ abstract class CatalogRepository {
   /// Library screen.
   Future<List<CatalogItem>> fetchAllItems();
 
-  /// Searches the catalog for items whose title or subtitle matches [query]
-  /// (case-insensitive), returning an empty list for a blank query. A real
-  /// backend would run this server-side; even the fake answers behind a
-  /// simulated network delay -- that latency is exactly what makes debouncing
-  /// the calls (see SearchCubit) worthwhile.
-  Future<List<CatalogItem>> search(String query);
+  /// Searches the catalog for a [query] (case-insensitive), matching both
+  /// albums/playlists (by title or subtitle) and individual songs across every
+  /// catalog (by track title or artist). Returns empty [SearchResults] for a
+  /// blank query. A real backend would run this server-side; even the fake
+  /// answers behind a simulated network delay -- that latency is exactly what
+  /// makes debouncing the calls (see SearchCubit) worthwhile.
+  Future<SearchResults> search(String query);
 
   /// Loads a single album/playlist (its header item plus its tracks).
   /// Throws [CatalogItemNotFound] if no item matches [itemId].
