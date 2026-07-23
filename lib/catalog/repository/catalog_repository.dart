@@ -11,8 +11,15 @@ abstract class CatalogRepository {
   Future<List<CatalogSection>> fetchHomeSections();
 
   /// Loads every browsable item once, de-duplicated across sections. Backs the
-  /// Search (client-side filtered) and Library screens.
+  /// Library screen.
   Future<List<CatalogItem>> fetchAllItems();
+
+  /// Searches the catalog for items whose title or subtitle matches [query]
+  /// (case-insensitive), returning an empty list for a blank query. A real
+  /// backend would run this server-side; even the fake answers behind a
+  /// simulated network delay -- that latency is exactly what makes debouncing
+  /// the calls (see SearchCubit) worthwhile.
+  Future<List<CatalogItem>> search(String query);
 
   /// Loads a single album/playlist (its header item plus its tracks).
   /// Throws [CatalogItemNotFound] if no item matches [itemId].

@@ -34,17 +34,15 @@ class SearchView extends StatelessWidget {
               builder: (context, state) {
                 switch (state.status) {
                   case SearchStatus.initial:
+                    return const _Hint(icon: Icons.search, text: 'Search playlists and albums');
                   case SearchStatus.loading:
                     return const Center(child: CircularProgressIndicator(color: SpotifyColors.green));
                   case SearchStatus.failure:
                     return ErrorRetry(
                       message: state.errorMessage ?? 'Something went wrong.',
-                      onRetry: () => context.read<SearchCubit>().loadCatalog(),
+                      onRetry: () => context.read<SearchCubit>().retry(),
                     );
                   case SearchStatus.success:
-                    if (state.query.trim().isEmpty) {
-                      return const _Hint(icon: Icons.search, text: 'Search playlists and albums');
-                    }
                     if (state.results.isEmpty) {
                       return _Hint(icon: Icons.sentiment_dissatisfied_outlined, text: 'No results for "${state.query.trim()}"');
                     }

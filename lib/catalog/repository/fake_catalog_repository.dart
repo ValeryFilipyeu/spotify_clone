@@ -20,13 +20,21 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<List<CatalogItem>> fetchAllItems() async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
-    // Flatten every section's items, keeping the first occurrence of each id
-    // (an item could in principle appear in more than one section).
-    final seen = <String>{};
+    return _allItems;
+  }
+
+  @override
+  Future<List<CatalogItem>> search(String query) async {
+    // A real network round-trip's worth of latency, so a per-keystroke search
+    // would visibly thrash -- this is what debouncing in SearchCubit avoids.
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    final needle = query.trim().toLowerCase();
+    if (needle.isEmpty) return const [];
     return [
-      for (final section in _sections)
-        for (final item in section.items)
-          if (seen.add(item.id)) item,
+      for (final item in _allItems)
+        if (item.title.toLowerCase().contains(needle) ||
+            item.subtitle.toLowerCase().contains(needle))
+          item,
     ];
   }
 
@@ -49,6 +57,19 @@ class FakeCatalogRepository implements CatalogRepository {
   // Fake data. `static const` so it is shared by both methods and allocated
   // once, not rebuilt per call.
   // ---------------------------------------------------------------------------
+
+  /// Every section's items flattened and de-duplicated by id (first occurrence
+  /// wins), computed once. Backs both [fetchAllItems] and [search].
+  static final List<CatalogItem> _allItems = _buildAllItems();
+
+  static List<CatalogItem> _buildAllItems() {
+    final seen = <String>{};
+    return [
+      for (final section in _sections)
+        for (final item in section.items)
+          if (seen.add(item.id)) item,
+    ];
+  }
 
   static const List<CatalogSection> _sections = [
     CatalogSection(

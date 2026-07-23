@@ -41,5 +41,24 @@ void main() {
       expect(actualIds.toSet(), expectedIds); // same set of ids
       expect(actualIds.toSet().length, actualIds.length); // no duplicates
     });
+
+    test('search matches title or subtitle, case-insensitively', () async {
+      final byTitle = await repository.search('rainbows'); // "In Rainbows" title
+      final bySubtitle = await repository.search('radiohead'); // a subtitle
+      final byUpper = await repository.search('RADIOHEAD'); // case-insensitive
+
+      expect(byTitle.map((i) => i.id), contains('ab2'));
+      expect(bySubtitle.map((i) => i.id), contains('ab2'));
+      expect(byUpper.map((i) => i.id), bySubtitle.map((i) => i.id));
+    });
+
+    test('search returns an empty list for a blank query', () async {
+      expect(await repository.search(''), isEmpty);
+      expect(await repository.search('   '), isEmpty);
+    });
+
+    test('search returns an empty list when nothing matches', () async {
+      expect(await repository.search('zzzzz'), isEmpty);
+    });
   });
 }
