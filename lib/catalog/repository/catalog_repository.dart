@@ -15,6 +15,11 @@ abstract class CatalogRepository {
   /// Library screen.
   Future<List<CatalogItem>> fetchAllItems();
 
+  /// Loads every track across every catalog, each paired with its containing
+  /// album/playlist. Backs the "liked songs" section of the Library, which
+  /// resolves liked track ids back to their tracks.
+  Future<List<TrackHit>> fetchAllTracks();
+
   /// Searches the catalog for a [query] (case-insensitive), matching both
   /// albums/playlists (by title or subtitle) and individual songs across every
   /// catalog (by track title or artist). Returns empty [SearchResults] for a

@@ -52,6 +52,19 @@ void main() {
       expect(byUpper.items.map((i) => i.id), bySubtitle.items.map((i) => i.id));
     });
 
+    test('fetchAllTracks returns every track paired with its album', () async {
+      final tracks = await repository.fetchAllTracks();
+      final items = await repository.fetchAllItems();
+      final itemIds = items.map((i) => i.id).toSet();
+
+      expect(tracks, isNotEmpty);
+      // Every track's album is a real catalog item.
+      expect(tracks.every((h) => itemIds.contains(h.album.id)), isTrue);
+      // The specific "Karma Police" song is attributed to Daily Mix 2.
+      final karma = tracks.firstWhere((h) => h.track.title == 'Karma Police');
+      expect(karma.album.id, 'dm2');
+    });
+
     test('search matches individual songs by title or artist', () async {
       // "Karma Police" is a track on Daily Mix 2 (dm2); no album title/subtitle
       // contains "karma", so this only surfaces via the tracklist scan.

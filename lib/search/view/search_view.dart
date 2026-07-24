@@ -4,11 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../catalog/models/search_results.dart';
 import '../../catalog/widgets/catalog_list_tile.dart';
-import '../../player/bloc/player_bloc.dart';
-import '../../player/bloc/player_event.dart';
+import '../../catalog/widgets/sliver_section_header.dart';
+import '../../catalog/widgets/track_hit_tile.dart';
 import '../../router/app_routes.dart';
 import '../../theme/spotify_colors.dart';
-import '../../widgets/duration_format.dart';
 import '../../widgets/error_retry.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/search_state.dart';
@@ -73,7 +72,7 @@ class _Results extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         if (results.items.isNotEmpty) ...[
-          const _SectionHeader('Playlists & albums'),
+          const SliverSectionHeader('Playlists & albums'),
           SliverList.builder(
             itemCount: results.items.length,
             itemBuilder: (context, index) {
@@ -87,78 +86,14 @@ class _Results extends StatelessWidget {
           ),
         ],
         if (results.tracks.isNotEmpty) ...[
-          const _SectionHeader('Songs'),
+          const SliverSectionHeader('Songs'),
           SliverList.builder(
             itemCount: results.tracks.length,
-            itemBuilder: (context, index) => _SongResultTile(hit: results.tracks[index]),
+            itemBuilder: (context, index) => TrackHitTile(hit: results.tracks[index]),
           ),
         ],
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
-  }
-}
-
-/// A single song match. Tapping it plays the track (as its own one-song queue)
-/// and shows which album/playlist it came from as context.
-class _SongResultTile extends StatelessWidget {
-  const _SongResultTile({required this.hit});
-
-  final TrackHit hit;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final currentId = context.select<PlayerBloc, String?>((bloc) => bloc.state.currentTrack?.id);
-    final isCurrent = hit.track.id == currentId;
-
-    return ListTile(
-      leading: const SizedBox(
-        width: 40,
-        height: 40,
-        child: DecoratedBox(
-          decoration: BoxDecoration(color: SpotifyColors.surfaceBright),
-          child: Icon(Icons.music_note, color: Colors.white70, size: 20),
-        ),
-      ),
-      title: Text(
-        hit.track.title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: isCurrent ? const TextStyle(color: SpotifyColors.green) : null,
-      ),
-      subtitle: Text(
-        'Song • ${hit.track.artist} • ${hit.album.title}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
-      ),
-      trailing: Text(
-        formatDuration(hit.track.duration),
-        style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
-      ),
-      onTap: () => context.read<PlayerBloc>().add(
-            PlayerTrackStarted(queue: [hit.track], startIndex: 0),
-          ),
     );
   }
 }

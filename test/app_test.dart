@@ -3,12 +3,28 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:spotify_clone/app.dart';
 import 'package:spotify_clone/auth/repository/fake_auth_repository.dart';
 import 'package:spotify_clone/auth/repository/session_storage.dart';
+import 'package:spotify_clone/likes/repository/local_likes_repository.dart';
+import 'package:spotify_clone/storage/key_value_store.dart';
 
 import 'player/fake_audio_controller.dart';
 
 /// A pure in-memory SessionStorage so this test never touches a real
 /// platform channel.
 class _InMemorySessionStorage implements SessionStorage {
+  final Map<String, String> _store = {};
+
+  @override
+  Future<String?> read(String key) async => _store[key];
+
+  @override
+  Future<void> write(String key, String value) async => _store[key] = value;
+
+  @override
+  Future<void> delete(String key) async => _store.remove(key);
+}
+
+/// In-memory KeyValueStore so likes never touch shared_preferences' channel.
+class _InMemoryKeyValueStore implements KeyValueStore {
   final Map<String, String> _store = {};
 
   @override
@@ -31,7 +47,11 @@ void main() {
     final repository = FakeAuthRepository(sessionStorage: _InMemorySessionStorage());
     final audioController = FakeAudioController();
 
-    await tester.pumpWidget(MyApp(authRepository: repository, audioController: audioController));
+    await tester.pumpWidget(MyApp(
+      authRepository: repository,
+      likesRepository: LocalLikesRepository(_InMemoryKeyValueStore()),
+      audioController: audioController,
+    ));
     await tester.pumpAndSettle();
 
     expect(find.text('Sign up free'), findsOneWidget);

@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../catalog/repository/catalog_repository.dart';
 import 'library_state.dart';
 
-/// Loads every catalog item for the "Your Library" tab. Screen-local (created
-/// per visit by LibraryPage); the fetch is delegated to the repository.
+/// Loads the full catalog (items and tracks) that the "Your Library" tab draws
+/// its liked subset from. Screen-local (created per visit by LibraryPage); the
+/// actual liked-vs-not filtering happens in the view against the app-wide
+/// LikesCubit, so this cubit is only responsible for the catalog fetch.
 class LibraryCubit extends Cubit<LibraryState> {
   LibraryCubit({required CatalogRepository catalogRepository})
       // ignore: prefer_initializing_formals -- keeps the public param name.
@@ -17,7 +19,8 @@ class LibraryCubit extends Cubit<LibraryState> {
     emit(state.copyWith(status: LibraryStatus.loading));
     try {
       final items = await _catalogRepository.fetchAllItems();
-      emit(state.copyWith(status: LibraryStatus.success, items: items));
+      final tracks = await _catalogRepository.fetchAllTracks();
+      emit(state.copyWith(status: LibraryStatus.success, allItems: items, allTracks: tracks));
     } catch (_) {
       emit(state.copyWith(
         status: LibraryStatus.failure,

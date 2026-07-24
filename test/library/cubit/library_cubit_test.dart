@@ -9,6 +9,9 @@ class _ThrowingCatalogRepository implements CatalogRepository {
   Future<List<CatalogItem>> fetchAllItems() async => throw Exception('down');
 
   @override
+  Future<List<TrackHit>> fetchAllTracks() async => throw Exception('down');
+
+  @override
   Future<SearchResults> search(String query) => throw UnimplementedError();
 
   @override
@@ -27,14 +30,15 @@ void main() {
     });
 
     blocTest<LibraryCubit, LibraryState>(
-      'emits [loading, success] with items from the real fake catalog',
+      'emits [loading, success] with items and tracks from the real fake catalog',
       build: () => LibraryCubit(catalogRepository: const FakeCatalogRepository()),
       act: (cubit) => cubit.loadLibrary(),
       expect: () => [
         const LibraryState(status: LibraryStatus.loading),
         isA<LibraryState>()
             .having((s) => s.status, 'status', LibraryStatus.success)
-            .having((s) => s.items, 'items', isNotEmpty),
+            .having((s) => s.allItems, 'allItems', isNotEmpty)
+            .having((s) => s.allTracks, 'allTracks', isNotEmpty),
       ],
     );
 

@@ -25,6 +25,16 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<List<TrackHit>> fetchAllTracks() async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    return [
+      for (final item in _allItems)
+        for (final track in _tracksByItemId[item.id] ?? const <Track>[])
+          TrackHit(track: track, album: item),
+    ];
+  }
+
+  @override
   Future<SearchResults> search(String query) async {
     // A real network round-trip's worth of latency, so a per-keystroke search
     // would visibly thrash -- this is what debouncing in SearchCubit avoids.

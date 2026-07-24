@@ -52,6 +52,9 @@ class _RecordingCatalogRepository implements CatalogRepository {
   Future<List<CatalogItem>> fetchAllItems() async => items;
 
   @override
+  Future<List<TrackHit>> fetchAllTracks() => throw UnimplementedError();
+
+  @override
   Future<List<CatalogSection>> fetchHomeSections() => throw UnimplementedError();
 
   @override
@@ -64,6 +67,9 @@ class _ThrowingCatalogRepository implements CatalogRepository {
 
   @override
   Future<List<CatalogItem>> fetchAllItems() => throw UnimplementedError();
+
+  @override
+  Future<List<TrackHit>> fetchAllTracks() => throw UnimplementedError();
 
   @override
   Future<List<CatalogSection>> fetchHomeSections() => throw UnimplementedError();

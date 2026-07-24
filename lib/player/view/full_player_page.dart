@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../likes/widgets/like_button.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/duration_format.dart';
 import '../../widgets/marquee_text.dart';
@@ -58,19 +59,25 @@ class FullPlayerPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  // Full width so the marquee measures overflow against the
-                  // whole row, not the (shrink-wrapped) text width.
-                  SizedBox(
-                    width: double.infinity,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        MarqueeText(track.title,
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                        MarqueeText(track.artist,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: SpotifyColors.textSecondary)),
-                      ],
-                    ),
+                  // Title/artist take the remaining width (so the marquee
+                  // measures overflow against it, not the shrink-wrapped text),
+                  // with the like toggle pinned to the right.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MarqueeText(track.title,
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+                            MarqueeText(track.artist,
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: SpotifyColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      LikeButton(id: track.id, size: 30),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   _Scrubber(state: state),

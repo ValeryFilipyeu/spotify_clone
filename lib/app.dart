@@ -7,6 +7,8 @@ import 'auth/bloc/auth_state.dart';
 import 'auth/repository/auth_repository.dart';
 import 'catalog/repository/catalog_repository.dart';
 import 'catalog/repository/fake_catalog_repository.dart';
+import 'likes/cubit/likes_cubit.dart';
+import 'likes/repository/likes_repository.dart';
 import 'player/audio/audio_controller.dart';
 import 'player/bloc/player_bloc.dart';
 import 'player/bloc/player_event.dart';
@@ -14,9 +16,18 @@ import 'router/app_router.dart';
 import 'theme/spotify_theme.dart';
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.authRepository, required this.audioController});
+  const MyApp({
+    super.key,
+    required this.authRepository,
+    required this.likesRepository,
+    required this.audioController,
+  });
 
   final AuthRepository authRepository;
+
+  /// Injected like [authRepository] so tests can supply an in-memory store
+  /// instead of touching shared_preferences' platform channel.
+  final LikesRepository likesRepository;
 
   /// Injected (not created here) so widget tests can pass a fake and never
   /// touch just_audio's platform channels -- same reason authRepository is
@@ -32,6 +43,7 @@ class MyApp extends StatelessWidget {
         // lazily here -- still the single composition point that names the
         // concrete fake.
         RepositoryProvider<AuthRepository>.value(value: authRepository),
+        RepositoryProvider<LikesRepository>.value(value: likesRepository),
         RepositoryProvider<CatalogRepository>(create: (_) => const FakeCatalogRepository()),
       ],
       child: MultiBlocProvider(
@@ -41,6 +53,15 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider<PlayerBloc>(
             create: (context) => PlayerBloc(audioController: audioController),
+          ),
+          // App-wide so a heart tapped on any screen is reflected everywhere.
+          // Follows the auth stream: loads the signed-in account's likes and
+          // clears them on logout (likes are per-account).
+          BlocProvider<LikesCubit>(
+            create: (context) => LikesCubit(
+              repository: context.read<LikesRepository>(),
+              authStateChanges: context.read<AuthRepository>().authStateChanges,
+            ),
           ),
         ],
         child: const AppView(),
