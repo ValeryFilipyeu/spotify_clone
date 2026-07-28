@@ -17,6 +17,7 @@ class FakeAudioController implements AudioController {
   int pauseCount = 0;
   int stopCount = 0;
   final List<Duration> seeks = [];
+  final List<double> volumes = [];
   bool disposed = false;
 
   /// Value returned by [setUrl] (simulating the engine reporting duration at
@@ -59,6 +60,9 @@ class FakeAudioController implements AudioController {
 
   @override
   Future<void> seek(Duration position) async => seeks.add(position);
+
+  @override
+  Future<void> setVolume(double volume) async => volumes.add(volume);
 
   @override
   Future<void> stop() async => stopCount++;

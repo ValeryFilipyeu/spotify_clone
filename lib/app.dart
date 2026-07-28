@@ -12,6 +12,7 @@ import 'likes/repository/likes_repository.dart';
 import 'player/audio/audio_controller.dart';
 import 'player/bloc/player_bloc.dart';
 import 'player/bloc/player_event.dart';
+import 'player/repository/playback_settings_repository.dart';
 import 'router/app_router.dart';
 import 'theme/spotify_theme.dart';
 
@@ -20,6 +21,7 @@ class MyApp extends StatelessWidget {
     super.key,
     required this.authRepository,
     required this.likesRepository,
+    required this.playbackSettingsRepository,
     required this.audioController,
   });
 
@@ -28,6 +30,10 @@ class MyApp extends StatelessWidget {
   /// Injected like [authRepository] so tests can supply an in-memory store
   /// instead of touching shared_preferences' platform channel.
   final LikesRepository likesRepository;
+
+  /// Backs per-account playback preferences (volume). Injected for the same
+  /// reason as [likesRepository].
+  final PlaybackSettingsRepository playbackSettingsRepository;
 
   /// Injected (not created here) so widget tests can pass a fake and never
   /// touch just_audio's platform channels -- same reason authRepository is
@@ -44,6 +50,7 @@ class MyApp extends StatelessWidget {
         // concrete fake.
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<LikesRepository>.value(value: likesRepository),
+        RepositoryProvider<PlaybackSettingsRepository>.value(value: playbackSettingsRepository),
         RepositoryProvider<CatalogRepository>(create: (_) => const FakeCatalogRepository()),
       ],
       child: MultiBlocProvider(
@@ -52,7 +59,13 @@ class MyApp extends StatelessWidget {
             create: (context) => AuthBloc(authRepository: context.read<AuthRepository>()),
           ),
           BlocProvider<PlayerBloc>(
-            create: (context) => PlayerBloc(audioController: audioController),
+            create: (context) => PlayerBloc(
+              audioController: audioController,
+              settingsRepository: context.read<PlaybackSettingsRepository>(),
+              // Mapped to a bare id: the player needs to know *which* account
+              // it is playing for, not anything else about the user.
+              userIdChanges: context.read<AuthRepository>().authStateChanges.map((user) => user?.email),
+            ),
           ),
           // App-wide so a heart tapped on any screen is reflected everywhere.
           // Follows the auth stream: loads the signed-in account's likes and

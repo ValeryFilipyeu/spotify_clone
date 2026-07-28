@@ -7,6 +7,7 @@ import 'auth/repository/fake_auth_repository.dart';
 import 'auth/repository/session_storage.dart';
 import 'likes/repository/local_likes_repository.dart';
 import 'player/audio/just_audio_controller.dart';
+import 'player/repository/local_playback_settings_repository.dart';
 import 'storage/key_value_store.dart';
 
 Future<void> main() async {
@@ -26,16 +27,18 @@ Future<void> main() async {
   );
   await authRepository.restoreSession();
 
-  // Non-sensitive local state (likes) lives in shared_preferences, kept
-  // separate from the Keychain-backed auth session above. The instance is
-  // fetched once here and injected, so no call site awaits a platform channel.
+  // Non-sensitive local state (likes, playback preferences) lives in
+  // shared_preferences, kept separate from the Keychain-backed auth session
+  // above. The instance is fetched once here and injected, so no call site
+  // awaits a platform channel.
   final prefs = await SharedPreferences.getInstance();
-  final likesRepository = LocalLikesRepository(SharedPreferencesStore(prefs));
+  final keyValueStore = SharedPreferencesStore(prefs);
 
   runApp(
     MyApp(
       authRepository: authRepository,
-      likesRepository: likesRepository,
+      likesRepository: LocalLikesRepository(keyValueStore),
+      playbackSettingsRepository: LocalPlaybackSettingsRepository(keyValueStore),
       audioController: JustAudioController(),
     ),
   );

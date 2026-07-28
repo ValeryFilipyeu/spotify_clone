@@ -73,6 +73,9 @@ class JustAudioController implements AudioController {
   Future<void> seek(Duration position) => _player.seek(position);
 
   @override
+  Future<void> setVolume(double volume) => _player.setVolume(volume);
+
+  @override
   Future<void> stop() => _player.stop();
 
   @override

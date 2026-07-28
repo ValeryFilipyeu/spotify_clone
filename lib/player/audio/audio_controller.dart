@@ -34,6 +34,9 @@ abstract class AudioController {
 
   Future<void> seek(Duration position);
 
+  /// Sets output volume, 0.0 (silent) .. 1.0 (full).
+  Future<void> setVolume(double volume);
+
   /// Stops playback and releases the current source.
   Future<void> stop();
 

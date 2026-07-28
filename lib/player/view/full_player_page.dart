@@ -8,6 +8,7 @@ import '../../widgets/marquee_text.dart';
 import '../bloc/player_bloc.dart';
 import '../bloc/player_event.dart';
 import '../bloc/player_state.dart';
+import 'queue_sheet.dart';
 
 /// The full-screen "Now Playing" view, pushed on top of the current screen
 /// when the mini-player is tapped. Reads the ambient app-wide PlayerBloc.
@@ -83,7 +84,9 @@ class FullPlayerPage extends StatelessWidget {
                   _Scrubber(state: state),
                   const SizedBox(height: 8),
                   _Controls(state: state),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 8),
+                  _BottomBar(state: state),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -173,6 +176,7 @@ class _Controls extends StatelessWidget {
   // play/pause glyph swaps to a spinner (they differ in size) or when a button
   // enables/disables -- otherwise the center circle resizes and, with
   // spaceEvenly, shoves prev/next sideways during a scrub/seek.
+  static const double _modeButton = 44;
   static const double _sideButton = 56;
   static const double _playButton = 64;
 
@@ -182,6 +186,19 @@ class _Controls extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
+        SizedBox(
+          width: _modeButton,
+          height: _modeButton,
+          child: IconButton(
+            iconSize: 22,
+            icon: const Icon(Icons.shuffle),
+            // Green when on, muted when off -- the same on/off language the
+            // like button uses.
+            color: state.isShuffled ? SpotifyColors.green : SpotifyColors.textSecondary,
+            tooltip: state.isShuffled ? 'Disable shuffle' : 'Enable shuffle',
+            onPressed: () => bloc.add(const PlayerShuffleToggled()),
+          ),
+        ),
         SizedBox(
           width: _sideButton,
           height: _sideButton,
@@ -217,6 +234,74 @@ class _Controls extends StatelessWidget {
             color: state.hasNext ? Colors.white : Colors.white38,
             onPressed: state.hasNext ? () => bloc.add(const PlayerNextRequested()) : null,
           ),
+        ),
+        SizedBox(
+          width: _modeButton,
+          height: _modeButton,
+          child: IconButton(
+            iconSize: 22,
+            // repeat-one gets its own glyph; off/all share one and differ by
+            // colour, so the button never changes size between modes.
+            icon: Icon(state.repeatMode == PlayerRepeatMode.one ? Icons.repeat_one : Icons.repeat),
+            color: state.repeatMode == PlayerRepeatMode.off
+                ? SpotifyColors.textSecondary
+                : SpotifyColors.green,
+            tooltip: switch (state.repeatMode) {
+              PlayerRepeatMode.off => 'Enable repeat',
+              PlayerRepeatMode.all => 'Repeat one track',
+              PlayerRepeatMode.one => 'Disable repeat',
+            },
+            onPressed: () => bloc.add(const PlayerRepeatModeCycled()),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Volume on the left, queue button on the right -- the row under the transport
+/// controls.
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({required this.state});
+
+  final PlayerState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final bloc = context.read<PlayerBloc>();
+
+    return Row(
+      children: [
+        Icon(
+          state.volume == 0 ? Icons.volume_off : Icons.volume_down,
+          size: 20,
+          color: SpotifyColors.textSecondary,
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              activeTrackColor: Colors.white70,
+              inactiveTrackColor: Colors.white24,
+              thumbColor: Colors.white,
+            ),
+            child: Slider(
+              value: state.volume,
+              // Fires continuously while dragging: setVolume is cheap and
+              // applying it live is what makes the slider feel connected.
+              onChanged: (value) => bloc.add(PlayerVolumeChanged(value)),
+            ),
+          ),
+        ),
+        const Icon(Icons.volume_up, size: 20, color: SpotifyColors.textSecondary),
+        const SizedBox(width: 4),
+        IconButton(
+          icon: const Icon(Icons.queue_music),
+          color: SpotifyColors.textSecondary,
+          tooltip: 'Queue',
+          onPressed: () => QueueSheet.show(context),
         ),
       ],
     );

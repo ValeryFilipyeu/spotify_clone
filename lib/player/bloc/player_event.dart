@@ -43,12 +43,104 @@ class PlayerSeekRequested extends PlayerEvent {
   List<Object?> get props => [position];
 }
 
-/// Clears the queue and stops audio (e.g. on logout).
+/// Clears the queue and stops audio (e.g. on logout). Playback *preferences*
+/// (volume, shuffle, repeat) survive -- only the listening session is cleared.
 class PlayerStopped extends PlayerEvent {
   const PlayerStopped();
 }
 
-// --- Internal events, dispatched by the bloc from AudioController streams ---
+/// Turns shuffle on (current track first, the rest randomised) or off
+/// (restoring the original order). The current track keeps playing either way.
+class PlayerShuffleToggled extends PlayerEvent {
+  const PlayerShuffleToggled();
+}
+
+/// Cycles [PlayerRepeatMode]: off -> all -> one -> off.
+class PlayerRepeatModeCycled extends PlayerEvent {
+  const PlayerRepeatModeCycled();
+}
+
+class PlayerVolumeChanged extends PlayerEvent {
+  const PlayerVolumeChanged(this.volume);
+
+  /// Clamped to 0.0..1.0 by the bloc.
+  final double volume;
+
+  @override
+  List<Object?> get props => [volume];
+}
+
+// --- Queue editing ("Up next") ---
+
+/// Jumps straight to [index] in the current queue (tapping a row in Up next).
+class PlayerQueueIndexSelected extends PlayerEvent {
+  const PlayerQueueIndexSelected(this.index);
+
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
+
+/// Drag-to-reorder within the queue. Both are absolute indices into
+/// `state.queue` -- [newIndex] is the slot the track ends up at, so the view
+/// translates from its own (sublist) coordinates before dispatching.
+class PlayerQueueReordered extends PlayerEvent {
+  const PlayerQueueReordered({required this.oldIndex, required this.newIndex});
+
+  final int oldIndex;
+  final int newIndex;
+
+  @override
+  List<Object?> get props => [oldIndex, newIndex];
+}
+
+/// Removes the queue entry at [index]. Removing the *playing* track advances to
+/// whatever shifts into its slot.
+class PlayerQueueItemRemoved extends PlayerEvent {
+  const PlayerQueueItemRemoved(this.index);
+
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
+
+/// "Add to queue" -- appends [track] to the end. Starts playback if the queue
+/// is currently empty.
+class PlayerQueueAppended extends PlayerEvent {
+  const PlayerQueueAppended(this.track);
+
+  final Track track;
+
+  @override
+  List<Object?> get props => [track];
+}
+
+/// "Play next" -- inserts [track] directly after the current track. Starts
+/// playback if the queue is currently empty.
+class PlayerPlayNextEnqueued extends PlayerEvent {
+  const PlayerPlayNextEnqueued(this.track);
+
+  final Track track;
+
+  @override
+  List<Object?> get props => [track];
+}
+
+// --- Internal events, dispatched by the bloc from its own streams ---
+
+/// The signed-in account changed (null when signed out), so this account's
+/// persisted playback preferences must be loaded and applied. Carries a plain
+/// id rather than an AppUser so the player stays independent of the auth models.
+class PlayerUserChanged extends PlayerEvent {
+  const PlayerUserChanged(this.userId);
+
+  final String? userId;
+
+  @override
+  List<Object?> get props => [userId];
+}
 
 /// Emitted by PlayerBloc's own wall-clock ticker (~4x/sec while playing) to
 /// advance the displayed position. We use a ticker rather than the engine's

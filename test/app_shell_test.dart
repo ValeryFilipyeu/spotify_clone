@@ -5,6 +5,7 @@ import 'package:spotify_clone/app.dart';
 import 'package:spotify_clone/auth/repository/fake_auth_repository.dart';
 import 'package:spotify_clone/auth/repository/session_storage.dart';
 import 'package:spotify_clone/likes/repository/local_likes_repository.dart';
+import 'package:spotify_clone/player/repository/local_playback_settings_repository.dart';
 import 'package:spotify_clone/storage/key_value_store.dart';
 
 import 'player/fake_audio_controller.dart';
@@ -51,9 +52,11 @@ void main() {
     final repository = FakeAuthRepository(sessionStorage: storage);
     await repository.restoreSession();
 
+    final store = _InMemoryKeyValueStore();
     await tester.pumpWidget(MyApp(
       authRepository: repository,
-      likesRepository: LocalLikesRepository(_InMemoryKeyValueStore()),
+      likesRepository: LocalLikesRepository(store),
+      playbackSettingsRepository: LocalPlaybackSettingsRepository(store),
       audioController: FakeAudioController(),
     ));
     await tester.pumpAndSettle();

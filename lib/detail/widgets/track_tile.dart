@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../catalog/models/track.dart';
 import '../../likes/widgets/like_button.dart';
+import '../../player/widgets/track_queue_menu.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/duration_format.dart';
 
@@ -49,6 +50,7 @@ class TrackTile extends StatelessWidget {
             style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
           ),
           LikeButton(id: track.id),
+          TrackQueueMenu(track: track),
         ],
       ),
     );
