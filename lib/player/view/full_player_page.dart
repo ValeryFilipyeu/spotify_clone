@@ -8,6 +8,7 @@ import '../../widgets/marquee_text.dart';
 import '../bloc/player_bloc.dart';
 import '../bloc/player_event.dart';
 import '../bloc/player_state.dart';
+import 'playback_settings_sheet.dart';
 import 'queue_sheet.dart';
 
 /// The full-screen "Now Playing" view, pushed on top of the current screen
@@ -25,6 +26,13 @@ class FullPlayerPage extends StatelessWidget {
         ),
         title: const Text('Now Playing', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            tooltip: 'Playback settings',
+            onPressed: () => PlaybackSettingsSheet.show(context),
+          ),
+        ],
       ),
       body: BlocBuilder<PlayerBloc, PlayerState>(
         builder: (context, state) {

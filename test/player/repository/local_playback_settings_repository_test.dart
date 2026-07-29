@@ -66,5 +66,50 @@ void main() {
       final repo = LocalPlaybackSettingsRepository(_FakeStore({'playback_volume:$_alice': 'loud'}));
       expect(await repo.fetchVolume(_alice), isNull);
     });
+
+    group('crossfade duration', () {
+      test('returns null when the account has never set one', () async {
+        final repo = LocalPlaybackSettingsRepository(_FakeStore());
+        expect(await repo.fetchCrossfadeDuration(_alice), isNull);
+      });
+
+      test('round-trips per account', () async {
+        final store = _FakeStore();
+        final repo = LocalPlaybackSettingsRepository(store);
+
+        await repo.saveCrossfadeDuration(_alice, const Duration(seconds: 8));
+        await repo.saveCrossfadeDuration(_bob, const Duration(seconds: 3));
+
+        final reloaded = LocalPlaybackSettingsRepository(store);
+        expect(await reloaded.fetchCrossfadeDuration(_alice), const Duration(seconds: 8));
+        expect(await reloaded.fetchCrossfadeDuration(_bob), const Duration(seconds: 3));
+      });
+
+      test('keeps an explicit "off" distinct from "never set"', () async {
+        final store = _FakeStore();
+        final repo = LocalPlaybackSettingsRepository(store);
+
+        await repo.saveCrossfadeDuration(_alice, Duration.zero);
+
+        // Zero means the account turned it off, which is not the same as null.
+        expect(await repo.fetchCrossfadeDuration(_alice), Duration.zero);
+        expect(await repo.fetchCrossfadeDuration(_bob), isNull);
+      });
+
+      test('normalises a negative duration to zero', () async {
+        final store = _FakeStore();
+        final repo = LocalPlaybackSettingsRepository(store);
+
+        await repo.saveCrossfadeDuration(_alice, const Duration(seconds: -4));
+        expect(await repo.fetchCrossfadeDuration(_alice), Duration.zero);
+      });
+
+      test('treats a corrupt stored value as "no preference"', () async {
+        final repo = LocalPlaybackSettingsRepository(
+          _FakeStore({'playback_crossfade_ms:$_alice': 'ages'}),
+        );
+        expect(await repo.fetchCrossfadeDuration(_alice), isNull);
+      });
+    });
   });
 }

@@ -2,10 +2,43 @@ import 'dart:async';
 
 import 'package:spotify_clone/player/audio/audio_controller.dart';
 
+/// A crossfade request the fake was given, for assertions.
+typedef CrossfadeCall = ({String url, Duration fade});
+
 /// A test double for [AudioController] with no real audio engine. Records the
 /// URLs it was asked to play and lets tests drive its streams manually, so
 /// PlayerBloc can be tested deterministically without just_audio.
 class FakeAudioController implements AudioController {
+  FakeAudioController({this.supportsCrossfade = false});
+
+  /// Off by default so existing tests see plain cuts; the crossfade tests turn
+  /// it on.
+  @override
+  final bool supportsCrossfade;
+
+  final List<CrossfadeCall> crossfades = [];
+
+  /// Urls handed to [preload], in order. Deduped the way a real controller
+  /// does, so tests can assert "buffered exactly once".
+  final List<String> preloads = [];
+
+  @override
+  Future<void> preload(String url) async {
+    if (preloads.isNotEmpty && preloads.last == url) return;
+    preloads.add(url);
+  }
+
+  /// Simulates a slow network load, so tests can exercise what happens *during*
+  /// a load (the real ones take seconds).
+  Duration loadDelay = Duration.zero;
+
+  @override
+  Future<Duration?> crossfadeTo(String url, {required Duration fade}) async {
+    crossfades.add((url: url, fade: fade));
+    setUrls.add(url);
+    if (loadDelay > Duration.zero) await Future<void>.delayed(loadDelay);
+    return _durationFor(url);
+  }
   final _position = StreamController<Duration>.broadcast();
   final _duration = StreamController<Duration?>.broadcast();
   final _playing = StreamController<bool>.broadcast();
@@ -23,6 +56,12 @@ class FakeAudioController implements AudioController {
   /// Value returned by [setUrl] (simulating the engine reporting duration at
   /// load time). Null by default.
   Duration? loadedDuration;
+
+  /// Per-url durations, as a real engine reports: each source has its own
+  /// length. Falls back to [loadedDuration].
+  final Map<String, Duration> durationsByUrl = {};
+
+  Duration? _durationFor(String url) => durationsByUrl[url] ?? loadedDuration;
 
   // --- Manual stream drivers for tests ---
   void emitPlaying(bool playing) => _playing.add(playing);
@@ -49,11 +88,21 @@ class FakeAudioController implements AudioController {
   @override
   Future<Duration?> setUrl(String url) async {
     setUrls.add(url);
-    return loadedDuration;
+    if (loadDelay > Duration.zero) await Future<void>.delayed(loadDelay);
+    return _durationFor(url);
   }
 
+  /// Reproduces just_audio's real contract: [play]'s future completes only when
+  /// the track ENDS, so anything that awaits it stalls for the whole track.
+  /// Off by default to keep the simple tests simple.
+  bool playCompletesOnlyWhenTrackEnds = false;
+
   @override
-  Future<void> play() async => playCount++;
+  Future<void> play() {
+    playCount++;
+    if (playCompletesOnlyWhenTrackEnds) return Completer<void>().future;
+    return Future<void>.value();
+  }
 
   @override
   Future<void> pause() async => pauseCount++;

@@ -63,6 +63,21 @@ class JustAudioController implements AudioController {
     return _player.setUrl(url);
   }
 
+  // A single AudioPlayer can only sound one source at a time, so crossfading is
+  // composed on top of this class rather than built into it: see
+  // CrossfadeAudioController, which drives two of these.
+  @override
+  bool get supportsCrossfade => false;
+
+  // Nothing to pre-buffer into: this player's only source is the one that is
+  // currently sounding. CrossfadeAudioController does the preloading, using its
+  // spare instance of this class.
+  @override
+  Future<void> preload(String url) async {}
+
+  @override
+  Future<Duration?> crossfadeTo(String url, {required Duration fade}) => setUrl(url);
+
   @override
   Future<void> play() => _player.play();
 

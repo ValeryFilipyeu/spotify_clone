@@ -28,7 +28,11 @@ class PlayerState extends Equatable {
     this.isShuffled = false,
     this.repeatMode = PlayerRepeatMode.off,
     this.volume = 1,
+    this.crossfadeDuration = Duration.zero,
   });
+
+  /// The longest crossfade the settings UI offers.
+  static const Duration maxCrossfadeDuration = Duration(seconds: 12);
 
   /// The queue in PLAY order -- what "Up next" lists and what [currentIndex]
   /// points into. Shuffling, drag-reordering and queue edits all rewrite it.
@@ -53,6 +57,12 @@ class PlayerState extends Equatable {
 
   /// Output volume, 0.0..1.0.
   final double volume;
+
+  /// How long the outgoing and incoming tracks overlap on a track change.
+  /// [Duration.zero] (the default, as in Spotify) means no crossfade.
+  final Duration crossfadeDuration;
+
+  bool get isCrossfadeEnabled => crossfadeDuration > Duration.zero;
 
   Track? get currentTrack =>
       currentIndex >= 0 && currentIndex < queue.length ? queue[currentIndex] : null;
@@ -83,6 +93,7 @@ class PlayerState extends Equatable {
     bool? isShuffled,
     PlayerRepeatMode? repeatMode,
     double? volume,
+    Duration? crossfadeDuration,
   }) {
     return PlayerState(
       queue: queue ?? this.queue,
@@ -95,6 +106,7 @@ class PlayerState extends Equatable {
       isShuffled: isShuffled ?? this.isShuffled,
       repeatMode: repeatMode ?? this.repeatMode,
       volume: volume ?? this.volume,
+      crossfadeDuration: crossfadeDuration ?? this.crossfadeDuration,
     );
   }
 
@@ -110,5 +122,6 @@ class PlayerState extends Equatable {
         isShuffled,
         repeatMode,
         volume,
+        crossfadeDuration,
       ];
 }

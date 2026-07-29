@@ -13,6 +13,7 @@ class _FakeSettingsRepository implements PlaybackSettingsRepository {
   _FakeSettingsRepository([Map<String, double>? seed]) : volumes = {...?seed};
 
   final Map<String, double> volumes;
+  final Map<String, Duration> crossfades = {};
   int saveCount = 0;
 
   @override
@@ -22,6 +23,14 @@ class _FakeSettingsRepository implements PlaybackSettingsRepository {
   Future<void> saveVolume(String userId, double volume) async {
     saveCount++;
     volumes[userId] = volume;
+  }
+
+  @override
+  Future<Duration?> fetchCrossfadeDuration(String userId) async => crossfades[userId];
+
+  @override
+  Future<void> saveCrossfadeDuration(String userId, Duration duration) async {
+    crossfades[userId] = duration;
   }
 }
 

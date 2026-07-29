@@ -28,6 +28,35 @@ abstract class AudioController {
   /// so the UI has a duration even if durationStream is slow to emit.
   Future<Duration?> setUrl(String url);
 
+  /// Whether this controller can have two sources sounding at once. When false,
+  /// [PlayerBloc] never asks for a crossfade and lets tracks change on a cut.
+  bool get supportsCrossfade;
+
+  /// Pre-buffers [url] so a following [crossfadeTo] can begin fading
+  /// immediately instead of spending the first part of the fade loading.
+  ///
+  /// Without this the load happens *inside* the fade window: the outgoing track
+  /// keeps playing alone until it lands, so a 3s fade over a 2s load leaves only
+  /// 1s of overlap -- and a load slower than the fade removes the crossfade
+  /// altogether. Must stay silent and must not start playback. Calling it
+  /// repeatedly with the same [url] is cheap (implementations dedupe), so the
+  /// caller can drive it straight from its position ticker. A no-op for engines
+  /// that cannot hold a second source.
+  Future<void> preload(String url);
+
+  /// Starts [url] while fading the currently-playing source out over [fade],
+  /// returning the new source's duration exactly like [setUrl].
+  ///
+  /// When [url] was already handed to [preload] and finished loading, the fade
+  /// starts at once and runs for its full length.
+  ///
+  /// From the caller's point of view the current source has already changed to
+  /// [url] when this returns -- the outgoing audio finishing its fade is an
+  /// implementation detail, and its natural completion must NOT be reported on
+  /// [completedStream] (that would skip a track). Controllers that cannot
+  /// overlap sources degrade to a plain [setUrl].
+  Future<Duration?> crossfadeTo(String url, {required Duration fade});
+
   Future<void> play();
 
   Future<void> pause();

@@ -70,6 +70,17 @@ class PlayerVolumeChanged extends PlayerEvent {
   List<Object?> get props => [volume];
 }
 
+/// Sets how long tracks overlap on a change; [Duration.zero] turns crossfade
+/// off. Persisted per account.
+class PlayerCrossfadeDurationChanged extends PlayerEvent {
+  const PlayerCrossfadeDurationChanged(this.duration);
+
+  final Duration duration;
+
+  @override
+  List<Object?> get props => [duration];
+}
+
 // --- Queue editing ("Up next") ---
 
 /// Jumps straight to [index] in the current queue (tapping a row in Up next).

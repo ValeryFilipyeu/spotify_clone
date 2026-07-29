@@ -10,6 +10,7 @@ class LocalPlaybackSettingsRepository implements PlaybackSettingsRepository {
   final KeyValueStore _store;
 
   static String _volumeKey(String userId) => 'playback_volume:$userId';
+  static String _crossfadeKey(String userId) => 'playback_crossfade_ms:$userId';
 
   @override
   Future<double?> fetchVolume(String userId) async {
@@ -24,4 +25,19 @@ class LocalPlaybackSettingsRepository implements PlaybackSettingsRepository {
   @override
   Future<void> saveVolume(String userId, double volume) =>
       _store.write(_volumeKey(userId), volume.clamp(0.0, 1.0).toString());
+
+  @override
+  Future<Duration?> fetchCrossfadeDuration(String userId) async {
+    final raw = await _store.read(_crossfadeKey(userId));
+    if (raw == null) return null;
+    final ms = int.tryParse(raw);
+    if (ms == null || ms < 0) return null;
+    return Duration(milliseconds: ms);
+  }
+
+  @override
+  Future<void> saveCrossfadeDuration(String userId, Duration duration) => _store.write(
+        _crossfadeKey(userId),
+        (duration.isNegative ? Duration.zero : duration).inMilliseconds.toString(),
+      );
 }

@@ -150,4 +150,15 @@ void main() {
     // (queue_sheet_test covers the populated sheet in depth.)
     expect(find.text('Nothing queued after this track.'), findsOneWidget);
   });
+
+  testWidgets('the app bar action opens the playback settings sheet', (tester) async {
+    final audio = FakeAudioController();
+    await _pumpPlayer(tester, audio);
+
+    await tester.tap(find.byIcon(Icons.tune));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Playback'), findsOneWidget);
+    expect(find.text('Crossfade'), findsOneWidget);
+  });
 }

@@ -41,6 +41,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<PlayerShuffleToggled>(_onShuffleToggled);
     on<PlayerRepeatModeCycled>(_onRepeatModeCycled);
     on<PlayerVolumeChanged>(_onVolumeChanged);
+    on<PlayerCrossfadeDurationChanged>(_onCrossfadeDurationChanged);
     on<PlayerQueueIndexSelected>(_onQueueIndexSelected);
     on<PlayerQueueReordered>(_onQueueReordered);
     on<PlayerQueueItemRemoved>(_onQueueItemRemoved);
@@ -81,9 +82,14 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   /// The volume every account starts at until it saves its own.
   static const double _defaultVolume = 1;
 
-  /// The volume slider fires on every drag frame; this collapses a whole
+  /// The preference sliders fire on every drag frame; this collapses a whole
   /// gesture into a single write (the same debounce idea as SearchCubit).
-  static const _volumeSaveDelay = Duration(milliseconds: 400);
+  static const _settingsSaveDelay = Duration(milliseconds: 400);
+
+  /// How far ahead of the fade window the next track starts buffering. Long
+  /// enough for a slow mobile load to finish first, short enough that a second
+  /// network stream is only ever open near the end of a track.
+  static const _preloadLead = Duration(seconds: 8);
 
   final AudioController _audioController;
   final PlaybackSettingsRepository? _settingsRepository;
@@ -101,11 +107,17 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   /// The account whose volume is loaded, or null when signed out.
   String? _userId;
 
-  Timer? _volumeSaveTimer;
+  /// True from the moment a crossfade is requested until the incoming track has
+  /// loaded -- the window in which state has already advanced but the outgoing
+  /// track is still sounding.
+  bool _isCrossfading = false;
 
-  /// The not-yet-written volume save, captured with the account it belongs to so
-  /// a mid-gesture account switch still persists to the right one.
-  Future<void> Function()? _pendingVolumeSave;
+  Timer? _settingsSaveTimer;
+
+  /// Not-yet-written preference saves, keyed by setting so one slider's pending
+  /// write never cancels another's. Each closure captures the account it belongs
+  /// to, so a mid-gesture account switch still persists to the right one.
+  final Map<String, Future<void> Function()> _pendingSaves = {};
 
   Future<void> _onTrackStarted(PlayerTrackStarted event, Emitter<PlayerState> emit) async {
     await _startQueue(event.queue, event.startIndex, emit);
@@ -160,7 +172,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     emit(_clearedState());
   }
 
-  void _onPositionTicked(PlayerPositionTicked event, Emitter<PlayerState> emit) {
+  Future<void> _onPositionTicked(PlayerPositionTicked event, Emitter<PlayerState> emit) async {
     // Don't advance while a (new) track is still buffering -- on auto-advance
     // just_audio keeps `playing` true across the track boundary, so without
     // this guard the scrubber would move before the next track's audio has
@@ -170,6 +182,102 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     // Cap at the (known) duration so the thumb never runs past the end.
     final capped = state.duration > Duration.zero && next > state.duration ? state.duration : next;
     emit(state.copyWith(position: capped));
+
+    // The ticker doubles as the crossfade trigger: it is the one place that
+    // knows, every 250ms, how close the current track is to its end.
+    _maybePreloadNext(capped);
+    if (!_shouldStartCrossfade(capped)) return;
+    final upcoming = _nextIndexOnCompletion();
+    if (upcoming == null) return;
+    await _crossfadeTo(upcoming, emit);
+  }
+
+  /// Gets the next track buffered *before* the fade window opens.
+  ///
+  /// Without this the load lands inside the fade: the outgoing track keeps
+  /// playing alone until it finishes, so a 3s crossfade over a 2s load gives
+  /// only 1s of overlap, and a load slower than the fade gives none at all --
+  /// which is indistinguishable from crossfade not working. The conditions
+  /// mirror [_shouldStartCrossfade], so we only ever pre-buffer a track that is
+  /// actually going to be faded in.
+  void _maybePreloadNext(Duration position) {
+    if (_isCrossfading) return;
+    final fade = state.crossfadeDuration;
+    if (fade <= Duration.zero) return;
+    if (!_audioController.supportsCrossfade) return;
+    final duration = state.duration;
+    if (duration <= fade * 2) return; // changes over on a cut, nothing to fade
+    if (position < duration - fade - _preloadLead) return;
+
+    final upcoming = _nextIndexOnCompletion();
+    if (upcoming == null) return; // nothing follows; nothing to buffer
+    // Called on every tick inside the window -- the controller dedupes by url,
+    // so this stays a no-op after the first one lands (or fails).
+    unawaited(_audioController.preload(state.queue[upcoming].audioUrl).catchError((_) {}));
+  }
+
+  /// Whether we are inside the window where the next track should start fading
+  /// in underneath this one.
+  bool _shouldStartCrossfade(Duration position) {
+    if (_isCrossfading) return false; // one already in flight
+    final fade = state.crossfadeDuration;
+    if (fade <= Duration.zero) return false;
+    if (!_audioController.supportsCrossfade) return false;
+
+    final duration = state.duration;
+    // A track that isn't comfortably longer than the fade gets a plain cut.
+    // This is also what stops a runaway: without it, a freshly-started short
+    // track would already be inside its own fade window and skip on every tick.
+    if (duration <= fade * 2) return false;
+
+    // Having to be at least `fade` in gives every crossfade a cooldown, since
+    // starting one resets position to zero.
+    if (position < fade) return false;
+
+    return position >= duration - fade;
+  }
+
+  /// Where playback goes when the current track finishes, honouring repeat, or
+  /// null if it should stop. Shared by natural completion and the crossfade
+  /// trigger so the two can never disagree.
+  int? _nextIndexOnCompletion() {
+    final isLast = state.currentIndex >= state.queue.length - 1;
+    return switch (state.repeatMode) {
+      PlayerRepeatMode.one => state.currentIndex,
+      PlayerRepeatMode.all => isLast ? 0 : state.currentIndex + 1,
+      PlayerRepeatMode.off => isLast ? null : state.currentIndex + 1,
+    };
+  }
+
+  /// Moves to [index] by overlapping it with the outgoing track. Deliberately
+  /// does NOT set isLoading: the point of a crossfade is that nothing visibly
+  /// stalls, and the new audio is already audible while it loads.
+  Future<void> _crossfadeTo(int index, Emitter<PlayerState> emit) async {
+    final track = state.queue[index];
+    emit(state.copyWith(
+      currentIndex: index,
+      position: Duration.zero,
+      duration: track.duration,
+    ));
+    // Loading the incoming track is a network round-trip; until it lands we have
+    // already advanced, so nothing else may advance again (see _onCompleted).
+    _isCrossfading = true;
+    try {
+      final duration = await _audioController.crossfadeTo(
+        track.audioUrl,
+        fade: state.crossfadeDuration,
+      );
+      // Only trust this for the track we actually asked for. Pressing Next
+      // during the load supersedes us, and applying a stale duration would put
+      // the fade window somewhere unreachable -- which looks exactly like
+      // crossfade having silently stopped working.
+      if (state.currentTrack?.id != track.id) return;
+      if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
+    } catch (_) {
+      emit(state.copyWith(isLoading: false, isPlaying: false));
+    } finally {
+      _isCrossfading = false;
+    }
   }
 
   void _onDurationChanged(PlayerDurationChanged event, Emitter<PlayerState> emit) {
@@ -196,21 +304,19 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   }
 
   Future<void> _onCompleted(PlayerCompleted event, Emitter<PlayerState> emit) async {
-    switch (state.repeatMode) {
-      case PlayerRepeatMode.one:
-        // Reload the same track rather than seek(0)+play(): every other
-        // track-change path here goes through _playCurrent, and a fresh load is
-        // the one behaviour we've verified on all four platforms.
-        await _goTo(state.currentIndex, emit);
-      case PlayerRepeatMode.all:
-        await _goTo(state.currentIndex < state.queue.length - 1 ? state.currentIndex + 1 : 0, emit);
-      case PlayerRepeatMode.off:
-        if (state.currentIndex < state.queue.length - 1) {
-          await _goTo(state.currentIndex + 1, emit);
-        } else {
-          emit(state.copyWith(isPlaying: false, position: Duration.zero));
-        }
+    // A crossfade has already advanced us; the outgoing track reaching its end
+    // is old news. Without this, the track we just faded into would be skipped.
+    if (_isCrossfading) return;
+
+    final upcoming = _nextIndexOnCompletion();
+    if (upcoming == null) {
+      emit(state.copyWith(isPlaying: false, position: Duration.zero));
+      return;
     }
+    // Reload even when repeating one track rather than seek(0)+play(): every
+    // track-change path here goes through _playCurrent, and a fresh load is the
+    // one behaviour we've verified on all four platforms.
+    await _goTo(upcoming, emit);
   }
 
   // --- Shuffle / repeat / volume ---
@@ -255,51 +361,74 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final volume = event.volume.clamp(0.0, 1.0);
     emit(state.copyWith(volume: volume));
     await _audioController.setVolume(volume).catchError((_) {});
-    _scheduleVolumeSave(volume);
+
+    final userId = _userId;
+    final repository = _settingsRepository;
+    if (userId != null && repository != null) {
+      _scheduleSave('volume', () => repository.saveVolume(userId, volume));
+    }
+  }
+
+  Future<void> _onCrossfadeDurationChanged(
+    PlayerCrossfadeDurationChanged event,
+    Emitter<PlayerState> emit,
+  ) async {
+    final duration = event.duration.isNegative
+        ? Duration.zero
+        : (event.duration > PlayerState.maxCrossfadeDuration
+            ? PlayerState.maxCrossfadeDuration
+            : event.duration);
+    emit(state.copyWith(crossfadeDuration: duration));
+
+    final userId = _userId;
+    final repository = _settingsRepository;
+    if (userId != null && repository != null) {
+      _scheduleSave('crossfade', () => repository.saveCrossfadeDuration(userId, duration));
+    }
   }
 
   /// Loads (or clears) the signed-in account's playback preferences.
   Future<void> _onUserChanged(PlayerUserChanged event, Emitter<PlayerState> emit) async {
     if (event.userId == _userId) return;
 
-    // Any half-typed volume still belongs to the OUTGOING account -- write it
-    // before switching, since the pending save captured that account's id.
-    await _flushVolumeSave();
+    // Any half-dragged preference still belongs to the OUTGOING account -- write
+    // it before switching, since each pending save captured that account's id.
+    await _flushSaves();
     _userId = event.userId;
 
     final userId = event.userId;
-    // Signed out: forget this account's level rather than leaking it to whoever
-    // signs in next.
-    final volume = userId == null
-        ? _defaultVolume
-        : await _settingsRepository?.fetchVolume(userId) ?? _defaultVolume;
+    final repository = _settingsRepository;
+    // Signed out: forget this account's preferences rather than leaking them to
+    // whoever signs in next.
+    final volume = userId == null ? _defaultVolume : await repository?.fetchVolume(userId) ?? _defaultVolume;
+    final crossfade = userId == null
+        ? Duration.zero
+        : await repository?.fetchCrossfadeDuration(userId) ?? Duration.zero;
 
-    emit(state.copyWith(volume: volume));
+    emit(state.copyWith(volume: volume, crossfadeDuration: crossfade));
     await _audioController.setVolume(volume).catchError((_) {});
   }
 
-  void _scheduleVolumeSave(double volume) {
-    final userId = _userId;
-    final repository = _settingsRepository;
-    if (userId == null || repository == null) return; // nothing to persist to
-
-    _volumeSaveTimer?.cancel();
-    _pendingVolumeSave = () => repository.saveVolume(userId, volume);
-    _volumeSaveTimer = Timer(_volumeSaveDelay, () => unawaited(_flushVolumeSave()));
+  void _scheduleSave(String key, Future<void> Function() save) {
+    _pendingSaves[key] = save; // latest write for this setting wins
+    _settingsSaveTimer?.cancel();
+    _settingsSaveTimer = Timer(_settingsSaveDelay, () => unawaited(_flushSaves()));
   }
 
-  /// Writes the pending volume immediately, if any. Called when the debounce
+  /// Writes any pending preferences immediately. Called when the debounce
   /// elapses, on account switch, and on close -- so a save is never lost.
-  Future<void> _flushVolumeSave() async {
-    _volumeSaveTimer?.cancel();
-    _volumeSaveTimer = null;
-    final pending = _pendingVolumeSave;
-    _pendingVolumeSave = null;
-    if (pending == null) return;
-    try {
-      await pending();
-    } catch (_) {
-      // A failed preference write must never break playback.
+  Future<void> _flushSaves() async {
+    _settingsSaveTimer?.cancel();
+    _settingsSaveTimer = null;
+    if (_pendingSaves.isEmpty) return;
+    final saves = List.of(_pendingSaves.values);
+    _pendingSaves.clear();
+    for (final save in saves) {
+      try {
+        await save();
+      } catch (_) {
+        // A failed preference write must never break playback.
+      }
     }
   }
 
@@ -446,6 +575,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
         isShuffled: state.isShuffled,
         repeatMode: state.repeatMode,
         volume: state.volume,
+        crossfadeDuration: state.crossfadeDuration,
       );
 
   Future<void> _playCurrent(Emitter<PlayerState> emit) async {
@@ -454,6 +584,10 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     try {
       // setUrl returns the duration when the engine knows it at load time.
       final duration = await _audioController.setUrl(track.audioUrl);
+      // A newer track change overtook this load: its own _playCurrent owns the
+      // player now, so applying our duration (or starting playback below) would
+      // fight it.
+      if (state.currentTrack?.id != track.id) return;
       // Only override the seeded duration with a real engine value (iOS
       // returns 0 here).
       if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
@@ -474,8 +608,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   @override
   Future<void> close() async {
     _ticker?.cancel();
-    // Don't lose a volume change made within the debounce window.
-    await _flushVolumeSave();
+    // Don't lose a preference change made within the debounce window.
+    await _flushSaves();
     await _userSub?.cancel();
     await _durationSub.cancel();
     await _playingSub.cancel();
