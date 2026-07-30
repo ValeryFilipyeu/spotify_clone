@@ -63,12 +63,36 @@ class FakeAudioController implements AudioController {
 
   Duration? _durationFor(String url) => durationsByUrl[url] ?? loadedDuration;
 
+  /// Reproduces just_audio's real playing contract, which is subtle enough to
+  /// have shipped a bug: `playing` is play INTENT, not "audio is coming out".
+  /// So it survives a track reaching its end; play() returns immediately while
+  /// it is already set; and loading a new source while it is set starts that
+  /// source with NO event on playingStream at all. In this mode the fake drives
+  /// playingStream itself, the way a real engine does.
+  ///
+  /// Opt-in: most tests drive the stream by hand, which is fine for everything
+  /// that does not hinge on the engine's own bookkeeping.
+  bool strictPlayingContract = false;
+  bool _intendsToPlay = false;
+
   // --- Manual stream drivers for tests ---
   void emitPlaying(bool playing) => _playing.add(playing);
   void emitBuffering(bool buffering) => _buffering.add(buffering);
   void emitPosition(Duration position) => _position.add(position);
   void emitDuration(Duration duration) => _duration.add(duration);
+
+  /// Note what this deliberately does NOT do under [strictPlayingContract]:
+  /// clear the play intent. A real engine keeps it, which is the whole hazard.
   void emitCompleted() => _completed.add(null);
+
+  /// Drops the play intent and reports it, as pause()/stop() do on a real
+  /// engine. A no-op when the intent was not set -- just_audio's `if (!playing)
+  /// return;`.
+  void _releasePlayIntent() {
+    if (!strictPlayingContract || !_intendsToPlay) return;
+    _intendsToPlay = false;
+    _playing.add(false);
+  }
 
   @override
   Stream<Duration> get positionStream => _position.stream;
@@ -85,10 +109,21 @@ class FakeAudioController implements AudioController {
   @override
   Stream<void> get completedStream => _completed.stream;
 
+  /// Makes the next [setUrl] throw, as a dead url or a dropped connection does.
+  /// One-shot, so a test can fail a single track change.
+  bool failNextLoad = false;
+
   @override
   Future<Duration?> setUrl(String url) async {
     setUrls.add(url);
     if (loadDelay > Duration.zero) await Future<void>.delayed(loadDelay);
+    if (failNextLoad) {
+      failNextLoad = false;
+      throw StateError('load failed: $url');
+    }
+    // No playingStream event under strictPlayingContract even though a still-set
+    // play intent means this source begins sounding: the SILENCE is the faithful
+    // part, since there is no change for the engine to report.
     return _durationFor(url);
   }
 
@@ -100,12 +135,19 @@ class FakeAudioController implements AudioController {
   @override
   Future<void> play() {
     playCount++;
+    if (strictPlayingContract && !_intendsToPlay) {
+      _intendsToPlay = true;
+      _playing.add(true);
+    }
     if (playCompletesOnlyWhenTrackEnds) return Completer<void>().future;
     return Future<void>.value();
   }
 
   @override
-  Future<void> pause() async => pauseCount++;
+  Future<void> pause() async {
+    pauseCount++;
+    _releasePlayIntent();
+  }
 
   @override
   Future<void> seek(Duration position) async => seeks.add(position);
@@ -114,7 +156,10 @@ class FakeAudioController implements AudioController {
   Future<void> setVolume(double volume) async => volumes.add(volume);
 
   @override
-  Future<void> stop() async => stopCount++;
+  Future<void> stop() async {
+    stopCount++;
+    _releasePlayIntent();
+  }
 
   @override
   Future<void> dispose() async {

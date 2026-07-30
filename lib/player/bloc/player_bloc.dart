@@ -257,6 +257,25 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     unawaited(_audioController.pause().catchError((_) {}));
   }
 
+  /// Makes the engine agree with a state that says "not playing", for the paths
+  /// where playback ends without anybody pressing pause: a queue running out, or
+  /// a load that failed.
+  ///
+  /// The engine never stops itself. `playing` is play *intent* (see
+  /// [AudioController.playingStream]): it stays true when a source reaches its
+  /// end, leaving the engine parked at the end of a track it still considers
+  /// current. Emitting `isPlaying: false` over that lies twice over:
+  ///
+  ///  * play() is documented to return immediately while `playing` is already
+  ///    true, so the play button does nothing at all; and
+  ///  * because nothing actually changed, playingStream stays silent -- so the
+  ///    next source that *does* load starts sounding with isPlaying still false,
+  ///    which shows up as a transport frozen at 0:00 over audible music.
+  ///
+  /// Unlike [_pause] this is awaited, since callers emit straight afterwards and
+  /// the engine's own `playing: false` has to be on its way first.
+  Future<void> _haltPlayback() => _audioController.pause().catchError((_) {});
+
   void _onInterruptionBegan(PlayerInterruptionBegan event, Emitter<PlayerState> emit) {
     if (!state.hasTrack) return;
 
@@ -436,6 +455,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       if (state.currentTrack?.id != track.id) return;
       if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
     } catch (_) {
+      await _haltPlayback();
       emit(state.copyWith(isLoading: false, isPlaying: false));
     } finally {
       _isCrossfading = false;
@@ -472,6 +492,12 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
     final upcoming = _nextIndexOnCompletion();
     if (upcoming == null) {
+      await _haltPlayback();
+      // Rewind so the engine is where the state below says it is: at the start,
+      // ready to play the track again. Strictly AFTER the pause -- seeking while
+      // the engine still holds play intent just carries on playing from the new
+      // position.
+      await _audioController.seek(Duration.zero).catchError((_) {});
       emit(state.copyWith(isPlaying: false, position: Duration.zero));
       return;
     }
@@ -760,7 +786,10 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       // the underlying player (see JustAudioController.setUrl), which would
       // otherwise silently reset it to full.
       if (state.volume != 1) await _audioController.setVolume(state.volume).catchError((_) {});
-    } catch (e) {
+    } catch (_) {
+      // The load failed, so nothing is going to sound -- but the engine may
+      // still be holding play intent from the previous track. See _haltPlayback.
+      await _haltPlayback();
       emit(state.copyWith(isLoading: false, isPlaying: false));
       return;
     }
