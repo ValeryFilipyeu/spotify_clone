@@ -26,6 +26,18 @@ class PlayerPlayPauseToggled extends PlayerEvent {
   const PlayerPlayPauseToggled();
 }
 
+/// Resume / pause as *explicit* intents rather than a toggle. The OS media
+/// session sends one or the other (lock screen, headset button, Siri), and
+/// folding those onto [PlayerPlayPauseToggled] would do the opposite of what was
+/// asked whenever the two sides briefly disagreed about who is playing.
+class PlayerResumeRequested extends PlayerEvent {
+  const PlayerResumeRequested();
+}
+
+class PlayerPauseRequested extends PlayerEvent {
+  const PlayerPauseRequested();
+}
+
 class PlayerNextRequested extends PlayerEvent {
   const PlayerNextRequested();
 }
@@ -151,6 +163,34 @@ class PlayerUserChanged extends PlayerEvent {
 
   @override
   List<Object?> get props => [userId];
+}
+
+/// The OS handed our audio device to something else -- a call, Siri, a
+/// navigation prompt. [duck] means we may keep playing, quietly; otherwise
+/// playback has to stop for the duration. See [AudioInterruptions].
+class PlayerInterruptionBegan extends PlayerEvent {
+  const PlayerInterruptionBegan({required this.duck});
+
+  final bool duck;
+
+  @override
+  List<Object?> get props => [duck];
+}
+
+/// We have the audio device back. [shouldResume] is the platform's opinion, and
+/// is only honoured if the interruption is what stopped us in the first place.
+class PlayerInterruptionEnded extends PlayerEvent {
+  const PlayerInterruptionEnded({required this.shouldResume});
+
+  final bool shouldResume;
+
+  @override
+  List<Object?> get props => [shouldResume];
+}
+
+/// Headphones unplugged / Bluetooth gone. Pauses, and never auto-resumes.
+class PlayerOutputDisconnected extends PlayerEvent {
+  const PlayerOutputDisconnected();
 }
 
 /// Emitted by PlayerBloc's own wall-clock ticker (~4x/sec while playing) to

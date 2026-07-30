@@ -13,6 +13,8 @@ import 'player/audio/audio_controller.dart';
 import 'player/bloc/player_bloc.dart';
 import 'player/bloc/player_event.dart';
 import 'player/repository/playback_settings_repository.dart';
+import 'player/session/media_session.dart';
+import 'player/session/playback_audio_session.dart';
 import 'router/app_router.dart';
 import 'theme/spotify_theme.dart';
 
@@ -23,6 +25,8 @@ class MyApp extends StatelessWidget {
     required this.likesRepository,
     required this.playbackSettingsRepository,
     required this.audioController,
+    this.mediaSession,
+    this.audioSession,
   });
 
   final AuthRepository authRepository;
@@ -39,6 +43,15 @@ class MyApp extends StatelessWidget {
   /// touch just_audio's platform channels -- same reason authRepository is
   /// injected.
   final AudioController audioController;
+
+  /// The OS media session (lock screen, notification, headset buttons). Null in
+  /// widget tests, which have no OS session to talk to; the player then simply
+  /// has no presence outside the app.
+  final MediaSession? mediaSession;
+
+  /// Calls, Siri and navigation prompts taking the speaker, plus headphones
+  /// being unplugged. Null in widget tests, for the same reason.
+  final PlaybackAudioSession? audioSession;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +78,8 @@ class MyApp extends StatelessWidget {
               // Mapped to a bare id: the player needs to know *which* account
               // it is playing for, not anything else about the user.
               userIdChanges: context.read<AuthRepository>().authStateChanges.map((user) => user?.email),
+              mediaSession: mediaSession,
+              audioSession: audioSession,
             ),
           ),
           // App-wide so a heart tapped on any screen is reflected everywhere.

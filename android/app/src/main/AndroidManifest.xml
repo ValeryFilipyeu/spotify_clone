@@ -1,4 +1,13 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Background playback (audio_service). The foreground service is what keeps
+         audio alive once the app leaves the screen and what owns the media
+         notification; WAKE_LOCK stops the CPU sleeping mid-track. The
+         _MEDIA_PLAYBACK variant is required from Android 14 (SDK 34). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+
     <application
         android:label="spotify_clone"
         android:name="${applicationName}"
@@ -30,6 +39,31 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- audio_service's foreground service: hosts playback and the media
+             notification while the app is backgrounded. MainActivity extends
+             AudioServiceActivity so both share one FlutterEngine (see
+             MainActivity.kt) -- that is why the activity above keeps its own
+             class name instead of being replaced by AudioServiceActivity. -->
+        <service
+            android:name="com.ryanheise.audioservice.AudioService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService"/>
+            </intent-filter>
+        </service>
+
+        <!-- Hardware media keys and headset buttons. -->
+        <receiver
+            android:name="com.ryanheise.audioservice.MediaButtonReceiver"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON"/>
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

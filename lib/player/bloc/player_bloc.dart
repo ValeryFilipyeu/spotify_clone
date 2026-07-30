@@ -6,6 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../catalog/models/track.dart';
 import '../audio/audio_controller.dart';
 import '../repository/playback_settings_repository.dart';
+import '../session/playback_audio_session.dart';
+import '../session/media_session.dart';
 import 'player_event.dart';
 import 'player_state.dart';
 
@@ -15,20 +17,27 @@ import 'player_state.dart';
 ///
 /// [settingsRepository] and [userIdChanges] are optional: supply both (as the
 /// app does) and volume is persisted per account; omit them and the player
-/// behaves identically with an in-memory volume.
+/// behaves identically with an in-memory volume. [mediaSession] is likewise
+/// optional -- without it the player simply has no lock-screen presence.
 class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   PlayerBloc({
     required AudioController audioController,
     PlaybackSettingsRepository? settingsRepository,
     Stream<String?>? userIdChanges,
+    MediaSession? mediaSession,
+    PlaybackAudioSession? audioSession,
     Random? random,
         // ignore_for_file: prefer_initializing_formals -- keeps public param names.
   })  : _audioController = audioController,
         _settingsRepository = settingsRepository,
+        _mediaSession = mediaSession ?? const NoopMediaSession(),
+        _audioSession = audioSession ?? const NoopPlaybackAudioSession(),
         _random = random ?? Random(),
         super(const PlayerState()) {
     on<PlayerTrackStarted>(_onTrackStarted);
     on<PlayerPlayPauseToggled>(_onPlayPauseToggled);
+    on<PlayerResumeRequested>((_, _) => _resume());
+    on<PlayerPauseRequested>((_, _) => _pause());
     on<PlayerNextRequested>(_onNextRequested);
     on<PlayerPreviousRequested>(_onPreviousRequested);
     on<PlayerSeekRequested>(_onSeekRequested);
@@ -48,11 +57,39 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<PlayerQueueAppended>(_onQueueAppended);
     on<PlayerPlayNextEnqueued>(_onPlayNextEnqueued);
     on<PlayerUserChanged>(_onUserChanged);
+    on<PlayerInterruptionBegan>(_onInterruptionBegan);
+    on<PlayerInterruptionEnded>(_onInterruptionEnded);
+    on<PlayerOutputDisconnected>(_onOutputDisconnected);
+
+    // Losing the speaker to a call, Siri or a nav prompt is not a user gesture,
+    // so it gets its own events -- the bloc has to remember whether *it* was the
+    // one that stopped playback before it may resume anything.
+    _interruptionSub = _audioSession.interruptions.listen((event) {
+      add(switch (event) {
+        AudioInterruptionBegan(:final duck) => PlayerInterruptionBegan(duck: duck),
+        AudioInterruptionEnded(:final shouldResume) =>
+          PlayerInterruptionEnded(shouldResume: shouldResume),
+        AudioOutputDisconnected() => const PlayerOutputDisconnected(),
+      });
+    });
 
     // Volume is stored per account, so the player has to know who is signed in.
     // The stream replays the current user on subscribe, so a restored session
     // applies its saved level at boot without any extra call.
     _userSub = userIdChanges?.listen((userId) => add(PlayerUserChanged(userId)));
+
+    // The OS is just another remote control: its buttons become ordinary events,
+    // so a lock-screen tap and an in-app tap go down exactly the same path.
+    _sessionSub = _mediaSession.commands.listen((command) {
+      add(switch (command) {
+        MediaSessionPlayRequested() => const PlayerResumeRequested(),
+        MediaSessionPauseRequested() => const PlayerPauseRequested(),
+        MediaSessionNextRequested() => const PlayerNextRequested(),
+        MediaSessionPreviousRequested() => const PlayerPreviousRequested(),
+        MediaSessionStopRequested() => const PlayerStopped(),
+        MediaSessionSeekRequested(:final position) => PlayerSeekRequested(position),
+      });
+    });
 
     // We drive `position` from our own wall-clock ticker (see _onPlayingChanged
     // / _onPositionTicked), NOT from audioController.positionStream. just_audio
@@ -93,6 +130,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   final AudioController _audioController;
   final PlaybackSettingsRepository? _settingsRepository;
+  final MediaSession _mediaSession;
+  final PlaybackAudioSession _audioSession;
 
   /// Injectable so tests can seed a deterministic shuffle.
   final Random _random;
@@ -102,7 +141,28 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   late final StreamSubscription<bool> _bufferingSub;
   late final StreamSubscription<void> _completedSub;
   StreamSubscription<String?>? _userSub;
+  StreamSubscription<MediaSessionCommand>? _sessionSub;
+  StreamSubscription<AudioInterruption>? _interruptionSub;
   Timer? _ticker;
+
+  /// How far down ducking takes the volume. Quiet enough that a navigation
+  /// prompt is clearly audible over the music, loud enough that the music has
+  /// obviously not stopped.
+  static const double _duckFactor = 0.3;
+
+  /// True only when the *interruption* is what paused us. Without this the OS
+  /// telling us "you can resume now" would start playing music the user had
+  /// deliberately paused before the call came in.
+  bool _pausedByInterruption = false;
+
+  /// True while volume is being held down for a transient interruption. The
+  /// user's own volume ([PlayerState.volume]) is never touched, so nothing gets
+  /// persisted and the slider does not jump.
+  bool _duckedByInterruption = false;
+
+  /// [NowPlaying.signature] of the last snapshot handed to the OS, so a position
+  /// tick four times a second does not become four platform-channel round trips.
+  String? _publishedSignature;
 
   /// The account whose volume is loaded, or null when signed out.
   String? _userId;
@@ -119,22 +179,121 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   /// to, so a mid-gesture account switch still persists to the right one.
   final Map<String, Future<void> Function()> _pendingSaves = {};
 
+  /// Mirrors state onto the OS media session. Hooked into [onChange] rather than
+  /// called from each handler, so no handler can forget it: every state change
+  /// the bloc makes passes through here on its way out.
+  @override
+  void onChange(Change<PlayerState> change) {
+    super.onChange(change);
+    _publishNowPlaying(change);
+  }
+
+  void _publishNowPlaying(Change<PlayerState> change) {
+    final next = change.nextState;
+    final track = next.currentTrack;
+    if (track == null) {
+      // Nothing queued: the notification/lock screen must not linger on a dead
+      // session. Guarded so repeated empty states don't re-clear.
+      if (_publishedSignature == null) return;
+      _publishedSignature = null;
+      unawaited(_mediaSession.clear().catchError((_) {}));
+      return;
+    }
+
+    final nowPlaying = NowPlaying.from(next, track);
+    // A normal tick moves position by exactly one tick. Anything larger -- or
+    // backwards -- is a seek or a track change, and the OS has to hear about it
+    // or its extrapolated scrubber drifts away from the one in the app.
+    final jumped = (next.position - change.currentState.position).abs() > _tick * 2;
+    if (nowPlaying.signature == _publishedSignature && !jumped) return;
+    _publishedSignature = nowPlaying.signature;
+    unawaited(_mediaSession.update(nowPlaying).catchError((_) {}));
+  }
+
   Future<void> _onTrackStarted(PlayerTrackStarted event, Emitter<PlayerState> emit) async {
     await _startQueue(event.queue, event.startIndex, emit);
   }
 
   void _onPlayPauseToggled(PlayerPlayPauseToggled event, Emitter<PlayerState> emit) {
-    if (!state.hasTrack) return;
-    // Fire-and-forget: play()/pause() are not awaited. just_audio's play()
-    // future completes when the track ENDS, so awaiting it would block the
-    // handler for the whole track -- which on web interleaves badly with the
-    // position/buffering event stream. play() resumes from the paused
-    // position on its own.
     if (state.isPlaying) {
-      unawaited(_audioController.pause().catchError((_) {}));
+      _pause();
     } else {
-      unawaited(_audioController.play().catchError((_) {}));
+      _resume();
     }
+  }
+
+  // Fire-and-forget: play()/pause() are not awaited. just_audio's play() future
+  // completes when the track ENDS, so awaiting it would block the handler for
+  // the whole track -- which on web interleaves badly with the
+  // position/buffering event stream. play() resumes from the paused position on
+  // its own. isPlaying is not set here either: it follows the engine's
+  // playingStream, so the UI and the lock screen only ever show what is real.
+
+  // Both clear _pausedByInterruption: reaching either of these means somebody
+  // made a deliberate transport decision, which supersedes anything the OS
+  // interrupted. _onInterruptionBegan re-arms the flag straight after calling
+  // _pause() for exactly that reason.
+
+  void _resume() {
+    _pausedByInterruption = false;
+    if (!state.hasTrack) return;
+    // Take the audio device back before sounding anything -- resuming after an
+    // interruption means somebody else currently owns it.
+    unawaited(_claimSessionThen(_audioController.play));
+  }
+
+  /// Claims the audio session, then does [play]. Ordered, because playing into a
+  /// session we do not own is how you end up mixed under another app instead of
+  /// interrupting it.
+  Future<void> _claimSessionThen(Future<void> Function() play) async {
+    await _audioSession.activate().catchError((_) {});
+    // Not awaited by callers: just_audio's play() completes at the track's END.
+    await play().catchError((_) {});
+  }
+
+  void _pause() {
+    _pausedByInterruption = false;
+    if (!state.hasTrack) return;
+    unawaited(_audioController.pause().catchError((_) {}));
+  }
+
+  void _onInterruptionBegan(PlayerInterruptionBegan event, Emitter<PlayerState> emit) {
+    if (!state.hasTrack) return;
+
+    if (event.duck) {
+      // Keep playing, just get out of the way. Applied straight to the engine so
+      // state.volume -- the user's setting, which is persisted per account --
+      // stays exactly where they left it.
+      if (_duckedByInterruption) return;
+      _duckedByInterruption = true;
+      unawaited(_audioController.setVolume(state.volume * _duckFactor).catchError((_) {}));
+      return;
+    }
+
+    // Nothing to take away, and nothing to restore later.
+    if (!state.isPlaying) return;
+    _pause();
+    _pausedByInterruption = true;
+  }
+
+  void _onInterruptionEnded(PlayerInterruptionEnded event, Emitter<PlayerState> emit) {
+    if (_duckedByInterruption) {
+      _duckedByInterruption = false;
+      unawaited(_audioController.setVolume(state.volume).catchError((_) {}));
+    }
+    // Resume only what we stopped, and only when the platform says it is welcome.
+    if (!_pausedByInterruption) return;
+    if (event.shouldResume) {
+      _resume();
+    } else {
+      _pausedByInterruption = false;
+    }
+  }
+
+  void _onOutputDisconnected(PlayerOutputDisconnected event, Emitter<PlayerState> emit) {
+    // _pause() clears _pausedByInterruption, which is the point: unplugging
+    // headphones must never lead to music resuming later out of the speaker.
+    _pause();
   }
 
   Future<void> _onNextRequested(PlayerNextRequested event, Emitter<PlayerState> emit) async {
@@ -169,6 +328,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   Future<void> _onStopped(PlayerStopped event, Emitter<PlayerState> emit) async {
     await _audioController.stop();
+    // Hand the audio device back: we are done with it, so anything we
+    // interrupted (a podcast in another app) is free to carry on.
+    await _audioSession.deactivate().catchError((_) {});
     emit(_clearedState());
   }
 
@@ -581,6 +743,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   Future<void> _playCurrent(Emitter<PlayerState> emit) async {
     final track = state.currentTrack;
     if (track == null) return;
+    // Claim the audio device before loading, so we take it from whatever else is
+    // playing rather than quietly mixing underneath it.
+    await _audioSession.activate().catchError((_) {});
     try {
       // setUrl returns the duration when the engine knows it at load time.
       final duration = await _audioController.setUrl(track.audioUrl);
@@ -610,6 +775,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     _ticker?.cancel();
     // Don't lose a preference change made within the debounce window.
     await _flushSaves();
+    await _sessionSub?.cancel();
+    await _interruptionSub?.cancel();
     await _userSub?.cancel();
     await _durationSub.cancel();
     await _playingSub.cancel();
