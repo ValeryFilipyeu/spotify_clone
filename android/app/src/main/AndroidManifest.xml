@@ -43,8 +43,10 @@
         <!-- audio_service's foreground service: hosts playback and the media
              notification while the app is backgrounded. MainActivity extends
              AudioServiceActivity so both share one FlutterEngine (see
-             MainActivity.kt) -- that is why the activity above keeps its own
-             class name instead of being replaced by AudioServiceActivity. -->
+             MainActivity.kt), which is why the activity above keeps its own
+             class name instead of being replaced by AudioServiceActivity.
+             NB: no doubled hyphens anywhere in here, XML forbids them inside a
+             comment. -->
         <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"

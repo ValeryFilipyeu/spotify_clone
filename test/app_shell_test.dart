@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:spotify_clone/app.dart';
 import 'package:spotify_clone/auth/repository/fake_auth_repository.dart';
 import 'package:spotify_clone/auth/repository/session_storage.dart';
+import 'package:spotify_clone/history/repository/local_play_history_repository.dart';
 import 'package:spotify_clone/likes/repository/local_likes_repository.dart';
 import 'package:spotify_clone/player/repository/local_playback_settings_repository.dart';
 import 'package:spotify_clone/storage/key_value_store.dart';
@@ -56,6 +57,7 @@ void main() {
     await tester.pumpWidget(MyApp(
       authRepository: repository,
       likesRepository: LocalLikesRepository(store),
+      playHistoryRepository: LocalPlayHistoryRepository(store),
       playbackSettingsRepository: LocalPlaybackSettingsRepository(store),
       audioController: FakeAudioController(),
     ));

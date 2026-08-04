@@ -1,15 +1,13 @@
 import 'package:equatable/equatable.dart';
 
-/// A single browsable thing in the catalog (a playlist or album). There is no
-/// real backend and no bundled cover images, so instead of an image URL this
-/// carries a [coverColor] used to render a gradient placeholder tile -- keeps
-/// the app fully offline and deterministic (which also matters for tests).
+/// A single browsable thing in the catalog (a playlist or album).
 class CatalogItem extends Equatable {
   const CatalogItem({
     required this.id,
     required this.title,
     required this.subtitle,
     required this.coverColor,
+    this.coverUrl,
   });
 
   final String id;
@@ -18,9 +16,16 @@ class CatalogItem extends Equatable {
   /// e.g. an artist name for an album, or a short description for a playlist.
   final String subtitle;
 
-  /// ARGB value used to tint the placeholder cover (see home's card widget).
+  /// ARGB tint for the gradient shown *beneath* [coverUrl] -- the placeholder
+  /// while the image downloads, and what stays visible if it never arrives. Kept
+  /// alongside the image rather than replaced by it, so a cover is never a hole.
   final int coverColor;
 
+  /// A remote square cover image, or null for an item with no artwork (a
+  /// perfectly ordinary state in a real catalog, and the only state this app had
+  /// before). See [CoverArt], which draws either case.
+  final String? coverUrl;
+
   @override
-  List<Object?> get props => [id, title, subtitle, coverColor];
+  List<Object?> get props => [id, title, subtitle, coverColor, coverUrl];
 }

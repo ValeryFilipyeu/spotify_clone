@@ -77,6 +77,7 @@ class NowPlaying {
     required this.isLoading,
     required this.hasNext,
     required this.hasPrevious,
+    this.artUrl,
   });
 
   /// Built from the state the bloc already holds. [hasNext]/[hasPrevious] come
@@ -92,6 +93,7 @@ class NowPlaying {
         isLoading: state.isLoading,
         hasNext: state.hasNext,
         hasPrevious: state.hasPrevious,
+        artUrl: track.coverUrl,
       );
 
   final String id;
@@ -103,6 +105,11 @@ class NowPlaying {
   final bool isLoading;
   final bool hasNext;
   final bool hasPrevious;
+
+  /// Cover art for the lock screen / notification, or null for a track with no
+  /// artwork. Left out of [signature] on purpose: artwork only ever changes when
+  /// the track does, and [id] already covers that.
+  final String? artUrl;
 
   /// Everything except [position]. Position advances four times a second, and
   /// the OS extrapolates it from the last value it was given -- so a change in

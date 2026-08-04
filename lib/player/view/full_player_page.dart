@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../catalog/widgets/cover_art.dart';
 import '../../likes/widgets/like_button.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/duration_format.dart';
@@ -46,24 +47,15 @@ class FullPlayerPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  // Large cover placeholder. Expanded + Center + AspectRatio
-                  // keeps it a square that fits the available vertical space
-                  // (so it never overflows on a wide/desktop viewport).
+                  // Expanded + Center + AspectRatio keeps the cover a square that
+                  // fits the available vertical space (so it never overflows on a
+                  // wide/desktop viewport). No colour passed: a track has none of
+                  // its own, so it gets CoverArt's neutral placeholder.
                   Expanded(
                     child: Center(
                       child: AspectRatio(
                         aspectRatio: 1,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [SpotifyColors.surfaceBright, Colors.black],
-                            ),
-                          ),
-                          child: const Icon(Icons.music_note, color: Colors.white70, size: 96),
-                        ),
+                        child: CoverArt(url: track.coverUrl, borderRadius: 12, iconSize: 96),
                       ),
                     ),
                   ),

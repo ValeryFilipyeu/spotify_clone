@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spotify_clone/catalog/models/track.dart';
 import 'package:spotify_clone/player/bloc/player_bloc.dart';
 import 'package:spotify_clone/player/bloc/player_event.dart';
+import 'package:spotify_clone/player/bloc/player_state.dart';
 import 'package:spotify_clone/player/session/media_session.dart';
 
 import '../fake_audio_controller.dart';
@@ -216,6 +217,51 @@ void main() {
 
       expect(audio.playCount, 0);
       expect(bloc.state.queue, isEmpty);
+    });
+  });
+
+  // Cover art is the one field the OS fetches for itself, so getting it into the
+  // snapshot is all we can verify from here.
+  group('artwork', () {
+    test('is published for a track that has some', () async {
+      const withArt = Track(
+        id: 't3',
+        title: 'Three',
+        artist: 'Artist C',
+        duration: Duration(minutes: 2),
+        audioUrl: 'url-3',
+        coverUrl: 'https://example.test/cover.jpg',
+      );
+
+      bloc.add(const PlayerTrackStarted(queue: [withArt], startIndex: 0));
+      await _settle();
+
+      expect(session.last?.artUrl, 'https://example.test/cover.jpg');
+    });
+
+    test('is simply absent for a track without any', () async {
+      bloc.add(const PlayerTrackStarted(queue: _queue, startIndex: 0));
+      await _settle();
+
+      expect(session.last?.artUrl, isNull);
+    });
+
+    // Artwork only ever changes with the track, and the id already forces a
+    // publish -- so it must not turn every position tick into a channel hop.
+    test('does not become a reason to republish', () async {
+      const withArt = Track(
+        id: 't3',
+        title: 'Three',
+        artist: 'Artist C',
+        duration: Duration(minutes: 2),
+        audioUrl: 'url-3',
+        coverUrl: 'https://example.test/cover.jpg',
+      );
+
+      expect(
+        NowPlaying.from(const PlayerState(queue: [withArt]), withArt).signature,
+        isNot(contains('example.test')),
+      );
     });
   });
 

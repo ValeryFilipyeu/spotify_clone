@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../catalog/models/catalog_item.dart';
+import '../../catalog/widgets/cover_art.dart';
 import '../../likes/widgets/like_button.dart';
 import '../../theme/spotify_colors.dart';
 
-/// A single tappable tile: a gradient "cover" (no real image asset) with the
-/// item's title and subtitle beneath it.
+/// A single tappable tile: the item's cover with its title and subtitle beneath.
 class CatalogCard extends StatelessWidget {
   const CatalogCard({super.key, required this.item, this.onTap});
 
@@ -14,8 +14,6 @@ class CatalogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cover = Color(item.coverColor);
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -26,20 +24,10 @@ class CatalogCard extends StatelessWidget {
           children: [
             Stack(
               children: [
-                Container(
+                SizedBox(
                   width: 150,
                   height: 150,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [cover, Color.lerp(cover, Colors.black, 0.55)!],
-                    ),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.music_note, color: Colors.white70, size: 40),
-                  ),
+                  child: CoverArt(url: item.coverUrl, color: item.coverColor),
                 ),
                 // Heart in the corner; a translucent black disc keeps it legible
                 // over any cover colour.

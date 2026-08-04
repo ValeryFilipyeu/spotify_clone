@@ -34,6 +34,16 @@ class _ThrowingCatalogRepository implements CatalogRepository {
   }
 }
 
+/// Serves sections but no item index, to prove the load is treated as one unit:
+/// Home cannot resolve its personal row without the index, so a half-loaded
+/// screen would silently drop the user's own row.
+class _NoItemIndexRepository extends FakeCatalogRepository {
+  const _NoItemIndexRepository();
+
+  @override
+  Future<List<CatalogItem>> fetchAllItems() async => throw Exception('network down');
+}
+
 void main() {
   group('HomeCubit', () {
     test('initial state is HomeStatus.initial with no sections', () {
@@ -51,6 +61,29 @@ void main() {
         isA<HomeState>()
             .having((state) => state.status, 'status', HomeStatus.success)
             .having((state) => state.sections, 'sections', isNotEmpty),
+      ],
+    );
+
+    blocTest<HomeCubit, HomeState>(
+      'indexes every catalog item by id, for the personal rows to resolve against',
+      build: () => HomeCubit(catalogRepository: const FakeCatalogRepository()),
+      act: (cubit) => cubit.loadSections(),
+      verify: (cubit) async {
+        final expected = await const FakeCatalogRepository().fetchAllItems();
+        expect(cubit.state.itemsById, hasLength(expected.length));
+        for (final item in expected) {
+          expect(cubit.state.itemsById[item.id], item);
+        }
+      },
+    );
+
+    blocTest<HomeCubit, HomeState>(
+      'fails the whole load if the item index cannot be fetched',
+      build: () => HomeCubit(catalogRepository: const _NoItemIndexRepository()),
+      act: (cubit) => cubit.loadSections(),
+      expect: () => [
+        const HomeState(status: HomeStatus.loading),
+        isA<HomeState>().having((state) => state.status, 'status', HomeStatus.failure),
       ],
     );
 

@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../catalog/models/catalog_detail.dart';
 import '../../catalog/models/track.dart';
+import '../../catalog/widgets/cover_art.dart';
+import '../../history/cubit/play_history_cubit.dart';
 import '../../player/bloc/player_bloc.dart';
 import '../../player/bloc/player_event.dart';
 import '../../theme/spotify_colors.dart';
@@ -80,6 +82,9 @@ class _DetailContent extends StatelessWidget {
           flexibleSpace: FlexibleSpaceBar(
             title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
             centerTitle: true,
+            // The cover floats on the item's colour rather than filling the
+            // header: a full-bleed photo would fight the pinned title text as
+            // the bar collapses over it.
             background: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -88,7 +93,23 @@ class _DetailContent extends StatelessWidget {
                   colors: [cover, Color.lerp(cover, Colors.black, 0.7)!],
                 ),
               ),
-              child: const Center(child: Icon(Icons.music_note, color: Colors.white70, size: 72)),
+              child: Center(
+                child: SizedBox(
+                  width: 170,
+                  height: 170,
+                  child: DecoratedBox(
+                    // Matches CoverArt's own default radius, or the shadow shows
+                    // square corners behind the rounded cover.
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black54, blurRadius: 24, offset: Offset(0, 8)),
+                      ],
+                    ),
+                    child: CoverArt(url: item.coverUrl, color: item.coverColor, iconSize: 64),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -110,7 +131,7 @@ class _DetailContent extends StatelessWidget {
         ),
         SliverList(
           delegate: SliverChildBuilderDelegate(
-            (context, index) => _TrackRow(tracks: detail.tracks, index: index),
+            (context, index) => _TrackRow(itemId: item.id, tracks: detail.tracks, index: index),
             childCount: detail.tracks.length,
           ),
         ),
@@ -127,7 +148,11 @@ class _DetailContent extends StatelessWidget {
 /// legal here -- provider forbids `select` directly inside a SliverList's
 /// itemBuilder (it would rebuild the whole list instead of one row).
 class _TrackRow extends StatelessWidget {
-  const _TrackRow({required this.tracks, required this.index});
+  const _TrackRow({required this.itemId, required this.tracks, required this.index});
+
+  /// The album/playlist these tracks came from -- what gets recorded as
+  /// recently played when one of them is started.
+  final String itemId;
 
   final List<Track> tracks;
   final int index;
@@ -142,9 +167,10 @@ class _TrackRow extends StatelessWidget {
       position: index + 1,
       track: track,
       isCurrent: track.id == currentId,
-      onTap: () => context.read<PlayerBloc>().add(
-            PlayerTrackStarted(queue: tracks, startIndex: index),
-          ),
+      onTap: () {
+        context.read<PlayerBloc>().add(PlayerTrackStarted(queue: tracks, startIndex: index));
+        context.read<PlayHistoryCubit>().record(itemId);
+      },
     );
   }
 }

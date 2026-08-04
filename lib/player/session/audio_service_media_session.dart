@@ -53,11 +53,16 @@ class AudioServiceMediaSession extends BaseAudioHandler implements MediaSession 
     // Drives the title/artist/scrubber length on the lock screen. A duration of
     // zero is left off entirely: audio_service hides the seek bar when the
     // duration is unknown, which is better than drawing one of length 0.
+    final artUrl = nowPlaying.artUrl;
     mediaItem.add(MediaItem(
       id: nowPlaying.id,
       title: nowPlaying.title,
       artist: nowPlaying.artist,
       duration: nowPlaying.duration > Duration.zero ? nowPlaying.duration : null,
+      // audio_service downloads and caches this itself, then hands it to
+      // MPNowPlayingInfoCenter / the Android notification. tryParse, not parse:
+      // a malformed url must cost us the artwork, not the whole session update.
+      artUri: artUrl == null ? null : Uri.tryParse(artUrl),
     ));
 
     // Only offer buttons that would actually do something -- on the first track

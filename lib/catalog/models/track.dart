@@ -8,6 +8,7 @@ class Track extends Equatable {
     required this.artist,
     required this.duration,
     required this.audioUrl,
+    this.coverUrl,
   });
 
   final String id;
@@ -21,6 +22,14 @@ class Track extends Equatable {
   /// (fictional) metadata.
   final String audioUrl;
 
+  /// The containing album/playlist's cover, copied onto every track rather than
+  /// looked up through a reference. Denormalised on purpose: it is what real
+  /// music APIs do (Spotify embeds `album.images` in each track object), and it
+  /// means the player -- which only ever holds a queue of [Track]s -- can show
+  /// artwork, on its own screens and on the lock screen, without knowing which
+  /// catalog item the queue came from.
+  final String? coverUrl;
+
   @override
-  List<Object?> get props => [id, title, artist, duration, audioUrl];
+  List<Object?> get props => [id, title, artist, duration, audioUrl, coverUrl];
 }

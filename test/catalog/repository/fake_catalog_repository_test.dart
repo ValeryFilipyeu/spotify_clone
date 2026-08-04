@@ -42,6 +42,35 @@ void main() {
       expect(actualIds.toSet().length, actualIds.length); // no duplicates
     });
 
+    test('every item has cover artwork', () async {
+      final all = await repository.fetchAllItems();
+
+      for (final item in all) {
+        expect(item.coverUrl, isNotNull, reason: item.id);
+        expect(item.coverUrl, startsWith('https://'), reason: item.id);
+        // Deterministic per item: the same seed always returns the same photo,
+        // so a cover never changes between runs.
+        expect(item.coverUrl, contains(item.id), reason: item.id);
+      }
+    });
+
+    test('items have distinct covers', () async {
+      final all = await repository.fetchAllItems();
+
+      expect(all.map((i) => i.coverUrl).toSet(), hasLength(all.length));
+    });
+
+    // The player only ever holds a queue of Tracks, so a track has to carry its
+    // album's cover for the Now Playing screen and the lock screen to show one.
+    test('every track carries its album cover', () async {
+      final hits = await repository.fetchAllTracks();
+
+      expect(hits, isNotEmpty);
+      for (final hit in hits) {
+        expect(hit.track.coverUrl, hit.album.coverUrl, reason: hit.track.id);
+      }
+    });
+
     test('search matches album title or subtitle, case-insensitively', () async {
       final byTitle = await repository.search('rainbows'); // "In Rainbows" title
       final bySubtitle = await repository.search('radiohead'); // a subtitle

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../history/cubit/play_history_cubit.dart';
 import '../../likes/widgets/like_button.dart';
 import '../../player/bloc/player_bloc.dart';
 import '../../player/bloc/player_event.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/duration_format.dart';
 import '../models/search_results.dart';
+import 'cover_art.dart';
 
 /// A single song row for a [TrackHit], shared by Search results and the Library
 /// "Songs" section. Tapping it plays the track (as its own one-song queue),
@@ -24,12 +26,16 @@ class TrackHitTile extends StatelessWidget {
     final isCurrent = hit.track.id == currentId;
 
     return ListTile(
-      leading: const SizedBox(
+      // A song has no cover of its own, so it borrows its album's -- which is
+      // already here for the subtitle.
+      leading: SizedBox(
         width: 40,
         height: 40,
-        child: DecoratedBox(
-          decoration: BoxDecoration(color: SpotifyColors.surfaceBright),
-          child: Icon(Icons.music_note, color: Colors.white70, size: 20),
+        child: CoverArt(
+          url: hit.album.coverUrl,
+          color: hit.album.coverColor,
+          borderRadius: 4,
+          iconSize: 20,
         ),
       ),
       title: Text(
@@ -54,9 +60,12 @@ class TrackHitTile extends StatelessWidget {
           LikeButton(id: hit.track.id),
         ],
       ),
-      onTap: () => context.read<PlayerBloc>().add(
-            PlayerTrackStarted(queue: [hit.track], startIndex: 0),
-          ),
+      onTap: () {
+        context.read<PlayerBloc>().add(PlayerTrackStarted(queue: [hit.track], startIndex: 0));
+        // Credited to the album it came from, not to the one-song queue: what
+        // Home offers to replay is a playlist, not a single track.
+        context.read<PlayHistoryCubit>().record(hit.album.id);
+      },
     );
   }
 }

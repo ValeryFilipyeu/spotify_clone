@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../catalog/widgets/cover_art.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/marquee_text.dart';
 import '../bloc/player_bloc.dart';
@@ -40,9 +41,13 @@ class MiniPlayer extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.all(8),
-                      child: _CoverThumb(),
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: CoverArt(url: track.coverUrl, borderRadius: 4, iconSize: 22),
+                      ),
                     ),
                     Expanded(
                       child: Column(
@@ -83,27 +88,6 @@ class MiniPlayer extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _CoverThumb extends StatelessWidget {
-  const _CoverThumb();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [SpotifyColors.surface, Colors.black],
-        ),
-      ),
-      child: const Icon(Icons.music_note, color: Colors.white70, size: 22),
     );
   }
 }

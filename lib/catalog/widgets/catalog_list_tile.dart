@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../likes/widgets/like_button.dart';
 import '../../theme/spotify_colors.dart';
 import '../models/catalog_item.dart';
+import 'cover_art.dart';
 
-/// A horizontal list row for a catalog item: a small gradient "cover" plus
-/// title/subtitle. Used by Search and Library (Home uses the larger
-/// [CatalogCard] inside its horizontally-scrolling rows).
+/// A horizontal list row for a catalog item: a small cover plus title/subtitle.
+/// Used by Search and Library (Home uses the larger [CatalogCard] inside its
+/// horizontally-scrolling rows).
 class CatalogListTile extends StatelessWidget {
   const CatalogListTile({super.key, required this.item, this.onTap});
 
@@ -15,23 +16,18 @@ class CatalogListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cover = Color(item.coverColor);
-
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
+      leading: SizedBox(
         width: 48,
         height: 48,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [cover, Color.lerp(cover, Colors.black, 0.55)!],
-          ),
+        child: CoverArt(
+          url: item.coverUrl,
+          color: item.coverColor,
+          borderRadius: 4,
+          iconSize: 22,
         ),
-        child: const Icon(Icons.music_note, color: Colors.white70, size: 22),
       ),
       title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),

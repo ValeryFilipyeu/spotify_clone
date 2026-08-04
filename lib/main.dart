@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'auth/repository/fake_auth_repository.dart';
 import 'auth/repository/session_storage.dart';
+import 'history/repository/local_play_history_repository.dart';
 import 'likes/repository/local_likes_repository.dart';
 import 'player/audio/crossfade_audio_controller.dart';
 import 'player/audio/just_audio_controller.dart';
@@ -60,6 +61,7 @@ Future<void> main() async {
     MyApp(
       authRepository: authRepository,
       likesRepository: LocalLikesRepository(keyValueStore),
+      playHistoryRepository: LocalPlayHistoryRepository(keyValueStore),
       playbackSettingsRepository: LocalPlaybackSettingsRepository(keyValueStore),
       // Two engines behind one seam, so a track can fade out while the next
       // fades in. With crossfade off (the default) only one of them is ever

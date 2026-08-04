@@ -96,32 +96,52 @@ class FakeCatalogRepository implements CatalogRepository {
     ];
   }
 
-  static const List<CatalogSection> _sections = [
+  /// Deterministic demo artwork. Lorem Picsum returns the same photograph for
+  /// the same seed forever, so an item's cover never changes between runs (and
+  /// nothing in a test depends on which photo comes back). Verified to answer a
+  /// plain GET with 200 + image/jpeg and to send `Access-Control-Allow-Origin:
+  /// *`, which Flutter web needs to decode an image at all.
+  ///
+  /// One size for every use. A real backend would offer several (Spotify's API
+  /// returns 640/300/64 per album) and each surface would pick the nearest;
+  /// 600px is chosen to satisfy the largest consumer, the full player's cover,
+  /// and [CoverArt] decodes it down to whatever it is painted at.
+  static String _cover(String id) => 'https://picsum.photos/seed/$id/600/600';
+
+  // `final`, not `const`: the cover urls are computed from each item's id, which
+  // beats writing twelve nearly-identical string literals by hand. Still built
+  // exactly once, on first access.
+  static final List<CatalogSection> _sections = [
     CatalogSection(
       title: 'Made for you',
       items: [
-        CatalogItem(id: 'dm1', title: 'Daily Mix 1', subtitle: 'Tame Impala, MGMT & more', coverColor: 0xFF1DB954),
-        CatalogItem(id: 'dm2', title: 'Daily Mix 2', subtitle: 'Radiohead, Interpol & more', coverColor: 0xFFE13300),
-        CatalogItem(id: 'dw', title: 'Discover Weekly', subtitle: 'Your weekly mixtape', coverColor: 0xFF7358FF),
-        CatalogItem(id: 'rr', title: 'Release Radar', subtitle: 'New from artists you follow', coverColor: 0xFF2D46B9),
+        CatalogItem(id: 'dm1', title: 'Daily Mix 1', subtitle: 'Tame Impala, MGMT & more', coverColor: 0xFF1DB954, coverUrl: _cover('dm1')),
+        CatalogItem(id: 'dm2', title: 'Daily Mix 2', subtitle: 'Radiohead, Interpol & more', coverColor: 0xFFE13300, coverUrl: _cover('dm2')),
+        CatalogItem(id: 'dw', title: 'Discover Weekly', subtitle: 'Your weekly mixtape', coverColor: 0xFF7358FF, coverUrl: _cover('dw')),
+        CatalogItem(id: 'rr', title: 'Release Radar', subtitle: 'New from artists you follow', coverColor: 0xFF2D46B9, coverUrl: _cover('rr')),
       ],
     ),
+    // This used to be called "Recently played" and was the same four playlists
+    // for everybody. The real thing is built per account from play history now
+    // (see HomeView), so these keep their place in the catalog under an honest
+    // title -- deleting the section would take the four playlists out of Search,
+    // Library and detail along with it, since every list derives from here.
     CatalogSection(
-      title: 'Recently played',
+      title: 'Popular playlists',
       items: [
-        CatalogItem(id: 'lofi', title: 'Lo-Fi Beats', subtitle: 'Chill instrumental hip-hop', coverColor: 0xFFBA5D07),
-        CatalogItem(id: 'focus', title: 'Deep Focus', subtitle: 'Keep calm and focus', coverColor: 0xFF503750),
-        CatalogItem(id: 'run', title: 'Running Mix', subtitle: 'Uptempo motivation', coverColor: 0xFF8D67AB),
-        CatalogItem(id: 'jazz', title: 'Jazz Vibes', subtitle: 'The perfect backdrop', coverColor: 0xFF477D95),
+        CatalogItem(id: 'lofi', title: 'Lo-Fi Beats', subtitle: 'Chill instrumental hip-hop', coverColor: 0xFFBA5D07, coverUrl: _cover('lofi')),
+        CatalogItem(id: 'focus', title: 'Deep Focus', subtitle: 'Keep calm and focus', coverColor: 0xFF503750, coverUrl: _cover('focus')),
+        CatalogItem(id: 'run', title: 'Running Mix', subtitle: 'Uptempo motivation', coverColor: 0xFF8D67AB, coverUrl: _cover('run')),
+        CatalogItem(id: 'jazz', title: 'Jazz Vibes', subtitle: 'The perfect backdrop', coverColor: 0xFF477D95, coverUrl: _cover('jazz')),
       ],
     ),
     CatalogSection(
       title: 'Popular albums',
       items: [
-        CatalogItem(id: 'ab1', title: 'Currents', subtitle: 'Tame Impala', coverColor: 0xFFE8115B),
-        CatalogItem(id: 'ab2', title: 'In Rainbows', subtitle: 'Radiohead', coverColor: 0xFF148A08),
-        CatalogItem(id: 'ab3', title: 'Random Access Memories', subtitle: 'Daft Punk', coverColor: 0xFFDC148C),
-        CatalogItem(id: 'ab4', title: 'Blonde', subtitle: 'Frank Ocean', coverColor: 0xFF056952),
+        CatalogItem(id: 'ab1', title: 'Currents', subtitle: 'Tame Impala', coverColor: 0xFFE8115B, coverUrl: _cover('ab1')),
+        CatalogItem(id: 'ab2', title: 'In Rainbows', subtitle: 'Radiohead', coverColor: 0xFF148A08, coverUrl: _cover('ab2')),
+        CatalogItem(id: 'ab3', title: 'Random Access Memories', subtitle: 'Daft Punk', coverColor: 0xFFDC148C, coverUrl: _cover('ab3')),
+        CatalogItem(id: 'ab4', title: 'Blonde', subtitle: 'Frank Ocean', coverColor: 0xFF056952, coverUrl: _cover('ab4')),
       ],
     ),
   ];
@@ -153,7 +173,30 @@ class FakeCatalogRepository implements CatalogRepository {
     ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', Duration(minutes: 7)),
   ];
 
-  static final Map<String, List<Track>> _tracksByItemId = _buildTracks();
+  static final Map<String, List<Track>> _tracksByItemId = _withCovers(_buildTracks());
+
+  /// Stamps every track with its owning item's cover, so the player can show
+  /// artwork from a queue of bare [Track]s (see [Track.coverUrl]).
+  ///
+  /// Applied over the finished map rather than threaded through [_playlist],
+  /// which keeps the tracklists below what they are: pure metadata, with the id
+  /// written once as the map key instead of again on every line.
+  static Map<String, List<Track>> _withCovers(Map<String, List<Track>> byItemId) {
+    return {
+      for (final entry in byItemId.entries)
+        entry.key: [
+          for (final track in entry.value)
+            Track(
+              id: track.id,
+              title: track.title,
+              artist: track.artist,
+              duration: track.duration,
+              audioUrl: track.audioUrl,
+              coverUrl: _cover(entry.key),
+            ),
+        ],
+    };
+  }
 
   /// Builds the tracklists once. Each playlist starts at a different offset
   /// into [_audioPool] (via [_playlist]'s `offset`), so different playlists

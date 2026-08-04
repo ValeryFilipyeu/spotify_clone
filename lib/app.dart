@@ -7,6 +7,8 @@ import 'auth/bloc/auth_state.dart';
 import 'auth/repository/auth_repository.dart';
 import 'catalog/repository/catalog_repository.dart';
 import 'catalog/repository/fake_catalog_repository.dart';
+import 'history/cubit/play_history_cubit.dart';
+import 'history/repository/play_history_repository.dart';
 import 'likes/cubit/likes_cubit.dart';
 import 'likes/repository/likes_repository.dart';
 import 'player/audio/audio_controller.dart';
@@ -23,6 +25,7 @@ class MyApp extends StatelessWidget {
     super.key,
     required this.authRepository,
     required this.likesRepository,
+    required this.playHistoryRepository,
     required this.playbackSettingsRepository,
     required this.audioController,
     this.mediaSession,
@@ -34,6 +37,10 @@ class MyApp extends StatelessWidget {
   /// Injected like [authRepository] so tests can supply an in-memory store
   /// instead of touching shared_preferences' platform channel.
   final LikesRepository likesRepository;
+
+  /// Backs Home's "Recently played" row. Injected for the same reason as
+  /// [likesRepository].
+  final PlayHistoryRepository playHistoryRepository;
 
   /// Backs per-account playback preferences (volume). Injected for the same
   /// reason as [likesRepository].
@@ -63,6 +70,7 @@ class MyApp extends StatelessWidget {
         // concrete fake.
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<LikesRepository>.value(value: likesRepository),
+        RepositoryProvider<PlayHistoryRepository>.value(value: playHistoryRepository),
         RepositoryProvider<PlaybackSettingsRepository>.value(value: playbackSettingsRepository),
         RepositoryProvider<CatalogRepository>(create: (_) => const FakeCatalogRepository()),
       ],
@@ -88,6 +96,15 @@ class MyApp extends StatelessWidget {
           BlocProvider<LikesCubit>(
             create: (context) => LikesCubit(
               repository: context.read<LikesRepository>(),
+              authStateChanges: context.read<AuthRepository>().authStateChanges,
+            ),
+          ),
+          // App-wide for the same reasons: playback is started from several
+          // screens and Home has to see it from all of them, and the history is
+          // per-account, so it follows the auth stream too.
+          BlocProvider<PlayHistoryCubit>(
+            create: (context) => PlayHistoryCubit(
+              repository: context.read<PlayHistoryRepository>(),
               authStateChanges: context.read<AuthRepository>().authStateChanges,
             ),
           ),
