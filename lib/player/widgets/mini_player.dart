@@ -50,21 +50,34 @@ class MiniPlayer extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          MarqueeText(track.title,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                          MarqueeText(track.artist,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
-                        ],
+                      // One node instead of two, and a live region: a track
+                      // change (auto-advance, a crossfade, a lock-screen skip)
+                      // is otherwise completely silent to a screen reader, since
+                      // nothing about it moves focus. The label only changes when
+                      // the track does, so position ticks don't re-announce.
+                      child: Semantics(
+                        liveRegion: true,
+                        label: 'Now playing: ${track.title} by ${track.artist}',
+                        excludeSemantics: true,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MarqueeText(track.title,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            MarqueeText(track.artist,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
+                          ],
+                        ),
                       ),
                     ),
                     IconButton(
                       icon: state.isLoading
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                      tooltip: state.isLoading
+                          ? 'Loading'
+                          : (state.isPlaying ? 'Pause' : 'Play'),
                       onPressed: () => context.read<PlayerBloc>().add(const PlayerPlayPauseToggled()),
                     ),
                     // Dismiss the player: stop playback and clear the queue.
@@ -77,11 +90,16 @@ class MiniPlayer extends StatelessWidget {
                     ),
                   ],
                 ),
-                LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 2,
-                  backgroundColor: Colors.white24,
-                  valueColor: const AlwaysStoppedAnimation(SpotifyColors.green),
+                // Decorative: a 2px hairline duplicating what the full player's
+                // scrubber says properly. Announced, it would be a bare
+                // percentage read out on every tick.
+                ExcludeSemantics(
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 2,
+                    backgroundColor: Colors.white24,
+                    valueColor: const AlwaysStoppedAnimation(SpotifyColors.green),
+                  ),
                 ),
               ],
             ),

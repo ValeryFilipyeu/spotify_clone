@@ -21,7 +21,9 @@ class TrackQueueMenu extends StatelessWidget {
     return PopupMenuButton<_QueueAction>(
       icon: const Icon(Icons.more_vert, color: SpotifyColors.textSecondary),
       iconSize: 20,
-      tooltip: 'More',
+      // Named for the track: a tracklist otherwise offers a column of buttons
+      // all announcing "More", with nothing to say which row each belongs to.
+      tooltip: 'More options for ${track.title}',
       // Both actions start playback when nothing is queued yet (see PlayerBloc).
       onSelected: (action) {
         final bloc = context.read<PlayerBloc>();

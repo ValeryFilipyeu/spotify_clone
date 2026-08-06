@@ -17,7 +17,12 @@ class CatalogSectionRow extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-          child: Text(section.title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          // Same reason as SliverSectionHeader: Home is a stack of rows, and
+          // headings are how you navigate it without sight.
+          child: Semantics(
+            header: true,
+            child: Text(section.title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          ),
         ),
         SizedBox(
           height: 220,

@@ -23,6 +23,10 @@ class FullPlayerPage extends StatelessWidget {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.keyboard_arrow_down),
+          // Every icon-only control here carries a tooltip: it is the visible
+          // hint on desktop/web AND the label a screen reader announces, so one
+          // string serves both. Without it this button is unusable non-visually.
+          tooltip: 'Close Now Playing',
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text('Now Playing', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
@@ -77,7 +81,7 @@ class FullPlayerPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      LikeButton(id: track.id, size: 30),
+                      LikeButton(id: track.id, itemName: track.title, size: 30),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -142,6 +146,15 @@ class _ScrubberState extends State<_Scrubber> {
           child: Slider(
             value: sliderValue.clamp(0, totalMs == 0 ? 1 : totalMs.toDouble()),
             max: totalMs == 0 ? 1 : totalMs.toDouble(),
+            // The slider's value is milliseconds, which a screen reader would
+            // otherwise read out as a bare number ("124000") or a meaningless
+            // percentage. This is also where the slider gets its NAME: Slider
+            // has no separate semantics label, so the spoken value has to say
+            // what it is measuring.
+            semanticFormatterCallback: (value) => totalMs == 0
+                ? 'Playback position unavailable'
+                : 'Position ${spokenDuration(Duration(milliseconds: value.round()))} '
+                    'of ${spokenDuration(widget.state.duration)}',
             onChanged: totalMs == 0 ? null : (value) => setState(() => _dragValue = value),
             onChangeEnd: totalMs == 0
                 ? null
@@ -176,7 +189,10 @@ class _Controls extends StatelessWidget {
   // play/pause glyph swaps to a spinner (they differ in size) or when a button
   // enables/disables -- otherwise the center circle resizes and, with
   // spaceEvenly, shoves prev/next sideways during a scrub/seek.
-  static const double _modeButton = 44;
+  // 48, not 44: Android's minimum tap target is 48dp, and these boxes cap the
+  // IconButton inside them, so a 44 box quietly made shuffle and repeat too
+  // small to be a legal target (caught by androidTapTargetGuideline).
+  static const double _modeButton = 48;
   static const double _sideButton = 56;
   static const double _playButton = 64;
 
@@ -196,6 +212,9 @@ class _Controls extends StatelessWidget {
             // like button uses.
             color: state.isShuffled ? SpotifyColors.green : SpotifyColors.textSecondary,
             tooltip: state.isShuffled ? 'Disable shuffle' : 'Enable shuffle',
+            // Green-vs-grey is the only visual difference; isSelected is what
+            // makes the same distinction audible.
+            isSelected: state.isShuffled,
             onPressed: () => bloc.add(const PlayerShuffleToggled()),
           ),
         ),
@@ -206,6 +225,7 @@ class _Controls extends StatelessWidget {
             iconSize: 40,
             icon: const Icon(Icons.skip_previous),
             color: state.hasPrevious ? Colors.white : Colors.white38,
+            tooltip: 'Previous track',
             onPressed: state.hasPrevious ? () => bloc.add(const PlayerPreviousRequested()) : null,
           ),
         ),
@@ -221,6 +241,13 @@ class _Controls extends StatelessWidget {
               icon: state.isLoading
                   ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black))
                   : Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.black),
+              // Tracks all three states the glyph shows. The spinner contributes
+              // no semantics of its own (ProgressIndicator only emits a node when
+              // given a semanticsLabel), so while loading this tooltip is the
+              // button's ONLY name.
+              tooltip: state.isLoading
+                  ? 'Loading'
+                  : (state.isPlaying ? 'Pause' : 'Play'),
               onPressed: () => bloc.add(const PlayerPlayPauseToggled()),
             ),
           ),
@@ -232,6 +259,7 @@ class _Controls extends StatelessWidget {
             iconSize: 40,
             icon: const Icon(Icons.skip_next),
             color: state.hasNext ? Colors.white : Colors.white38,
+            tooltip: 'Next track',
             onPressed: state.hasNext ? () => bloc.add(const PlayerNextRequested()) : null,
           ),
         ),
@@ -246,11 +274,16 @@ class _Controls extends StatelessWidget {
             color: state.repeatMode == PlayerRepeatMode.off
                 ? SpotifyColors.textSecondary
                 : SpotifyColors.green,
+            // Names the CURRENT mode rather than the next one. The old labels
+            // described what pressing would do, which read as a plain lie out
+            // loud: repeat-all announced itself as "Repeat one track". A
+            // three-way cycle has no honest boolean phrasing, so state it.
             tooltip: switch (state.repeatMode) {
-              PlayerRepeatMode.off => 'Enable repeat',
-              PlayerRepeatMode.all => 'Repeat one track',
-              PlayerRepeatMode.one => 'Disable repeat',
+              PlayerRepeatMode.off => 'Repeat off',
+              PlayerRepeatMode.all => 'Repeat all tracks',
+              PlayerRepeatMode.one => 'Repeat this track',
             },
+            isSelected: state.repeatMode != PlayerRepeatMode.off,
             onPressed: () => bloc.add(const PlayerRepeatModeCycled()),
           ),
         ),
@@ -289,6 +322,10 @@ class _BottomBar extends StatelessWidget {
             ),
             child: Slider(
               value: state.volume,
+              // Names itself for the same reason as the scrubber: the two
+              // sliders on this screen are otherwise indistinguishable by ear,
+              // both announcing a bare percentage.
+              semanticFormatterCallback: (value) => 'Volume ${(value * 100).round()} percent',
               // Fires continuously while dragging: setVolume is cheap and
               // applying it live is what makes the slider feel connected.
               onChanged: (value) => bloc.add(PlayerVolumeChanged(value)),

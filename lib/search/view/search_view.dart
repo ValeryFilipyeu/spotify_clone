@@ -39,7 +39,7 @@ class SearchView extends StatelessWidget {
                   case SearchStatus.initial:
                     return const _Hint(icon: Icons.search, text: 'Search songs, playlists and albums');
                   case SearchStatus.loading:
-                    return const Center(child: CircularProgressIndicator(color: SpotifyColors.green));
+                    return const Center(child: CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
                   case SearchStatus.failure:
                     return ErrorRetry(
                       message: state.errorMessage ?? 'Something went wrong.',

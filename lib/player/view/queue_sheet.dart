@@ -119,9 +119,12 @@ class _SheetHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              'Queue',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            child: Semantics(
+              header: true,
+              child: Text(
+                'Queue',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
             ),
           ),
           IconButton(
@@ -146,13 +149,22 @@ class _SectionLabel extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Text(
-          text.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: SpotifyColors.textSecondary,
-                letterSpacing: 1,
-                fontWeight: FontWeight.w700,
-              ),
+        // header lets a screen reader jump between "Now playing" and "Next up"
+        // instead of walking every row. Labelled from the original casing --
+        // the uppercase is a visual treatment, and screen readers may spell out
+        // or shout all-caps text.
+        child: Semantics(
+          header: true,
+          label: text,
+          excludeSemantics: true,
+          child: Text(
+            text.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: SpotifyColors.textSecondary,
+                  letterSpacing: 1,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
         ),
       ),
     );
@@ -181,6 +193,13 @@ class _QueueRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
+    return Semantics(
+      selected: isCurrent,
+      child: _tile(context, textTheme),
+    );
+  }
+
+  Widget _tile(BuildContext context, TextTheme textTheme) {
     return ListTile(
       onTap: onTap,
       leading: SizedBox(
@@ -188,6 +207,8 @@ class _QueueRow extends StatelessWidget {
         height: 40,
         child: DecoratedBox(
           decoration: const BoxDecoration(color: SpotifyColors.surfaceBright),
+          // Decorative: the speaker glyph repeats what the "Now playing" section
+          // header and the selected state already say.
           child: Icon(
             isCurrent ? Icons.volume_up : Icons.music_note,
             color: isCurrent ? SpotifyColors.green : Colors.white70,
@@ -211,24 +232,37 @@ class _QueueRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (onRemove == null)
-            Text(
-              formatDuration(track.duration),
-              style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+            Semantics(
+              label: spokenDuration(track.duration),
+              excludeSemantics: true,
+              child: Text(
+                formatDuration(track.duration),
+                style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+              ),
             )
           else
             IconButton(
               icon: const Icon(Icons.remove_circle_outline, color: SpotifyColors.textSecondary),
               iconSize: 20,
-              visualDensity: VisualDensity.compact,
-              tooltip: 'Remove from queue',
+              // compact density dropped for the same reason as LikeButton's: it
+              // took the hit box to 40x40, below both platform minimums.
+              tooltip: 'Remove ${track.title} from queue',
               onPressed: onRemove,
             ),
           if (dragIndex != null)
-            ReorderableDragStartListener(
-              index: dragIndex!,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(Icons.drag_handle, color: SpotifyColors.textSecondary),
+            // Hidden from the semantics tree rather than labelled. A drag is not
+            // an interaction anyone can perform without sight, so a focusable
+            // "reorder" element here would be a stop in the swipe order that
+            // does nothing. Reordering stays available the way it should be:
+            // SliverReorderableList attaches localized "Move up/down/to the
+            // start/to the end" custom actions to each row (see the test).
+            ExcludeSemantics(
+              child: ReorderableDragStartListener(
+                index: dragIndex!,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.drag_handle, color: SpotifyColors.textSecondary),
+                ),
               ),
             ),
         ],

@@ -28,7 +28,7 @@ class LibraryView extends StatelessWidget {
           switch (libState.status) {
             case LibraryStatus.initial:
             case LibraryStatus.loading:
-              return const Center(child: CircularProgressIndicator(color: SpotifyColors.green));
+              return const Center(child: CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
             case LibraryStatus.failure:
               return ErrorRetry(
                 message: libState.errorMessage ?? 'Something went wrong.',
@@ -38,7 +38,7 @@ class LibraryView extends StatelessWidget {
               return BlocBuilder<LikesCubit, LikesState>(
                 builder: (context, likes) {
                   if (likes.status == LikesStatus.loading) {
-                    return const Center(child: CircularProgressIndicator(color: SpotifyColors.green));
+                    return const Center(child: CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
                   }
                   final likedItems = libState.allItems.where((i) => likes.isLiked(i.id)).toList();
                   final likedTracks = libState.allTracks.where((h) => likes.isLiked(h.track.id)).toList();

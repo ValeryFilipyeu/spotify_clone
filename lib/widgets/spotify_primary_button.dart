@@ -14,10 +14,18 @@ class SpotifyPrimaryButton extends StatelessWidget {
     return ElevatedButton(
       onPressed: isLoading ? null : onPressed,
       child: isLoading
-          ? const SizedBox(
+          ? SizedBox(
               height: 20,
               width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+              // Without a semanticsLabel the spinner emits no node at all, and
+              // since it replaces the only Text, a submitting button would be
+              // announced as an unnamed disabled button. Keep the name, add the
+              // state.
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.black,
+                semanticsLabel: '$label, in progress',
+              ),
             )
           : Text(label),
     );

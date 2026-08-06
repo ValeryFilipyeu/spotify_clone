@@ -20,14 +20,28 @@ class TrackTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    return Semantics(
+      // ListTile's own `selected` changes colours but emits no semantics, so
+      // without this the green "this is the track playing right now" highlight is
+      // information carried by colour alone -- invisible non-visually.
+      selected: isCurrent,
+      child: _tile(context, textTheme),
+    );
+  }
+
+  Widget _tile(BuildContext context, TextTheme textTheme) {
     return ListTile(
       onTap: onTap,
       leading: SizedBox(
         width: 24,
-        child: Text(
-          '$position',
-          textAlign: TextAlign.center,
-          style: textTheme.bodyMedium?.copyWith(color: SpotifyColors.textSecondary),
+        child: Semantics(
+          label: 'Track $position',
+          excludeSemantics: true,
+          child: Text(
+            '$position',
+            textAlign: TextAlign.center,
+            style: textTheme.bodyMedium?.copyWith(color: SpotifyColors.textSecondary),
+          ),
         ),
       ),
       title: Text(
@@ -45,11 +59,16 @@ class TrackTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            formatDuration(track.duration),
-            style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+          // "3:07" spoken is a clock time, not a length -- see spokenDuration.
+          Semantics(
+            label: spokenDuration(track.duration),
+            excludeSemantics: true,
+            child: Text(
+              formatDuration(track.duration),
+              style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+            ),
           ),
-          LikeButton(id: track.id),
+          LikeButton(id: track.id, itemName: track.title),
           TrackQueueMenu(track: track),
         ],
       ),

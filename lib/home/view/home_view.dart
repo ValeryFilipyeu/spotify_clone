@@ -39,7 +39,7 @@ class HomeView extends StatelessWidget {
           switch (state.status) {
             case HomeStatus.initial:
             case HomeStatus.loading:
-              return const Center(child: CircularProgressIndicator(color: SpotifyColors.green));
+              return const Center(child: CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
             case HomeStatus.failure:
               return ErrorRetry(
                 message: state.errorMessage ?? 'Something went wrong.',
@@ -89,9 +89,12 @@ class _Greeting extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      child: Text(
-        greetingFor(DateTime.now()),
-        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+      child: Semantics(
+        header: true,
+        child: Text(
+          greetingFor(DateTime.now()),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }

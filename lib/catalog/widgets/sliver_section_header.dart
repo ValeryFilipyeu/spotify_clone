@@ -12,9 +12,14 @@ class SliverSectionHeader extends StatelessWidget {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        // header lets a screen reader jump group to group instead of walking
+        // every result row in between.
+        child: Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
         ),
       ),
     );

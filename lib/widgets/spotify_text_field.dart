@@ -50,6 +50,9 @@ class _SpotifyTextFieldState extends State<SpotifyTextField> {
         suffixIcon: widget.obscureText
             ? IconButton(
                 icon: Icon(_obscured ? Icons.visibility_off : Icons.visibility),
+                // The only thing distinguishing the two states is the glyph, so
+                // without this the control is both unnamed AND unreadable.
+                tooltip: _obscured ? 'Show password' : 'Hide password',
                 onPressed: () => setState(() => _obscured = !_obscured),
               )
             : null,

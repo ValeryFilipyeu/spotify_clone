@@ -23,7 +23,7 @@ class DetailView extends StatelessWidget {
           switch (state.status) {
             case DetailStatus.initial:
             case DetailStatus.loading:
-              return _ScaffoldedCenter(child: const CircularProgressIndicator(color: SpotifyColors.green));
+              return _ScaffoldedCenter(child: const CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
             case DetailStatus.failure:
               return _ScaffoldedCenter(
                 child: Column(

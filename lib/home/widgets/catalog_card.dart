@@ -12,50 +12,88 @@ class CatalogCard extends StatelessWidget {
   final CatalogItem item;
   final VoidCallback? onTap;
 
+  static const double _width = 150;
+
+  /// Minimum legal tap target: 48dp on Android, 44pt on iOS.
+  static const double _heartTarget = 48;
+
+  /// The visible disc behind the heart, kept smaller than [_heartTarget] on
+  /// purpose -- see the note in [build].
+  static const double _heartScrim = 34;
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 150,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                SizedBox(
-                  width: 150,
-                  height: 150,
-                  child: CoverArt(url: item.coverUrl, color: item.coverColor),
-                ),
-                // Heart in the corner; a translucent black disc keeps it legible
-                // over any cover colour.
-                Positioned(
-                  right: 4,
-                  bottom: 4,
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
-                    child: LikeButton(id: item.id, size: 18),
+    final textTheme = Theme.of(context).textTheme;
+
+    return SizedBox(
+      width: _width,
+      child: Stack(
+        children: [
+          // The card is one button with one name. MergeSemantics folds the cover,
+          // title and subtitle into the InkWell's own node -- without it the tap
+          // target is an *unnamed* button with the title sitting beside it as a
+          // separate node, so a screen reader lands on the card and says nothing
+          // at all. (labeledTapTargetGuideline catches exactly this.)
+          //
+          // The heart is deliberately a sibling of this subtree rather than
+          // inside it: merged in, it would lose its own name and its own tap
+          // action, and the card would offer no way to like anything.
+          MergeSemantics(
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: _width,
+                    height: _width,
+                    child: CoverArt(url: item.coverUrl, color: item.coverColor),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    item.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // A translucent disc so the heart stays legible on any cover. It sits
+          // *behind* the button rather than wrapping it, so the two can be sized
+          // independently: the button needs a full 48x48 hit box, while a 48px
+          // disc would be a heavy grey blot over the artwork.
+          Positioned(
+            right: 0,
+            top: _width - _heartTarget,
+            child: IgnorePointer(
+              child: SizedBox(
+                width: _heartTarget,
+                height: _heartTarget,
+                child: Center(
+                  child: Container(
+                    width: _heartScrim,
+                    height: _heartScrim,
+                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
                   ),
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            Text(
-              item.subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
-            ),
-          ],
-        ),
+          ),
+          Positioned(
+            right: 0,
+            top: _width - _heartTarget,
+            child: LikeButton(id: item.id, itemName: item.title, size: 18),
+          ),
+        ],
       ),
     );
   }

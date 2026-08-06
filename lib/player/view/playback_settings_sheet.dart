@@ -38,9 +38,12 @@ class PlaybackSettingsSheet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Playback',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Playback',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -64,6 +67,12 @@ class PlaybackSettingsSheet extends StatelessWidget {
                   // divisions make 0 ("Off") easy to hit again.
                   divisions: maxSeconds,
                   label: seconds == 0 ? 'Off' : '$seconds s',
+                  // `label` above is only the visual bubble over the thumb; this
+                  // is what gets spoken, and it has to name the setting since
+                  // Slider has no separate semantics label.
+                  semanticFormatterCallback: (value) => value == 0
+                      ? 'Crossfade off'
+                      : 'Crossfade ${value.round()} ${value.round() == 1 ? 'second' : 'seconds'}',
                   activeColor: SpotifyColors.green,
                   inactiveColor: Colors.white24,
                   onChanged: (value) => context

@@ -25,6 +25,15 @@ class TrackHitTile extends StatelessWidget {
     final currentId = context.select<PlayerBloc, String?>((bloc) => bloc.state.currentTrack?.id);
     final isCurrent = hit.track.id == currentId;
 
+    return Semantics(
+      // Same reason as TrackTile: "playing right now" is a green title and
+      // nothing else, so it has to be said as well as shown.
+      selected: isCurrent,
+      child: _tile(context, textTheme, isCurrent),
+    );
+  }
+
+  Widget _tile(BuildContext context, TextTheme textTheme, bool isCurrent) {
     return ListTile(
       // A song has no cover of its own, so it borrows its album's -- which is
       // already here for the subtitle.
@@ -53,11 +62,15 @@ class TrackHitTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            formatDuration(hit.track.duration),
-            style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+          Semantics(
+            label: spokenDuration(hit.track.duration),
+            excludeSemantics: true,
+            child: Text(
+              formatDuration(hit.track.duration),
+              style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+            ),
           ),
-          LikeButton(id: hit.track.id),
+          LikeButton(id: hit.track.id, itemName: hit.track.title),
         ],
       ),
       onTap: () {
