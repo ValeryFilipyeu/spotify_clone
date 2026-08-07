@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +14,7 @@ import 'package:spotify_clone/home/view/home_view.dart';
 import 'package:spotify_clone/likes/cubit/likes_cubit.dart';
 import 'package:spotify_clone/likes/repository/likes_repository.dart';
 import 'package:spotify_clone/player/bloc/player_bloc.dart';
+import 'package:spotify_clone/theme/spotify_theme.dart';
 import 'package:spotify_clone/widgets/spotify_primary_button.dart';
 import 'package:spotify_clone/widgets/spotify_text_field.dart';
 
@@ -62,6 +64,7 @@ Future<void> withCatalog(
   WidgetTester tester,
   Widget child, {
   required Future<void> Function() body,
+  ThemeData? theme,
 }) async {
   final handle = tester.ensureSemantics();
   Stream<AppUser?> signedIn() => Stream.value(const AppUser('u@spotify.com'));
@@ -83,7 +86,7 @@ Future<void> withCatalog(
           create: (_) => HomeCubit(catalogRepository: const FakeCatalogRepository())..loadSections(),
         ),
       ],
-      child: MaterialApp(home: Scaffold(body: child)),
+      child: MaterialApp(theme: theme, home: Scaffold(body: child)),
     ));
     await tester.pumpAndSettle();
     await body();
@@ -188,6 +191,45 @@ void main() {
         await expectAccessible(tester);
       });
     });
+  });
+
+  // The guidelines above all ran on the flutter_test default platform, which is
+  // Android. ThemeData derives materialTapTargetSize from the platform and picks
+  // shrinkWrap on every desktop -- and the web reports the HOST platform, so a
+  // browser on a Mac gets it too. That took every icon-only control to 40x40,
+  // under both minimums, on three platforms at once. These re-run the same
+  // checks against the app's real theme as a desktop would build it.
+  group('on a desktop platform', () {
+    /// The app's theme, resolved the way [platform] would resolve it. The
+    /// override has to be in place while the theme is CONSTRUCTED -- that is the
+    /// only moment the platform-derived defaults are read, so
+    /// `SpotifyTheme.dark().copyWith(platform: ...)` would prove nothing.
+    ThemeData themeFor(TargetPlatform platform) {
+      debugDefaultTargetPlatformOverride = platform;
+      final theme = SpotifyTheme.dark();
+      // Dropped immediately: the resolved metrics are part of `theme` now, and
+      // flutter_test fails any test that ends with this still set.
+      debugDefaultTargetPlatformOverride = null;
+      return theme;
+    }
+
+    for (final platform in [TargetPlatform.macOS, TargetPlatform.windows, TargetPlatform.linux]) {
+      testWidgets('a tracklist row still meets them on ${platform.name}', (tester) async {
+        await withCatalog(
+          tester,
+          const TrackTile(position: 3, track: _track),
+          theme: themeFor(platform),
+          body: () => expectAccessible(tester),
+        );
+      });
+
+      testWidgets('home still meets them on ${platform.name}', (tester) async {
+        await withCatalog(tester, const HomeView(), theme: themeFor(platform), body: () async {
+          await tester.pumpAndSettle();
+          await expectAccessible(tester);
+        });
+      });
+    }
   });
 
   group('the auth form', () {

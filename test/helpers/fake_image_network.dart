@@ -39,10 +39,7 @@ const List<int> _onePixelPng = [
 /// in a mocking package: HttpClient and friends have dozens of members between
 /// them and this needs exactly four.
 Future<void> pumpWithNetworkImages(WidgetTester tester, Widget widget) async {
-  // Entries are keyed by url, so a url some earlier test failed to load would
-  // come straight back out of the cache as a failure.
-  PaintingBinding.instance.imageCache.clear();
-  debugNetworkImageHttpClientProvider = () => _FakeHttpClient();
+  final network = installFakeImageNetwork();
   try {
     await tester.runAsync(() async {
       await tester.pumpWidget(widget);
@@ -53,35 +50,89 @@ Future<void> pumpWithNetworkImages(WidgetTester tester, Widget widget) async {
     // Back on fake time to run the fade-in to completion.
     await tester.pumpAndSettle();
   } finally {
-    // Both undone here rather than in a tearDown: flutter_test asserts that no
-    // painting debug variable is still set when the test BODY ends, which is
-    // before any tearDown runs. Clearing the cache on the way out also stops a
-    // successfully-loaded url leaking into a later test that needs it to fail.
+    network.restore();
+  }
+}
+
+/// Answers network image requests, with a switch for failing the first few.
+///
+/// Handed back by [installFakeImageNetwork] for tests that have to drive the
+/// pumping themselves -- a retry needs real time for each fetch and fake time
+/// for the backoff in between, which [pumpWithNetworkImages] cannot do for you.
+class FakeImageNetwork {
+  /// Every request the widget under test actually put on the wire. This is what
+  /// proves a retry re-fetched rather than being served the failure again.
+  int requests = 0;
+
+  /// How many of those to answer with a 403, as a throttling CDN does.
+  int failFirst = 0;
+
+  /// How many to leave hanging: connected, no bytes, no error, for ever. This
+  /// is what a failed image looks like on the web, where nothing reports an
+  /// error -- so it is the case only the stall watchdog can get out of.
+  int hangFirst = 0;
+
+  /// MUST be called before the test body ends: flutter_test asserts no painting
+  /// debug variable is left set, and it checks that before any tearDown runs.
+  /// Clearing the cache also stops a url one test loaded standing in for a url
+  /// the next test needs to fail.
+  void restore() {
     debugNetworkImageHttpClientProvider = null;
     PaintingBinding.instance.imageCache.clear();
   }
 }
 
+FakeImageNetwork installFakeImageNetwork({int failFirst = 0, int hangFirst = 0}) {
+  // Entries are keyed by url, so a url some earlier test failed to load would
+  // come straight back out of the cache as a failure.
+  PaintingBinding.instance.imageCache.clear();
+  final network = FakeImageNetwork()
+    ..failFirst = failFirst
+    ..hangFirst = hangFirst;
+  debugNetworkImageHttpClientProvider = () => _FakeHttpClient(network);
+  return network;
+}
+
 class _FakeHttpClient implements HttpClient {
+  _FakeHttpClient(this._network);
+
+  final FakeImageNetwork _network;
+
   @override
   bool autoUncompress = true;
 
-  @override
-  Future<HttpClientRequest> getUrl(Uri url) async => _FakeHttpClientRequest();
+  _FakeHttpClientRequest _request() {
+    _network.requests++;
+    return _FakeHttpClientRequest(
+      refused: _network.requests <= _network.failFirst,
+      hangs: _network.requests <= _network.hangFirst,
+    );
+  }
 
   @override
-  Future<HttpClientRequest> openUrl(String method, Uri url) async => _FakeHttpClientRequest();
+  Future<HttpClientRequest> getUrl(Uri url) async => _request();
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async => _request();
 
   @override
   void noSuchMethod(Invocation invocation) {}
 }
 
 class _FakeHttpClientRequest implements HttpClientRequest {
+  _FakeHttpClientRequest({required this.refused, required this.hangs});
+
+  final bool refused;
+  final bool hangs;
+
   @override
   final HttpHeaders headers = _FakeHttpHeaders();
 
   @override
-  Future<HttpClientResponse> close() async => _FakeHttpClientResponse();
+  Future<HttpClientResponse> close() {
+    if (hangs) return Completer<HttpClientResponse>().future;
+    return Future.value(_FakeHttpClientResponse(refused: refused));
+  }
 
   @override
   void noSuchMethod(Invocation invocation) {}
@@ -91,8 +142,12 @@ class _FakeHttpClientRequest implements HttpClientRequest {
 /// `consolidateHttpClientResponseBytes` (which NetworkImage uses) actually
 /// reads, along with [statusCode], [contentLength] and [compressionState].
 class _FakeHttpClientResponse implements HttpClientResponse {
+  _FakeHttpClientResponse({required this.refused});
+
+  final bool refused;
+
   @override
-  int get statusCode => HttpStatus.ok;
+  int get statusCode => refused ? HttpStatus.forbidden : HttpStatus.ok;
 
   @override
   int get contentLength => _onePixelPng.length;

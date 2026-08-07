@@ -7,6 +7,7 @@ import '../../widgets/marquee_text.dart';
 import '../bloc/player_bloc.dart';
 import '../bloc/player_event.dart';
 import '../bloc/player_state.dart';
+import 'equalizer_bars.dart';
 
 /// The persistent bar shown above every screen while something is loaded.
 /// Renders nothing (zero height) when the queue is empty, so it is invisible
@@ -46,7 +47,37 @@ class MiniPlayer extends StatelessWidget {
                       child: SizedBox(
                         width: 44,
                         height: 44,
-                        child: CoverArt(url: track.coverUrl, borderRadius: 4, iconSize: 22),
+                        child: Stack(
+                          children: [
+                            CoverArt(url: track.coverUrl, borderRadius: 4, iconSize: 22),
+                            // Sits over the artwork rather than beside it: the
+                            // row's width belongs to the title, which already
+                            // has to marquee to fit. The scrim keeps the green
+                            // legible on pale photography -- same reasoning as
+                            // the heart's disc on catalog cards.
+                            Positioned(
+                              left: 3,
+                              bottom: 3,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Colors.black54,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+                                  // Shown paused too, resting flat: it marks the
+                                  // artwork as the thing that is loaded, and only
+                                  // moves while sound is actually coming out --
+                                  // including going still for a mid-track buffer
+                                  // stall, which is worth seeing.
+                                  child: EqualizerBars(
+                                    isActive: state.isPlaying && !state.isLoading,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     Expanded(

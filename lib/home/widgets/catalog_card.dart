@@ -71,27 +71,31 @@ class CatalogCard extends StatelessWidget {
           // *behind* the button rather than wrapping it, so the two can be sized
           // independently: the button needs a full 48x48 hit box, while a 48px
           // disc would be a heavy grey blot over the artwork.
+          //
+          // Both are centred in one box instead of being positioned separately,
+          // so they stay concentric whatever size the button reports. They used
+          // to be two Positioneds pinned to the same corner, which silently drew
+          // the heart 4px up and 4px right of its disc anywhere IconButton was
+          // not exactly 48x48 -- as it is not under a desktop visual density.
           Positioned(
             right: 0,
             top: _width - _heartTarget,
-            child: IgnorePointer(
-              child: SizedBox(
-                width: _heartTarget,
-                height: _heartTarget,
-                child: Center(
-                  child: Container(
-                    width: _heartScrim,
-                    height: _heartScrim,
-                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+            child: SizedBox.square(
+              dimension: _heartTarget,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  IgnorePointer(
+                    child: Container(
+                      width: _heartScrim,
+                      height: _heartScrim,
+                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                    ),
                   ),
-                ),
+                  LikeButton(id: item.id, itemName: item.title, size: 18),
+                ],
               ),
             ),
-          ),
-          Positioned(
-            right: 0,
-            top: _width - _heartTarget,
-            child: LikeButton(id: item.id, itemName: item.title, size: 18),
           ),
         ],
       ),
