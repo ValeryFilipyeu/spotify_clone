@@ -19,18 +19,29 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<CatalogItem>> fetchAllItems() async {
+  Future<List<CatalogItem>> fetchItemsByIds(Iterable<String> ids) async {
+    if (ids.isEmpty) return const [];
     await Future<void>.delayed(const Duration(milliseconds: 400));
-    return _allItems;
+
+    final wanted = ids.toSet();
+    // Filtered from the catalog rather than looked up per id, so the result
+    // keeps the catalog's own order and an id appearing twice yields one item.
+    return [
+      for (final item in _allItems)
+        if (wanted.contains(item.id)) item,
+    ];
   }
 
   @override
-  Future<List<TrackHit>> fetchAllTracks() async {
+  Future<List<TrackHit>> fetchTracksByIds(Iterable<String> ids) async {
+    if (ids.isEmpty) return const [];
     await Future<void>.delayed(const Duration(milliseconds: 400));
+
+    final wanted = ids.toSet();
     return [
       for (final item in _allItems)
         for (final track in _tracksByItemId[item.id] ?? const <Track>[])
-          TrackHit(track: track, album: item),
+          if (wanted.contains(track.id)) TrackHit(track: track, album: item),
     ];
   }
 

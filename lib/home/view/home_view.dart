@@ -43,14 +43,22 @@ class HomeView extends StatelessWidget {
             case HomeStatus.failure:
               return ErrorRetry(
                 message: state.errorMessage ?? 'Something went wrong.',
-                onRetry: () => context.read<HomeCubit>().loadSections(),
+                onRetry: () => context
+                    .read<HomeCubit>()
+                    .loadSections(context.read<PlayHistoryCubit>().state.recentIds),
               );
             case HomeStatus.success:
               // Nested builder, like LibraryView's: the catalog comes from one
               // cubit and what makes this screen *yours* from another, and this
               // is where the two are put together. Playing something anywhere in
               // the app therefore reorders Home with no reload.
-              return BlocBuilder<PlayHistoryCubit, PlayHistoryState>(
+              return BlocConsumer<PlayHistoryCubit, PlayHistoryState>(
+                // History that arrives (or grows) after Home loaded may name
+                // items no row on this screen contains -- something played from
+                // search, say. Ask for those specifically; the cubit ignores ids
+                // it already holds, so the common case costs nothing.
+                listener: (context, history) =>
+                    context.read<HomeCubit>().resolveMissing(history.recentIds),
                 builder: (context, history) {
                   final sections = state.sectionsFor(history.recentIds);
 

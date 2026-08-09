@@ -49,10 +49,10 @@ class _RecordingCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<List<CatalogItem>> fetchAllItems() async => items;
+  Future<List<CatalogItem>> fetchItemsByIds(Iterable<String> ids) async => items;
 
   @override
-  Future<List<TrackHit>> fetchAllTracks() => throw UnimplementedError();
+  Future<List<TrackHit>> fetchTracksByIds(Iterable<String> ids) => throw UnimplementedError();
 
   @override
   Future<List<CatalogSection>> fetchHomeSections() => throw UnimplementedError();
@@ -66,10 +66,10 @@ class _ThrowingCatalogRepository implements CatalogRepository {
   Future<SearchResults> search(String query) async => throw Exception('down');
 
   @override
-  Future<List<CatalogItem>> fetchAllItems() => throw UnimplementedError();
+  Future<List<CatalogItem>> fetchItemsByIds(Iterable<String> ids) => throw UnimplementedError();
 
   @override
-  Future<List<TrackHit>> fetchAllTracks() => throw UnimplementedError();
+  Future<List<TrackHit>> fetchTracksByIds(Iterable<String> ids) => throw UnimplementedError();
 
   @override
   Future<List<CatalogSection>> fetchHomeSections() => throw UnimplementedError();

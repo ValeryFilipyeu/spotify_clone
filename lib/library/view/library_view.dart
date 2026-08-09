@@ -32,16 +32,23 @@ class LibraryView extends StatelessWidget {
             case LibraryStatus.failure:
               return ErrorRetry(
                 message: libState.errorMessage ?? 'Something went wrong.',
-                onRetry: () => context.read<LibraryCubit>().loadLibrary(),
+                onRetry: () => context
+                    .read<LibraryCubit>()
+                    .loadLibrary(context.read<LikesCubit>().state.likedIds),
               );
             case LibraryStatus.success:
-              return BlocBuilder<LikesCubit, LikesState>(
+              return BlocConsumer<LikesCubit, LikesState>(
+                // Liking something new means the catalog entry for it has not
+                // been fetched yet. The cubit ignores a set that has only shrunk,
+                // so unliking still costs no round trip.
+                listener: (context, likes) =>
+                    context.read<LibraryCubit>().syncWith(likes.likedIds),
                 builder: (context, likes) {
                   if (likes.status == LikesStatus.loading) {
                     return const Center(child: CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
                   }
-                  final likedItems = libState.allItems.where((i) => likes.isLiked(i.id)).toList();
-                  final likedTracks = libState.allTracks.where((h) => likes.isLiked(h.track.id)).toList();
+                  final likedItems = libState.items.where((i) => likes.isLiked(i.id)).toList();
+                  final likedTracks = libState.tracks.where((h) => likes.isLiked(h.track.id)).toList();
 
                   if (likedItems.isEmpty && likedTracks.isEmpty) {
                     return const _EmptyLibrary();

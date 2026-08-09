@@ -5,6 +5,24 @@ void main() {
   group('FakeCatalogRepository', () {
     const repository = FakeCatalogRepository();
 
+    /// Every id the catalog exposes. Now that the repository answers by id
+    /// rather than handing over everything, a test that wants "all of it" has
+    /// to say so -- which is the honest shape: this is what the app itself does
+    /// when it resolves a liked or recently-played id.
+    Future<Set<String>> allItemIds() async {
+      final sections = await repository.fetchHomeSections();
+      return sections.expand((section) => section.items).map((item) => item.id).toSet();
+    }
+
+    Future<Set<String>> allTrackIds() async {
+      final ids = <String>{};
+      for (final itemId in await allItemIds()) {
+        final detail = await repository.fetchDetail(itemId);
+        ids.addAll(detail.tracks.map((track) => track.id));
+      }
+      return ids;
+    }
+
     test('returns a non-empty list of sections', () async {
       final sections = await repository.fetchHomeSections();
       expect(sections, isNotEmpty);
@@ -30,20 +48,32 @@ void main() {
       expect(first, second);
     });
 
-    test('fetchAllItems returns every section item, de-duplicated', () async {
-      final sections = await repository.fetchHomeSections();
-      final all = await repository.fetchAllItems();
+    test('fetchItemsByIds returns exactly the items asked for, de-duplicated', () async {
+      final ids = await allItemIds();
 
-      final expectedIds = sections.expand((s) => s.items).map((i) => i.id).toSet();
-      final actualIds = all.map((i) => i.id).toList();
+      final found = await repository.fetchItemsByIds([...ids, ...ids]);
+      final foundIds = found.map((i) => i.id).toList();
 
-      expect(all, isNotEmpty);
-      expect(actualIds.toSet(), expectedIds); // same set of ids
-      expect(actualIds.toSet().length, actualIds.length); // no duplicates
+      expect(found, isNotEmpty);
+      expect(foundIds.toSet(), ids);
+      // An id asked for twice yields one item.
+      expect(foundIds.toSet().length, foundIds.length);
+    });
+
+    test('fetchItemsByIds drops ids the catalog does not have', () async {
+      // An id outlives the thing it points at: a playlist removed since it was
+      // liked simply stops appearing, rather than raising.
+      final found = await repository.fetchItemsByIds(['dm1', 'no-such-id', 'ab2']);
+
+      expect(found.map((i) => i.id), ['dm1', 'ab2']);
+    });
+
+    test('fetchItemsByIds given nothing returns nothing', () async {
+      expect(await repository.fetchItemsByIds(const []), isEmpty);
     });
 
     test('every item has cover artwork', () async {
-      final all = await repository.fetchAllItems();
+      final all = await repository.fetchItemsByIds(await allItemIds());
 
       for (final item in all) {
         expect(item.coverUrl, isNotNull, reason: item.id);
@@ -55,7 +85,7 @@ void main() {
     });
 
     test('items have distinct covers', () async {
-      final all = await repository.fetchAllItems();
+      final all = await repository.fetchItemsByIds(await allItemIds());
 
       expect(all.map((i) => i.coverUrl).toSet(), hasLength(all.length));
     });
@@ -63,7 +93,7 @@ void main() {
     // The player only ever holds a queue of Tracks, so a track has to carry its
     // album's cover for the Now Playing screen and the lock screen to show one.
     test('every track carries its album cover', () async {
-      final hits = await repository.fetchAllTracks();
+      final hits = await repository.fetchTracksByIds(await allTrackIds());
 
       expect(hits, isNotEmpty);
       for (final hit in hits) {
@@ -81,10 +111,9 @@ void main() {
       expect(byUpper.items.map((i) => i.id), bySubtitle.items.map((i) => i.id));
     });
 
-    test('fetchAllTracks returns every track paired with its album', () async {
-      final tracks = await repository.fetchAllTracks();
-      final items = await repository.fetchAllItems();
-      final itemIds = items.map((i) => i.id).toSet();
+    test('fetchTracksByIds pairs every track with its album', () async {
+      final tracks = await repository.fetchTracksByIds(await allTrackIds());
+      final itemIds = await allItemIds();
 
       expect(tracks, isNotEmpty);
       // Every track's album is a real catalog item.

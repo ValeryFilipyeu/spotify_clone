@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'auth/repository/fake_auth_repository.dart';
 import 'auth/repository/session_storage.dart';
+import 'catalog/repository/audius/audius_catalog_repository.dart';
 import 'history/repository/local_play_history_repository.dart';
 import 'likes/repository/local_likes_repository.dart';
 import 'player/audio/crossfade_audio_controller.dart';
@@ -13,6 +14,7 @@ import 'player/audio/just_audio_controller.dart';
 import 'player/repository/local_playback_settings_repository.dart';
 import 'player/session/audio_service_media_session.dart';
 import 'player/session/platform_audio_session.dart';
+import 'network/api_client.dart';
 import 'storage/key_value_store.dart';
 
 Future<void> main() async {
@@ -57,9 +59,20 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final keyValueStore = SharedPreferencesStore(prefs);
 
+  // The real catalog. One long-lived client for the whole app, so its
+  // connection pool and its in-flight de-duplication are shared: Home builds
+  // several rows at once, and the same url wanted twice is one round trip.
+  final catalogRepository = AudiusCatalogRepository(
+    client: ApiClient(
+      baseUrl: AudiusCatalogRepository.baseUrl,
+      defaultQuery: const {'app_name': AudiusCatalogRepository.appName},
+    ),
+  );
+
   runApp(
     MyApp(
       authRepository: authRepository,
+      catalogRepository: catalogRepository,
       likesRepository: LocalLikesRepository(keyValueStore),
       playHistoryRepository: LocalPlayHistoryRepository(keyValueStore),
       playbackSettingsRepository: LocalPlaybackSettingsRepository(keyValueStore),

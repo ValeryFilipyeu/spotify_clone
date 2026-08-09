@@ -28,6 +28,7 @@ class MyApp extends StatelessWidget {
     required this.playHistoryRepository,
     required this.playbackSettingsRepository,
     required this.audioController,
+    this.catalogRepository,
     this.mediaSession,
     this.audioSession,
   });
@@ -51,6 +52,11 @@ class MyApp extends StatelessWidget {
   /// injected.
   final AudioController audioController;
 
+  /// Where the catalog comes from. main() supplies the live API-backed one;
+  /// left null it falls back to the hardcoded [FakeCatalogRepository], which is
+  /// what every widget test wants -- deterministic data and no network.
+  final CatalogRepository? catalogRepository;
+
   /// The OS media session (lock screen, notification, headset buttons). Null in
   /// widget tests, which have no OS session to talk to; the player then simply
   /// has no presence outside the app.
@@ -65,14 +71,16 @@ class MyApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         // Auth is provided by value: it was built and async-restored in
-        // main() before runApp. Catalog needs no bootstrap, so it is created
-        // lazily here -- still the single composition point that names the
-        // concrete fake.
+        // main() before runApp. The catalog either arrives the same way or
+        // falls back to the fake -- either way this stays the single
+        // composition point that names a concrete implementation.
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<LikesRepository>.value(value: likesRepository),
         RepositoryProvider<PlayHistoryRepository>.value(value: playHistoryRepository),
         RepositoryProvider<PlaybackSettingsRepository>.value(value: playbackSettingsRepository),
-        RepositoryProvider<CatalogRepository>(create: (_) => const FakeCatalogRepository()),
+        RepositoryProvider<CatalogRepository>(
+          create: (_) => catalogRepository ?? const FakeCatalogRepository(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [

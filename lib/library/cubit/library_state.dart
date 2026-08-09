@@ -5,38 +5,48 @@ import '../../catalog/models/search_results.dart';
 
 enum LibraryStatus { initial, loading, success, failure }
 
-/// Holds the *whole* catalog (all items and all tracks). The Library screen
-/// itself shows only the liked subset, but which ids are liked is app-wide
-/// state ([LikesCubit]); the view intersects these lists with the live liked
-/// set at build time, so unliking something removes it from the list instantly
-/// without this cubit reloading.
+/// The catalog data behind the "Your Library" tab: the items and tracks the
+/// user has liked, resolved from their ids.
+///
+/// This used to hold the *entire* catalog, which the view then intersected with
+/// the liked set. That only worked because the catalog was a hardcoded list --
+/// a real one cannot be downloaded to find a dozen rows in it.
+///
+/// The view still intersects what is here with the live [LikesCubit] set, and
+/// that is deliberate rather than redundant: unliking something has to remove it
+/// from the list instantly, without waiting for a refetch to come back.
 class LibraryState extends Equatable {
   const LibraryState({
     this.status = LibraryStatus.initial,
-    this.allItems = const [],
-    this.allTracks = const [],
+    this.items = const [],
+    this.tracks = const [],
     this.errorMessage,
   });
 
   final LibraryStatus status;
-  final List<CatalogItem> allItems;
-  final List<TrackHit> allTracks;
+
+  /// Liked albums and playlists.
+  final List<CatalogItem> items;
+
+  /// Liked songs, each paired with the album or playlist it came from.
+  final List<TrackHit> tracks;
+
   final String? errorMessage;
 
   LibraryState copyWith({
     LibraryStatus? status,
-    List<CatalogItem>? allItems,
-    List<TrackHit>? allTracks,
+    List<CatalogItem>? items,
+    List<TrackHit>? tracks,
     String? errorMessage,
   }) {
     return LibraryState(
       status: status ?? this.status,
-      allItems: allItems ?? this.allItems,
-      allTracks: allTracks ?? this.allTracks,
+      items: items ?? this.items,
+      tracks: tracks ?? this.tracks,
       errorMessage: errorMessage,
     );
   }
 
   @override
-  List<Object?> get props => [status, allItems, allTracks, errorMessage];
+  List<Object?> get props => [status, items, tracks, errorMessage];
 }

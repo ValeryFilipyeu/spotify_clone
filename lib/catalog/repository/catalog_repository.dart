@@ -11,14 +11,27 @@ abstract class CatalogRepository {
   /// Loads the sections shown on the home screen.
   Future<List<CatalogSection>> fetchHomeSections();
 
-  /// Loads every browsable item once, de-duplicated across sections. Backs the
-  /// Library screen.
-  Future<List<CatalogItem>> fetchAllItems();
+  /// Loads the items with these [ids], skipping any the catalog no longer has.
+  ///
+  /// This used to be `fetchAllItems()`, which returned the entire catalog. That
+  /// worked only because the catalog was a hardcoded list: no real backend can
+  /// hand over everything it has, and neither caller ever wanted it to. The
+  /// Library resolves the ids the user liked and Home resolves the ids they
+  /// recently played -- both were downloading a whole catalog to look up a
+  /// handful of rows. A fake data source will keep an interface like that
+  /// plausible indefinitely, which is worth remembering the next time one is
+  /// designed against a fake.
+  ///
+  /// Missing ids are dropped rather than raising: an id outlives the thing it
+  /// points at, so a playlist deleted since it was liked simply stops appearing.
+  /// Implementations should tolerate an empty [ids] without making a request.
+  Future<List<CatalogItem>> fetchItemsByIds(Iterable<String> ids);
 
-  /// Loads every track across every catalog, each paired with its containing
-  /// album/playlist. Backs the "liked songs" section of the Library, which
-  /// resolves liked track ids back to their tracks.
-  Future<List<TrackHit>> fetchAllTracks();
+  /// Loads the tracks with these [ids], each paired with the album/playlist it
+  /// belongs to. Backs the "liked songs" section of the Library.
+  ///
+  /// Missing ids are dropped, as in [fetchItemsByIds].
+  Future<List<TrackHit>> fetchTracksByIds(Iterable<String> ids);
 
   /// Searches the catalog for a [query] (case-insensitive), matching both
   /// albums/playlists (by title or subtitle) and individual songs across every
