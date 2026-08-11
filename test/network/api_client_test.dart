@@ -1,3 +1,10 @@
+// Also run compiled to JavaScript in CI: on the web `package:http` resolves to a
+// browser client rather than a socket one, so this is the layer whose platform
+// implementation actually differs. Reads no fixtures, which is what keeps it
+// runnable there.
+@Tags(['web'])
+library;
+
 import 'dart:async';
 import 'dart:convert';
 

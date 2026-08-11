@@ -1,3 +1,8 @@
+// Runs on the VM and, in CI, compiled to JavaScript -- see the note on
+// referenceHash below for why that is not redundant here.
+@Tags(['web'])
+library;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotify_clone/theme/cover_palette.dart';
 

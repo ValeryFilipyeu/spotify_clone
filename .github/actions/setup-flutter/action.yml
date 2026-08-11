@@ -1,0 +1,29 @@
+name: Set up Flutter
+description: >
+  Installs the Flutter SDK this project is pinned to and fetches dependencies.
+
+runs:
+  using: composite
+  steps:
+    # The version is read from .fvmrc rather than written here, so there is one
+    # source of truth. Pinning it in the workflow as well would let the two drift,
+    # and the failure that causes is the worst kind: CI passing on an SDK nobody
+    # develops against, or failing on one nobody can reproduce locally.
+    - id: pin
+      shell: bash
+      run: |
+        version=$(jq -er '.flutter' .fvmrc)
+        echo "Pinned by .fvmrc: Flutter $version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    # Installs plain Flutter, not FVM: fvm exists to juggle several SDKs on one
+    # machine, and a runner is thrown away after every job. Same version either
+    # way, so `flutter` here is what `fvm flutter` is locally.
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ steps.pin.outputs.version }}
+        channel: stable
+        cache: true
+
+    - shell: bash
+      run: flutter pub get

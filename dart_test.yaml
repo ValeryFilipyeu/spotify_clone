@@ -1,0 +1,15 @@
+# Declares the tags used across the suite. Without this, package:test warns that
+# a tag is unrecognised -- which is the point of declaring them: a typo in a tag
+# name would otherwise silently exclude a test from the run that was meant to
+# cover it.
+tags:
+  web:
+    # Tests that also run compiled to JavaScript, via
+    # `flutter test --platform chrome --tags web`.
+    #
+    # Most of the suite cannot: widget tests need platform channels and anything
+    # reading a fixture needs dart:io. What is tagged here is pure Dart, and
+    # tagged because the web is not merely another place to run it -- it computes
+    # differently there. `int` is a JavaScript double, so arithmetic above 2^53
+    # loses precision that the VM keeps exactly. A test can pass on the VM for
+    # ever while the shipped web app is wrong.

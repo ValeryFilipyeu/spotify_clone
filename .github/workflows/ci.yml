@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # So a run can be triggered by hand from the Actions tab, which is the quickest
+  # way to check a change to this file without pushing a commit to prove it.
+  workflow_dispatch:
+
+# A second push to the same branch makes the first run's answer irrelevant.
+# Cancelling it frees the runner and stops a stale red X arriving after a green
+# one. Never cancels on the default branch, where every commit's result matters
+# on its own.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  test:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+
+      # No --fatal-infos: `flutter analyze` already exits non-zero on an info,
+      # measured rather than assumed. The whole project is currently clean of
+      # them, so this holds that line.
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test --coverage
+
+      # Read straight out of lcov.info: LH is lines hit, LF lines found, one pair
+      # per file. Avoids installing lcov just to print one number.
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ ! -f coverage/lcov.info ]; then
+            echo "No coverage produced." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          awk -F: '/^LH:/{hit+=$2} /^LF:/{found+=$2} END {
+            printf "**Line coverage: %d/%d (%.1f%%)**\n", hit, found, (found ? 100*hit/found : 0)
+          }' coverage/lcov.info >> "$GITHUB_STEP_SUMMARY"
+
+      # Kept as an artifact rather than pushed to a coverage service: no account,
+      # no token, and the number is already on the run's summary page. The file is
+      # here for when a drop needs explaining line by line.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
+
+  web:
+    name: Web (compiled to JavaScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+
+      # Flutter finds Chrome via CHROME_EXECUTABLE or the PATH, and the binary's
+      # name differs between images. Resolving it here rather than hardcoding
+      # /usr/bin/google-chrome means a runner image change shows up as a clear
+      # "Chrome not found" instead of a confusing test-runner failure.
+      - name: Locate Chrome
+        run: |
+          chrome=$(command -v google-chrome || command -v chromium-browser || command -v chromium || true)
+          if [ -z "$chrome" ]; then
+            echo "::error::No Chrome found on this runner; the web tests cannot run."
+            exit 1
+          fi
+          echo "Using $chrome"
+          echo "CHROME_EXECUTABLE=$chrome" >> "$GITHUB_ENV"
+
+      # The reason this job exists at all. On the web Dart's `int` is a JavaScript
+      # double, so arithmetic above 2^53 loses precision the VM keeps exactly, and
+      # `package:http` resolves to a browser client instead of a socket one.
+      # A test can pass on the VM forever while the shipped web app is wrong.
+      # Only the pure-Dart tests can run here -- see dart_test.yaml.
+      - name: Test on Chrome
+        run: flutter test --platform chrome --tags web
+
+      # Catches a `dart:io` import reaching lib/, which does not exist on the web:
+      # it fails the build outright rather than at runtime. Cheap insurance on a
+      # project that talks HTTP.
+      - name: Build web
+        run: flutter build web --release
+
+  android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Not installed by the Flutter action, and Gradle needs it.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: ./.github/actions/setup-flutter
+
+      # Debug, not release: a release build wants signing keys this repo
+      # deliberately does not carry. Compiling is what is being checked here --
+      # that the Gradle config, the manifest and the plugins still agree.
+      - name: Build APK
+        run: flutter build apk --debug
+
+  apple:
+    name: Build macOS and iOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+
+      # The two platforms whose bugs this project has actually hit -- and the
+      # slowest job by a wide margin, which is why it is separate: the test
+      # results above do not wait on it. Free on a public repository.
+      - name: Build macOS
+        run: flutter build macos --debug
+
+      # --no-codesign: signing needs an Apple Developer team, and this only has
+      # to prove the project still compiles for iOS.
+      - name: Build iOS
+        run: flutter build ios --debug --no-codesign

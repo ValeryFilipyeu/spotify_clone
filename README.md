@@ -1,5 +1,7 @@
 # spotify_clone
 
+[![CI](https://github.com/ValeryFilipyeu/spotify_clone/actions/workflows/ci.yml/badge.svg)](https://github.com/ValeryFilipyeu/spotify_clone/actions/workflows/ci.yml)
+
 A new Flutter project.
 
 ## Getting Started
