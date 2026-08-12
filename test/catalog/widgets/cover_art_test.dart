@@ -9,8 +9,10 @@ const _url = 'https://example.test/cover.png';
 /// A cover at a known size, so the decode assertions have something to compare
 /// against.
 Widget _sized(Widget child, {double size = 48}) => MaterialApp(
-      home: Center(child: SizedBox(width: size, height: size, child: child)),
-    );
+  home: Center(
+    child: SizedBox(width: size, height: size, child: child),
+  ),
+);
 
 void main() {
   group('CoverArt', () {

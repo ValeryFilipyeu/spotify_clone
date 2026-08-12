@@ -16,7 +16,8 @@ class DetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => DetailCubit(catalogRepository: context.read<CatalogRepository>())..loadDetail(itemId),
+      create: (context) =>
+          DetailCubit(catalogRepository: context.read<CatalogRepository>())..loadDetail(itemId),
       child: const DetailView(),
     );
   }

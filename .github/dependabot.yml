@@ -1,0 +1,26 @@
+version: 2
+
+updates:
+  # Actions are pinned by major tag (@v4, @v2), which floats within a major and
+  # stops at the next one. That is the version that quietly rots: a major bump
+  # never arrives on its own, and the first sign is usually a deprecation warning
+  # on a runner, months later.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    labels: [ci]
+
+  # A second entry because the github-actions ecosystem only scans the directory
+  # it is pointed at. The first covers .github/workflows; the composite action
+  # has its own action.yml, with its own `uses:` line, and would otherwise never
+  # be looked at.
+  - package-ecosystem: github-actions
+    directory: /.github/actions/setup-flutter
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    labels: [ci]

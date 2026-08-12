@@ -65,8 +65,7 @@ void main() {
       expect(session.activateCount, greaterThan(before));
     });
 
-    test('happens on resume, since somebody else may own the device now',
-        () async {
+    test('happens on resume, since somebody else may own the device now', () async {
       await startPlaying();
       audio.emitPlaying(false);
       await _settle();

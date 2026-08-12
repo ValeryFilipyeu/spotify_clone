@@ -56,8 +56,11 @@ void main() {
       final detail = await fake.repository.fetchDetail('RKxOQ');
 
       for (final track in detail.tracks) {
-        expect(track.audioUrl, 'https://api.audius.co/v1/tracks/${track.id}/stream'
-            '?app_name=${AudiusCatalogRepository.appName}');
+        expect(
+          track.audioUrl,
+          'https://api.audius.co/v1/tracks/${track.id}/stream'
+          '?app_name=${AudiusCatalogRepository.appName}',
+        );
       }
     });
 
@@ -68,19 +71,13 @@ void main() {
         statuses: {'playlists/': 400},
       );
 
-      await expectLater(
-        fake.repository.fetchDetail('ZZZZZ'),
-        throwsA(isA<CatalogItemNotFound>()),
-      );
+      await expectLater(fake.repository.fetchDetail('ZZZZZ'), throwsA(isA<CatalogItemNotFound>()));
     });
 
     test('an empty result is also not found', () async {
       final fake = repositoryWith({'playlists/': 'audius/empty_data'});
 
-      await expectLater(
-        fake.repository.fetchDetail('RKxOQ'),
-        throwsA(isA<CatalogItemNotFound>()),
-      );
+      await expectLater(fake.repository.fetchDetail('RKxOQ'), throwsA(isA<CatalogItemNotFound>()));
     });
 
     test('a server error is not disguised as a missing item', () async {
@@ -90,10 +87,7 @@ void main() {
         statuses: {'playlists/': 500},
       );
 
-      await expectLater(
-        fake.repository.fetchDetail('RKxOQ'),
-        throwsA(isA<HttpErrorStatus>()),
-      );
+      await expectLater(fake.repository.fetchDetail('RKxOQ'), throwsA(isA<HttpErrorStatus>()));
     });
   });
 
@@ -200,7 +194,12 @@ void main() {
 
       final sections = await fake.repository.fetchHomeSections();
 
-      expect(sections.map((s) => s.title), ['Trending playlists', 'Lo-fi & chill', 'Jazz', 'Electronic']);
+      expect(sections.map((s) => s.title), [
+        'Trending playlists',
+        'Lo-fi & chill',
+        'Jazz',
+        'Electronic',
+      ]);
       for (final section in sections) {
         expect(section.items, isNotEmpty);
       }
@@ -209,10 +208,7 @@ void main() {
     test('a row that fails is dropped rather than taking the screen with it', () async {
       // Three rows out of four is still a home screen.
       final fake = repositoryWith(
-        {
-          'playlists/trending': 'audius/empty_data',
-          'playlists/search': 'audius/playlist_search',
-        },
+        {'playlists/trending': 'audius/empty_data', 'playlists/search': 'audius/playlist_search'},
         statuses: {'playlists/trending': 503},
       );
 
@@ -222,10 +218,7 @@ void main() {
     });
 
     test('every row failing is a failure, not a blank screen', () async {
-      final fake = repositoryWith(
-        {'playlists': 'audius/empty_data'},
-        statuses: {'playlists': 503},
-      );
+      final fake = repositoryWith({'playlists': 'audius/empty_data'}, statuses: {'playlists': 503});
 
       await expectLater(fake.repository.fetchHomeSections(), throwsA(isA<ApiFailure>()));
     });
@@ -248,8 +241,13 @@ void main() {
 
       await expectLater(
         fake.repository.fetchDetail('RKxOQ'),
-        throwsA(isA<MalformedResponse>()
-            .having((f) => f.uri.path, 'uri.path', contains('playlists/RKxOQ'))),
+        throwsA(
+          isA<MalformedResponse>().having(
+            (f) => f.uri.path,
+            'uri.path',
+            contains('playlists/RKxOQ'),
+          ),
+        ),
       );
     });
   });

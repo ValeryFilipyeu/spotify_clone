@@ -77,17 +77,23 @@ Future<void> withCatalog(
   addTearDown(history.close);
 
   try {
-    await tester.pumpWidget(MultiBlocProvider(
-      providers: [
-        BlocProvider.value(value: player),
-        BlocProvider.value(value: likes),
-        BlocProvider.value(value: history),
-        BlocProvider(
-          create: (_) => HomeCubit(catalogRepository: const FakeCatalogRepository())..loadSections(),
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: player),
+          BlocProvider.value(value: likes),
+          BlocProvider.value(value: history),
+          BlocProvider(
+            create: (_) =>
+                HomeCubit(catalogRepository: const FakeCatalogRepository())..loadSections(),
+          ),
+        ],
+        child: MaterialApp(
+          theme: theme,
+          home: Scaffold(body: child),
         ),
-      ],
-      child: MaterialApp(theme: theme, home: Scaffold(body: child)),
-    ));
+      ),
+    );
     await tester.pumpAndSettle();
     await body();
   } finally {
@@ -99,8 +105,7 @@ void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   group('a tracklist row', () {
-    testWidgets('names the heart and the overflow menu after its track',
-        (tester) async {
+    testWidgets('names the heart and the overflow menu after its track', (tester) async {
       await withCatalog(
         tester,
         const TrackTile(position: 3, track: _track),
@@ -169,27 +174,34 @@ void main() {
   });
 
   group('home', () {
-    testWidgets('marks the greeting and every row title as a heading',
-        (tester) async {
-      await withCatalog(tester, const HomeView(), body: () async {
-        await tester.pumpAndSettle(); // let the catalog load
-        final found = headings(tester);
+    testWidgets('marks the greeting and every row title as a heading', (tester) async {
+      await withCatalog(
+        tester,
+        const HomeView(),
+        body: () async {
+          await tester.pumpAndSettle(); // let the catalog load
+          final found = headings(tester);
 
-        expect(found, contains('Made for you'));
-        expect(found, contains('Popular albums'));
-        expect(
-          found.any((heading) => heading.startsWith('Good ')),
-          isTrue,
-          reason: 'the greeting leads the screen, so it is its first heading',
-        );
-      });
+          expect(found, contains('Made for you'));
+          expect(found, contains('Popular albums'));
+          expect(
+            found.any((heading) => heading.startsWith('Good ')),
+            isTrue,
+            reason: 'the greeting leads the screen, so it is its first heading',
+          );
+        },
+      );
     });
 
     testWidgets('meets the tap-target and labelling guidelines', (tester) async {
-      await withCatalog(tester, const HomeView(), body: () async {
-        await tester.pumpAndSettle();
-        await expectAccessible(tester);
-      });
+      await withCatalog(
+        tester,
+        const HomeView(),
+        body: () async {
+          await tester.pumpAndSettle();
+          await expectAccessible(tester);
+        },
+      );
     });
   });
 
@@ -224,28 +236,30 @@ void main() {
       });
 
       testWidgets('home still meets them on ${platform.name}', (tester) async {
-        await withCatalog(tester, const HomeView(), theme: themeFor(platform), body: () async {
-          await tester.pumpAndSettle();
-          await expectAccessible(tester);
-        });
+        await withCatalog(
+          tester,
+          const HomeView(),
+          theme: themeFor(platform),
+          body: () async {
+            await tester.pumpAndSettle();
+            await expectAccessible(tester);
+          },
+        );
       });
     }
   });
 
   group('the auth form', () {
-    testWidgets('names the password visibility toggle in both states',
-        (tester) async {
+    testWidgets('names the password visibility toggle in both states', (tester) async {
       final handle = tester.ensureSemantics();
       try {
-        await tester.pumpWidget(MaterialApp(
-          home: Scaffold(
-            body: SpotifyTextField(
-              labelText: 'Password',
-              obscureText: true,
-              onChanged: (_) {},
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SpotifyTextField(labelText: 'Password', obscureText: true, onChanged: (_) {}),
             ),
           ),
-        ));
+        );
 
         expect(find.byTooltip('Show password'), findsOneWidget);
 
@@ -264,11 +278,13 @@ void main() {
     testWidgets('a submitting button keeps its name', (tester) async {
       final handle = tester.ensureSemantics();
       try {
-        await tester.pumpWidget(MaterialApp(
-          home: Scaffold(
-            body: SpotifyPrimaryButton(label: 'Log in', onPressed: () {}, isLoading: true),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SpotifyPrimaryButton(label: 'Log in', onPressed: () {}, isLoading: true),
+            ),
           ),
-        ));
+        );
         await tester.pump();
 
         expect(spokenText(tester), contains('Log in, in progress'));
@@ -278,4 +294,3 @@ void main() {
     });
   });
 }
-

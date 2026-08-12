@@ -39,6 +39,7 @@ class FakeAudioController implements AudioController {
     if (loadDelay > Duration.zero) await Future<void>.delayed(loadDelay);
     return _durationFor(url);
   }
+
   final _position = StreamController<Duration>.broadcast();
   final _duration = StreamController<Duration?>.broadcast();
   final _playing = StreamController<bool>.broadcast();

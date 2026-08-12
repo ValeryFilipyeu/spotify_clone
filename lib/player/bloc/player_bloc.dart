@@ -27,13 +27,13 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     MediaSession? mediaSession,
     PlaybackAudioSession? audioSession,
     Random? random,
-        // ignore_for_file: prefer_initializing_formals -- keeps public param names.
-  })  : _audioController = audioController,
-        _settingsRepository = settingsRepository,
-        _mediaSession = mediaSession ?? const NoopMediaSession(),
-        _audioSession = audioSession ?? const NoopPlaybackAudioSession(),
-        _random = random ?? Random(),
-        super(const PlayerState()) {
+    // ignore_for_file: prefer_initializing_formals -- keeps public param names.
+  }) : _audioController = audioController,
+       _settingsRepository = settingsRepository,
+       _mediaSession = mediaSession ?? const NoopMediaSession(),
+       _audioSession = audioSession ?? const NoopPlaybackAudioSession(),
+       _random = random ?? Random(),
+       super(const PlayerState()) {
     on<PlayerTrackStarted>(_onTrackStarted);
     on<PlayerPlayPauseToggled>(_onPlayPauseToggled);
     on<PlayerResumeRequested>((_, _) => _resume());
@@ -67,8 +67,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     _interruptionSub = _audioSession.interruptions.listen((event) {
       add(switch (event) {
         AudioInterruptionBegan(:final duck) => PlayerInterruptionBegan(duck: duck),
-        AudioInterruptionEnded(:final shouldResume) =>
-          PlayerInterruptionEnded(shouldResume: shouldResume),
+        AudioInterruptionEnded(:final shouldResume) => PlayerInterruptionEnded(
+          shouldResume: shouldResume,
+        ),
         AudioOutputDisconnected() => const PlayerOutputDisconnected(),
       });
     });
@@ -326,7 +327,10 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     }
   }
 
-  Future<void> _onPreviousRequested(PlayerPreviousRequested event, Emitter<PlayerState> emit) async {
+  Future<void> _onPreviousRequested(
+    PlayerPreviousRequested event,
+    Emitter<PlayerState> emit,
+  ) async {
     if (!state.hasTrack) return;
     if (state.currentIndex > 0) {
       await _goTo(state.currentIndex - 1, emit);
@@ -435,11 +439,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   /// stalls, and the new audio is already audible while it loads.
   Future<void> _crossfadeTo(int index, Emitter<PlayerState> emit) async {
     final track = state.queue[index];
-    emit(state.copyWith(
-      currentIndex: index,
-      position: Duration.zero,
-      duration: track.duration,
-    ));
+    emit(state.copyWith(currentIndex: index, position: Duration.zero, duration: track.duration));
     // Loading the incoming track is a network round-trip; until it lands we have
     // already advanced, so nothing else may advance again (see _onCompleted).
     _isCrossfading = true;
@@ -521,18 +521,16 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       final restored = _restoredOrder();
       final current = state.currentTrack!;
       final index = restored.indexWhere((t) => t.id == current.id);
-      emit(state.copyWith(
-        isShuffled: false,
-        queue: restored,
-        currentIndex: index < 0 ? 0 : index,
-      ));
+      emit(state.copyWith(isShuffled: false, queue: restored, currentIndex: index < 0 ? 0 : index));
     } else {
-      emit(state.copyWith(
-        isShuffled: true,
-        queue: _shuffledFrom(state.queue, state.currentIndex),
-        // The current track is moved to the front of the shuffled order.
-        currentIndex: 0,
-      ));
+      emit(
+        state.copyWith(
+          isShuffled: true,
+          queue: _shuffledFrom(state.queue, state.currentIndex),
+          // The current track is moved to the front of the shuffled order.
+          currentIndex: 0,
+        ),
+      );
     }
   }
 
@@ -564,8 +562,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final duration = event.duration.isNegative
         ? Duration.zero
         : (event.duration > PlayerState.maxCrossfadeDuration
-            ? PlayerState.maxCrossfadeDuration
-            : event.duration);
+              ? PlayerState.maxCrossfadeDuration
+              : event.duration);
     emit(state.copyWith(crossfadeDuration: duration));
 
     final userId = _userId;
@@ -588,7 +586,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final repository = _settingsRepository;
     // Signed out: forget this account's preferences rather than leaking them to
     // whoever signs in next.
-    final volume = userId == null ? _defaultVolume : await repository?.fetchVolume(userId) ?? _defaultVolume;
+    final volume = userId == null
+        ? _defaultVolume
+        : await repository?.fetchVolume(userId) ?? _defaultVolume;
     final crossfade = userId == null
         ? Duration.zero
         : await repository?.fetchCrossfadeDuration(userId) ?? Duration.zero;
@@ -622,7 +622,10 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   // --- Queue editing ---
 
-  Future<void> _onQueueIndexSelected(PlayerQueueIndexSelected event, Emitter<PlayerState> emit) async {
+  Future<void> _onQueueIndexSelected(
+    PlayerQueueIndexSelected event,
+    Emitter<PlayerState> emit,
+  ) async {
     if (event.index < 0 || event.index >= state.queue.length) return;
     if (event.index == state.currentIndex) return; // already playing it
     await _goTo(event.index, emit);
@@ -704,29 +707,33 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final queue = shuffled ? _shuffledFrom(source, start) : source;
     final index = shuffled ? 0 : start;
 
-    emit(state.copyWith(
-      queue: queue,
-      sourceQueue: source,
-      currentIndex: index,
-      isLoading: true,
-      position: Duration.zero,
-      // Seed from the track's known duration so the scrubber has a scale
-      // immediately. On iOS the audio engine reports duration as 0 (never the
-      // real value), so this seed is what the timeline relies on there; on
-      // Android/web the engine's real duration overrides it (see below).
-      duration: queue[index].duration,
-    ));
+    emit(
+      state.copyWith(
+        queue: queue,
+        sourceQueue: source,
+        currentIndex: index,
+        isLoading: true,
+        position: Duration.zero,
+        // Seed from the track's known duration so the scrubber has a scale
+        // immediately. On iOS the audio engine reports duration as 0 (never the
+        // real value), so this seed is what the timeline relies on there; on
+        // Android/web the engine's real duration overrides it (see below).
+        duration: queue[index].duration,
+      ),
+    );
     await _playCurrent(emit);
   }
 
   /// Moves to [index] and (re)loads its audio.
   Future<void> _goTo(int index, Emitter<PlayerState> emit) async {
-    emit(state.copyWith(
-      currentIndex: index,
-      isLoading: true,
-      position: Duration.zero,
-      duration: state.queue[index].duration,
-    ));
+    emit(
+      state.copyWith(
+        currentIndex: index,
+        isLoading: true,
+        position: Duration.zero,
+        duration: state.queue[index].duration,
+      ),
+    );
     await _playCurrent(emit);
   }
 
@@ -760,11 +767,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   /// queue (dismissing the player, or removing its last entry) is a session
   /// reset, not a preferences reset.
   PlayerState _clearedState() => PlayerState(
-        isShuffled: state.isShuffled,
-        repeatMode: state.repeatMode,
-        volume: state.volume,
-        crossfadeDuration: state.crossfadeDuration,
-      );
+    isShuffled: state.isShuffled,
+    repeatMode: state.repeatMode,
+    volume: state.volume,
+    crossfadeDuration: state.crossfadeDuration,
+  );
 
   Future<void> _playCurrent(Emitter<PlayerState> emit) async {
     final track = state.currentTrack;

@@ -55,7 +55,10 @@ extension JsonReader on Map<String, Object?> {
         if (element is Map<String, Object?>)
           element
         else
-          throw JsonFormatError('${_path(at, key)}[$index]', 'expected an object, got ${element.runtimeType}'),
+          throw JsonFormatError(
+            '${_path(at, key)}[$index]',
+            'expected an object, got ${element.runtimeType}',
+          ),
     ];
   }
 

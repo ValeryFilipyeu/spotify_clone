@@ -15,7 +15,8 @@ class AuthState extends Equatable {
   /// cold boot) -- never "authenticating", just "do not know yet".
   const AuthState.unknown() : this._();
 
-  const AuthState.authenticated(AppUser user) : this._(status: AuthStatus.authenticated, user: user);
+  const AuthState.authenticated(AppUser user)
+    : this._(status: AuthStatus.authenticated, user: user);
 
   const AuthState.unauthenticated() : this._(status: AuthStatus.unauthenticated);
 

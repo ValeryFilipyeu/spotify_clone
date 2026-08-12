@@ -30,21 +30,46 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      # No --line-length here on purpose: the width lives in analysis_options.yaml
+      # (`formatter: page_width`), which a bare `dart format` reads. Passing it as
+      # a flag would mean CI and everyone's editor could disagree.
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
       - name: Test
         run: flutter test --coverage
 
       # Read straight out of lcov.info: LH is lines hit, LF lines found, one pair
       # per file. Avoids installing lcov just to print one number.
-      - name: Coverage summary
-        if: always()
+      #
+      # The floor sits a few points under the real figure rather than at it. A
+      # floor set to today's number fails the next honest refactor that deletes
+      # well-covered code, and the fix for that is always to weaken the floor --
+      # so it may as well start where it can survive normal movement and only
+      # fire on a genuine drop.
+      - name: Coverage summary and floor
+        env:
+          MIN_COVERAGE: 80
         run: |
           if [ ! -f coverage/lcov.info ]; then
-            echo "No coverage produced." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::No coverage file was produced."
+            exit 1
           fi
-          awk -F: '/^LH:/{hit+=$2} /^LF:/{found+=$2} END {
-            printf "**Line coverage: %d/%d (%.1f%%)**\n", hit, found, (found ? 100*hit/found : 0)
-          }' coverage/lcov.info >> "$GITHUB_STEP_SUMMARY"
+
+          read -r hit found <<< "$(awk -F: '/^LH:/{h+=$2} /^LF:/{f+=$2} END {print h+0, f+0}' coverage/lcov.info)"
+          if [ "$found" -eq 0 ]; then
+            echo "::error::lcov.info recorded no lines at all."
+            exit 1
+          fi
+          pct=$(awk -v h="$hit" -v f="$found" 'BEGIN { printf "%.1f", 100*h/f }')
+
+          echo "**Line coverage: $hit/$found ($pct%)** — floor ${MIN_COVERAGE}%" >> "$GITHUB_STEP_SUMMARY"
+
+          if awk -v p="$pct" -v m="$MIN_COVERAGE" 'BEGIN { exit (p < m) ? 0 : 1 }'; then
+            echo "::error::Coverage $pct% is below the ${MIN_COVERAGE}% floor."
+            exit 1
+          fi
+          echo "Coverage $pct% is at or above the ${MIN_COVERAGE}% floor."
 
       # Kept as an artifact rather than pushed to a coverage service: no account,
       # no token, and the number is already on the run's summary page. The file is

@@ -82,8 +82,11 @@ void main() {
       await controller.crossfadeTo('url-2', fade: _fade);
       stopwatch.stop();
 
-      expect(stopwatch.elapsed, lessThan(_slowLoad),
-          reason: 'the handover must not wait for a load that already happened');
+      expect(
+        stopwatch.elapsed,
+        lessThan(_slowLoad),
+        reason: 'the handover must not wait for a load that already happened',
+      );
       await _afterRamp();
       expect(a.volumes, isNotEmpty, reason: 'the outgoing track actually faded down');
       expect(a.volumes, contains(0.0), reason: 'and reached silence');

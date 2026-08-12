@@ -9,8 +9,20 @@ import '../fake_audio_controller.dart';
 import 'fake_media_session.dart';
 
 const _queue = [
-  Track(id: 't1', title: 'One', artist: 'Artist A', duration: Duration(minutes: 3), audioUrl: 'url-1'),
-  Track(id: 't2', title: 'Two', artist: 'Artist B', duration: Duration(minutes: 4), audioUrl: 'url-2'),
+  Track(
+    id: 't1',
+    title: 'One',
+    artist: 'Artist A',
+    duration: Duration(minutes: 3),
+    audioUrl: 'url-1',
+  ),
+  Track(
+    id: 't2',
+    title: 'Two',
+    artist: 'Artist B',
+    duration: Duration(minutes: 4),
+    audioUrl: 'url-2',
+  ),
 ];
 
 /// Commands arrive on a stream, are turned into events, and the bloc processes

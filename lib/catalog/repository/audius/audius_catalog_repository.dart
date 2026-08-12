@@ -73,12 +73,15 @@ class AudiusCatalogRepository implements CatalogRepository {
   Future<CatalogSection?> _sectionOrNull(String title, String? query) async {
     try {
       final path = query == null ? 'playlists/trending' : 'playlists/search';
-      final data = await _getData(path, query: {
-        // Null-aware element: the trending row takes no query at all, and
-        // ApiClient drops a null value rather than sending `query=`.
-        'query': ?query,
-        'limit': '$_rowLength',
-      });
+      final data = await _getData(
+        path,
+        query: {
+          // Null-aware element: the trending row takes no query at all, and
+          // ApiClient drops a null value rather than sending `query=`.
+          'query': ?query,
+          'limit': '$_rowLength',
+        },
+      );
 
       final items = _read(
         _client.uriFor(path),
@@ -119,8 +122,7 @@ class AudiusCatalogRepository implements CatalogRepository {
     final dtos = _read(
       _client.uriFor('tracks'),
       () => [
-        for (final (index, json) in data.indexed)
-          AudiusTrackDto.fromJson(json, at: 'data[$index]'),
+        for (final (index, json) in data.indexed) AudiusTrackDto.fromJson(json, at: 'data[$index]'),
       ],
     );
 
@@ -134,10 +136,7 @@ class AudiusCatalogRepository implements CatalogRepository {
 
     // Songs and playlists are separate endpoints, asked for together: the two
     // halves of the results screen have no reason to wait for each other.
-    final (tracks, items) = await (
-      _searchTracks(needle),
-      _searchPlaylists(needle),
-    ).wait;
+    final (tracks, items) = await (_searchTracks(needle), _searchPlaylists(needle)).wait;
 
     return SearchResults(items: items, tracks: tracks);
   }
@@ -147,8 +146,7 @@ class AudiusCatalogRepository implements CatalogRepository {
     final dtos = _read(
       _client.uriFor('tracks/search'),
       () => [
-        for (final (index, json) in data.indexed)
-          AudiusTrackDto.fromJson(json, at: 'data[$index]'),
+        for (final (index, json) in data.indexed) AudiusTrackDto.fromJson(json, at: 'data[$index]'),
       ],
     );
 
@@ -198,9 +196,8 @@ class AudiusCatalogRepository implements CatalogRepository {
   /// Drops what cannot or should not be played: gated tracks, and uploads long
   /// enough to be a mix rather than a song.
   Iterable<AudiusTrackDto> _playable(Iterable<AudiusTrackDto> tracks) => tracks.where(
-        (track) =>
-            track.isStreamable && Duration(seconds: track.durationSeconds) <= maxTrackDuration,
-      );
+    (track) => track.isStreamable && Duration(seconds: track.durationSeconds) <= maxTrackDuration,
+  );
 
   Track _toTrack(AudiusTrackDto dto) =>
       dto.toDomain(streamUrl: _client.uriFor('tracks/${dto.id}/stream'));
@@ -213,15 +210,15 @@ class AudiusCatalogRepository implements CatalogRepository {
   /// want -- the search row prints `artist - album` and the library tile shows a
   /// cover, and both read correctly this way.
   TrackHit _hitFor(AudiusTrackDto dto) => TrackHit(
-        track: _toTrack(dto),
-        album: CatalogItem(
-          id: dto.id,
-          title: dto.title,
-          subtitle: dto.artist,
-          coverColor: 0xFF282828,
-          coverUrl: dto.artworkUrl,
-        ),
-      );
+    track: _toTrack(dto),
+    album: CatalogItem(
+      id: dto.id,
+      title: dto.title,
+      subtitle: dto.artist,
+      coverColor: 0xFF282828,
+      coverUrl: dto.artworkUrl,
+    ),
+  );
 
   /// GETs [path] and returns its `data` array, which is how every Audius
   /// endpoint wraps a result.

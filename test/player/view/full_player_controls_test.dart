@@ -71,7 +71,9 @@ Future<PlayerBloc> _pumpPlayer(
 }
 
 void main() {
-  testWidgets('transport controls stay put when play/pause swaps to a loading spinner', (tester) async {
+  testWidgets('transport controls stay put when play/pause swaps to a loading spinner', (
+    tester,
+  ) async {
     final audio = FakeAudioController();
     await _pumpPlayer(tester, audio, clearLoading: false);
 
@@ -112,7 +114,9 @@ void main() {
     expect(audio.setUrls, isEmpty);
   });
 
-  testWidgets('the repeat button cycles off -> all -> one -> off and swaps its glyph', (tester) async {
+  testWidgets('the repeat button cycles off -> all -> one -> off and swaps its glyph', (
+    tester,
+  ) async {
     final audio = FakeAudioController();
     final bloc = await _pumpPlayer(tester, audio);
 

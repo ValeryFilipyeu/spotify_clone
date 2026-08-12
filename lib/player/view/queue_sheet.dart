@@ -79,10 +79,12 @@ class QueueSheet extends StatelessWidget {
                         // These indices are into the "Next up" sublist; shift
                         // them into full-queue space for the bloc.
                         final offset = state.currentIndex + 1;
-                        context.read<PlayerBloc>().add(PlayerQueueReordered(
-                              oldIndex: offset + oldIndex,
-                              newIndex: offset + newIndex,
-                            ));
+                        context.read<PlayerBloc>().add(
+                          PlayerQueueReordered(
+                            oldIndex: offset + oldIndex,
+                            newIndex: offset + newIndex,
+                          ),
+                        );
                       },
                       itemBuilder: (context, index) {
                         final absolute = state.currentIndex + 1 + index;
@@ -94,8 +96,10 @@ class QueueSheet extends StatelessWidget {
                           key: ValueKey('$absolute-${track.id}'),
                           track: track,
                           dragIndex: index,
-                          onTap: () => context.read<PlayerBloc>().add(PlayerQueueIndexSelected(absolute)),
-                          onRemove: () => context.read<PlayerBloc>().add(PlayerQueueItemRemoved(absolute)),
+                          onTap: () =>
+                              context.read<PlayerBloc>().add(PlayerQueueIndexSelected(absolute)),
+                          onRemove: () =>
+                              context.read<PlayerBloc>().add(PlayerQueueItemRemoved(absolute)),
                         );
                       },
                     ),
@@ -123,7 +127,9 @@ class _SheetHeader extends StatelessWidget {
               header: true,
               child: Text(
                 'Queue',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -160,10 +166,10 @@ class _SectionLabel extends StatelessWidget {
           child: Text(
             text.toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: SpotifyColors.textSecondary,
-                  letterSpacing: 1,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: SpotifyColors.textSecondary,
+              letterSpacing: 1,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
@@ -193,10 +199,7 @@ class _QueueRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Semantics(
-      selected: isCurrent,
-      child: _tile(context, textTheme),
-    );
+    return Semantics(selected: isCurrent, child: _tile(context, textTheme));
   }
 
   Widget _tile(BuildContext context, TextTheme textTheme) {

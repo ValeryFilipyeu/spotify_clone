@@ -54,7 +54,8 @@ class AudiusPlaylistDto {
       ownerName: json.object('user', at: at).string('name', at: '$at.user'),
       description: json.stringOrNull('description'),
       isAlbum: json.boolean('is_album'),
-      artworkUrl: artwork?.stringOrNull(AudiusTrackDto.preferredArtworkSize) ??
+      artworkUrl:
+          artwork?.stringOrNull(AudiusTrackDto.preferredArtworkSize) ??
           artwork?.stringOrNull('1000x1000') ??
           artwork?.stringOrNull('150x150'),
       tracks: [
@@ -76,11 +77,11 @@ class AudiusPlaylistDto {
   }
 
   CatalogItem toDomain() => CatalogItem(
-        id: id,
-        title: name,
-        subtitle: subtitle,
-        // Derived from the id, because a real catalog has no opinion about it.
-        coverColor: CoverPalette.forSeed(id),
-        coverUrl: artworkUrl,
-      );
+    id: id,
+    title: name,
+    subtitle: subtitle,
+    // Derived from the id, because a real catalog has no opinion about it.
+    coverColor: CoverPalette.forSeed(id),
+    coverUrl: artworkUrl,
+  );
 }

@@ -304,7 +304,9 @@ void main() {
       b.playCompletesOnlyWhenTrackEnds = true;
 
       // Must return promptly rather than parking until the track finishes.
-      await controller.crossfadeTo('url-2', fade: _fade).timeout(
+      await controller
+          .crossfadeTo('url-2', fade: _fade)
+          .timeout(
             const Duration(seconds: 2),
             onTimeout: () => fail('crossfadeTo awaited play() and never returned'),
           );

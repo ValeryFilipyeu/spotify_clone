@@ -8,8 +8,7 @@ void main() {
   group('parsing a real search payload', () {
     test('reads every track', () {
       final tracks = [
-        for (final json in fixtureData('audius/track_search'))
-          AudiusTrackDto.fromJson(json),
+        for (final json in fixtureData('audius/track_search')) AudiusTrackDto.fromJson(json),
       ];
 
       expect(tracks.map((t) => t.id), ['95wro', 'ng9rl', '8ME7P']);
@@ -51,7 +50,10 @@ void main() {
     });
 
     test('a gated track is not streamable', () {
-      final raw = {...fixtureData('audius/track_search')[1], 'access': {'stream': false}};
+      final raw = {
+        ...fixtureData('audius/track_search')[1],
+        'access': {'stream': false},
+      };
 
       expect(AudiusTrackDto.fromJson(raw).isStreamable, isFalse);
     });
@@ -82,8 +84,9 @@ void main() {
     });
 
     test('carries the metadata across', () {
-      final track = AudiusTrackDto.fromJson(fixtureData('audius/track_search')[1])
-          .toDomain(streamUrl: Uri.parse('https://example.test/stream'));
+      final track = AudiusTrackDto.fromJson(
+        fixtureData('audius/track_search')[1],
+      ).toDomain(streamUrl: Uri.parse('https://example.test/stream'));
 
       expect(track.id, 'ng9rl');
       expect(track.title, 'lofi type beat');
@@ -99,9 +102,11 @@ void main() {
 
       expect(
         () => AudiusTrackDto.fromJson(raw, at: 'data[0]'),
-        throwsA(isA<JsonFormatError>()
-            .having((e) => e.path, 'path', 'data[0].title')
-            .having((e) => e.reason, 'reason', contains('non-empty string'))),
+        throwsA(
+          isA<JsonFormatError>()
+              .having((e) => e.path, 'path', 'data[0].title')
+              .having((e) => e.reason, 'reason', contains('non-empty string')),
+        ),
       );
     });
 

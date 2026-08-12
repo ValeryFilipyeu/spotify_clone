@@ -67,7 +67,12 @@ void main() {
 
     test('repeats a list value, which is how the bulk endpoints take ids', () async {
       final fake = clientThat((_) => _ok({'data': []}));
-      await fake.client.getJson('tracks', query: {'id': ['abc', 'def']});
+      await fake.client.getJson(
+        'tracks',
+        query: {
+          'id': ['abc', 'def'],
+        },
+      );
 
       expect(fake.requested.single.queryParametersAll['id'], ['abc', 'def']);
     });
@@ -83,9 +88,19 @@ void main() {
 
   group('decoding', () {
     test('returns the decoded object on success', () async {
-      final fake = clientThat((_) => _ok({'data': [{'id': 'abc'}]}));
+      final fake = clientThat(
+        (_) => _ok({
+          'data': [
+            {'id': 'abc'},
+          ],
+        }),
+      );
 
-      expect(await fake.client.getJson('tracks'), {'data': [{'id': 'abc'}]});
+      expect(await fake.client.getJson('tracks'), {
+        'data': [
+          {'id': 'abc'},
+        ],
+      });
     });
 
     test('a 200 that is not JSON is a MalformedResponse, not a crash', () async {
@@ -104,7 +119,9 @@ void main() {
 
       await expectLater(
         fake.client.getJson('tracks'),
-        throwsA(isA<MalformedResponse>().having((f) => f.detail, 'detail', contains('JSON object'))),
+        throwsA(
+          isA<MalformedResponse>().having((f) => f.detail, 'detail', contains('JSON object')),
+        ),
       );
     });
   });
@@ -117,10 +134,12 @@ void main() {
 
       await expectLater(
         fake.client.getJson('playlists/ZZZ'),
-        throwsA(isA<HttpErrorStatus>()
-            .having((f) => f.statusCode, 'statusCode', 400)
-            .having((f) => f.serverMessage, 'serverMessage', 'invalid playlistId')
-            .having((f) => f.isTransient, 'isTransient', isFalse)),
+        throwsA(
+          isA<HttpErrorStatus>()
+              .having((f) => f.statusCode, 'statusCode', 400)
+              .having((f) => f.serverMessage, 'serverMessage', 'invalid playlistId')
+              .having((f) => f.isTransient, 'isTransient', isFalse),
+        ),
       );
     });
 
@@ -131,10 +150,12 @@ void main() {
 
       await expectLater(
         fake.client.getJson('tracks'),
-        throwsA(isA<HttpErrorStatus>()
-            .having((f) => f.statusCode, 'statusCode', 502)
-            .having((f) => f.serverMessage, 'serverMessage', isNull)
-            .having((f) => f.isTransient, 'isTransient', isTrue)),
+        throwsA(
+          isA<HttpErrorStatus>()
+              .having((f) => f.statusCode, 'statusCode', 502)
+              .having((f) => f.serverMessage, 'serverMessage', isNull)
+              .having((f) => f.isTransient, 'isTransient', isTrue),
+        ),
       );
     });
 
@@ -173,7 +194,8 @@ void main() {
     test('the failure names the url that failed', () async {
       final fake = clientThat((_) async => http.Response('nope', 500));
 
-      final failure = await fake.client.getJson('tracks/search', query: {'query': 'jazz'})
+      final failure = await fake.client
+          .getJson('tracks/search', query: {'query': 'jazz'})
           .then<ApiFailure?>((_) => null, onError: (Object e) => e as ApiFailure);
 
       expect(failure!.uri.path, '/v1/tracks/search');
@@ -189,10 +211,21 @@ void main() {
 
       final first = fake.client.getJson('tracks/trending');
       final second = fake.client.getJson('tracks/trending');
-      gate.complete(http.Response(jsonEncode({'data': ['x']}), 200));
+      gate.complete(
+        http.Response(
+          jsonEncode({
+            'data': ['x'],
+          }),
+          200,
+        ),
+      );
 
-      expect(await first, {'data': ['x']});
-      expect(await second, {'data': ['x']});
+      expect(await first, {
+        'data': ['x'],
+      });
+      expect(await second, {
+        'data': ['x'],
+      });
       expect(fake.requested, hasLength(1));
     });
 
@@ -223,11 +256,18 @@ void main() {
       final fake = clientThat((_) async {
         attempts++;
         if (attempts == 1) return http.Response('boom', 500);
-        return http.Response(jsonEncode({'data': ['recovered']}), 200);
+        return http.Response(
+          jsonEncode({
+            'data': ['recovered'],
+          }),
+          200,
+        );
       });
 
       await expectLater(fake.client.getJson('tracks'), throwsA(isA<HttpErrorStatus>()));
-      expect(await fake.client.getJson('tracks'), {'data': ['recovered']});
+      expect(await fake.client.getJson('tracks'), {
+        'data': ['recovered'],
+      });
       expect(attempts, 2);
     });
 

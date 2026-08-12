@@ -7,11 +7,41 @@ import 'package:spotify_clone/player/bloc/player_state.dart';
 
 import '../fake_audio_controller.dart';
 
-const _t1 = Track(id: 't1', title: 'One', artist: 'A', duration: Duration(minutes: 3), audioUrl: 'url-1');
-const _t2 = Track(id: 't2', title: 'Two', artist: 'B', duration: Duration(minutes: 4), audioUrl: 'url-2');
-const _t3 = Track(id: 't3', title: 'Three', artist: 'C', duration: Duration(minutes: 2), audioUrl: 'url-3');
-const _t4 = Track(id: 't4', title: 'Four', artist: 'D', duration: Duration(minutes: 5), audioUrl: 'url-4');
-const _tx = Track(id: 'tx', title: 'Extra', artist: 'X', duration: Duration(minutes: 1), audioUrl: 'url-x');
+const _t1 = Track(
+  id: 't1',
+  title: 'One',
+  artist: 'A',
+  duration: Duration(minutes: 3),
+  audioUrl: 'url-1',
+);
+const _t2 = Track(
+  id: 't2',
+  title: 'Two',
+  artist: 'B',
+  duration: Duration(minutes: 4),
+  audioUrl: 'url-2',
+);
+const _t3 = Track(
+  id: 't3',
+  title: 'Three',
+  artist: 'C',
+  duration: Duration(minutes: 2),
+  audioUrl: 'url-3',
+);
+const _t4 = Track(
+  id: 't4',
+  title: 'Four',
+  artist: 'D',
+  duration: Duration(minutes: 5),
+  audioUrl: 'url-4',
+);
+const _tx = Track(
+  id: 'tx',
+  title: 'Extra',
+  artist: 'X',
+  duration: Duration(minutes: 1),
+  audioUrl: 'url-x',
+);
 
 const _queue = [_t1, _t2, _t3, _t4];
 

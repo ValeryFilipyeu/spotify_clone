@@ -7,24 +7,15 @@ enum LikesStatus { loading, ready }
 /// has been restored (so the Library tab can show a spinner rather than a
 /// misleading "nothing liked yet").
 class LikesState extends Equatable {
-  const LikesState({
-    this.status = LikesStatus.loading,
-    this.likedIds = const {},
-  });
+  const LikesState({this.status = LikesStatus.loading, this.likedIds = const {}});
 
   final LikesStatus status;
   final Set<String> likedIds;
 
   bool isLiked(String id) => likedIds.contains(id);
 
-  LikesState copyWith({
-    LikesStatus? status,
-    Set<String>? likedIds,
-  }) {
-    return LikesState(
-      status: status ?? this.status,
-      likedIds: likedIds ?? this.likedIds,
-    );
+  LikesState copyWith({LikesStatus? status, Set<String>? likedIds}) {
+    return LikesState(status: status ?? this.status, likedIds: likedIds ?? this.likedIds);
   }
 
   @override

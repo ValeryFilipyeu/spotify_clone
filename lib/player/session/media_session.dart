@@ -84,17 +84,17 @@ class NowPlaying {
   /// from the state's own getters, so repeat mode opening up the queue edges is
   /// reflected in which buttons the OS offers.
   factory NowPlaying.from(PlayerState state, Track track) => NowPlaying(
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        duration: state.duration,
-        position: state.position,
-        isPlaying: state.isPlaying,
-        isLoading: state.isLoading,
-        hasNext: state.hasNext,
-        hasPrevious: state.hasPrevious,
-        artUrl: track.coverUrl,
-      );
+    id: track.id,
+    title: track.title,
+    artist: track.artist,
+    duration: state.duration,
+    position: state.position,
+    isPlaying: state.isPlaying,
+    isLoading: state.isLoading,
+    hasNext: state.hasNext,
+    hasPrevious: state.hasPrevious,
+    artUrl: track.coverUrl,
+  );
 
   final String id;
   final String title;
@@ -116,7 +116,8 @@ class NowPlaying {
   /// position alone is not a reason to cross a platform channel. See
   /// PlayerBloc's publishing logic, which compares this and treats a *jump* in
   /// position (a seek, a track change) separately from ordinary drift.
-  String get signature => '$id|$title|$artist|${duration.inMilliseconds}|'
+  String get signature =>
+      '$id|$title|$artist|${duration.inMilliseconds}|'
       '$isPlaying|$isLoading|$hasNext|$hasPrevious';
 }
 

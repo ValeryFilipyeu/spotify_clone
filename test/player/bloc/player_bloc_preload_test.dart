@@ -113,8 +113,20 @@ void main() {
       final audio = FakeAudioController(supportsCrossfade: true);
       // 10s is not more than twice the 6s fade, so no fade -- and so no preload.
       const shortQueue = [
-        Track(id: 's1', title: 'S1', artist: 'A', duration: Duration(seconds: 10), audioUrl: 'url-s1'),
-        Track(id: 's2', title: 'S2', artist: 'B', duration: Duration(seconds: 10), audioUrl: 'url-s2'),
+        Track(
+          id: 's1',
+          title: 'S1',
+          artist: 'A',
+          duration: Duration(seconds: 10),
+          audioUrl: 'url-s1',
+        ),
+        Track(
+          id: 's2',
+          title: 'S2',
+          artist: 'B',
+          duration: Duration(seconds: 10),
+          audioUrl: 'url-s2',
+        ),
       ];
       await tickAt(const Duration(seconds: 9), audio: audio, queue: shortQueue);
 

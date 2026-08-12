@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spotify_clone/widgets/marquee_text.dart';
 
 Widget _host(String text, double width) => MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: SizedBox(width: width, child: MarqueeText(text)),
-        ),
-      ),
-    );
+  home: Scaffold(
+    body: Center(
+      child: SizedBox(width: width, child: MarqueeText(text)),
+    ),
+  ),
+);
 
 void main() {
   testWidgets('text that fits is shown statically (does not move)', (tester) async {

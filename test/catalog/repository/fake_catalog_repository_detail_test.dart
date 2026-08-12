@@ -13,10 +13,7 @@ void main() {
     });
 
     test('throws CatalogItemNotFound for an unknown id', () async {
-      expect(
-        () => repository.fetchDetail('does-not-exist'),
-        throwsA(isA<CatalogItemNotFound>()),
-      );
+      expect(() => repository.fetchDetail('does-not-exist'), throwsA(isA<CatalogItemNotFound>()));
     });
 
     test('totalDuration equals the sum of the track durations', () async {

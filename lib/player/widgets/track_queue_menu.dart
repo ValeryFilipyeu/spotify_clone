@@ -36,7 +36,9 @@ class TrackQueueMenu extends StatelessWidget {
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: Text(
-              action == _QueueAction.playNext ? 'Playing next: ${track.title}' : 'Added to queue: ${track.title}',
+              action == _QueueAction.playNext
+                  ? 'Playing next: ${track.title}'
+                  : 'Added to queue: ${track.title}',
             ),
             duration: const Duration(seconds: 2),
           ),

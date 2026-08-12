@@ -23,7 +23,9 @@ void main() {
   group('SignUpCubit', () {
     blocTest<SignUpCubit, SignUpState>(
       'field changes update state and clear a stale status',
-      build: () => SignUpCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
+      build: () => SignUpCubit(
+        authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage()),
+      ),
       act: (cubit) {
         cubit.emailChanged('new@example.com');
         cubit.passwordChanged('Password1');
@@ -32,21 +34,33 @@ void main() {
       expect: () => [
         const SignUpState(email: 'new@example.com'),
         const SignUpState(email: 'new@example.com', password: 'Password1'),
-        const SignUpState(email: 'new@example.com', password: 'Password1', confirmPassword: 'Password1'),
+        const SignUpState(
+          email: 'new@example.com',
+          password: 'Password1',
+          confirmPassword: 'Password1',
+        ),
       ],
     );
 
     blocTest<SignUpCubit, SignUpState>(
       'submitted() does nothing while the form is invalid',
-      build: () => SignUpCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
+      build: () => SignUpCubit(
+        authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage()),
+      ),
       act: (cubit) => cubit.submitted(),
       expect: () => <SignUpState>[],
     );
 
     blocTest<SignUpCubit, SignUpState>(
       'emits submitting then success for a new valid email',
-      build: () => SignUpCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
-      seed: () => const SignUpState(email: 'new@example.com', password: 'Password1', confirmPassword: 'Password1'),
+      build: () => SignUpCubit(
+        authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage()),
+      ),
+      seed: () => const SignUpState(
+        email: 'new@example.com',
+        password: 'Password1',
+        confirmPassword: 'Password1',
+      ),
       act: (cubit) => cubit.submitted(),
       expect: () => [
         const SignUpState(
@@ -66,8 +80,14 @@ void main() {
 
     blocTest<SignUpCubit, SignUpState>(
       'emits submitting then failure when the email is already registered',
-      build: () => SignUpCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
-      seed: () => const SignUpState(email: 'test@spotify.com', password: 'Password1', confirmPassword: 'Password1'),
+      build: () => SignUpCubit(
+        authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage()),
+      ),
+      seed: () => const SignUpState(
+        email: 'test@spotify.com',
+        password: 'Password1',
+        confirmPassword: 'Password1',
+      ),
       act: (cubit) => cubit.submitted(),
       expect: () => [
         const SignUpState(

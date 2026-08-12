@@ -23,22 +23,36 @@ void main() {
   group('LogInCubit', () {
     blocTest<LogInCubit, LogInState>(
       'emits submitting then success for the seeded demo account',
-      build: () => LogInCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
+      build: () =>
+          LogInCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
       seed: () => const LogInState(email: 'test@spotify.com', password: 'Password1'),
       act: (cubit) => cubit.submitted(),
       expect: () => [
-        const LogInState(email: 'test@spotify.com', password: 'Password1', status: LogInStatus.submitting),
-        const LogInState(email: 'test@spotify.com', password: 'Password1', status: LogInStatus.success),
+        const LogInState(
+          email: 'test@spotify.com',
+          password: 'Password1',
+          status: LogInStatus.submitting,
+        ),
+        const LogInState(
+          email: 'test@spotify.com',
+          password: 'Password1',
+          status: LogInStatus.success,
+        ),
       ],
     );
 
     blocTest<LogInCubit, LogInState>(
       'emits submitting then failure for the wrong password',
-      build: () => LogInCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
+      build: () =>
+          LogInCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
       seed: () => const LogInState(email: 'test@spotify.com', password: 'WrongPass1'),
       act: (cubit) => cubit.submitted(),
       expect: () => [
-        const LogInState(email: 'test@spotify.com', password: 'WrongPass1', status: LogInStatus.submitting),
+        const LogInState(
+          email: 'test@spotify.com',
+          password: 'WrongPass1',
+          status: LogInStatus.submitting,
+        ),
         const LogInState(
           email: 'test@spotify.com',
           password: 'WrongPass1',
@@ -50,11 +64,16 @@ void main() {
 
     blocTest<LogInCubit, LogInState>(
       'emits submitting then failure for an unknown email',
-      build: () => LogInCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
+      build: () =>
+          LogInCubit(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
       seed: () => const LogInState(email: 'nobody@example.com', password: 'Password1'),
       act: (cubit) => cubit.submitted(),
       expect: () => [
-        const LogInState(email: 'nobody@example.com', password: 'Password1', status: LogInStatus.submitting),
+        const LogInState(
+          email: 'nobody@example.com',
+          password: 'Password1',
+          status: LogInStatus.submitting,
+        ),
         const LogInState(
           email: 'nobody@example.com',
           password: 'Password1',

@@ -10,24 +10,29 @@ import 'package:spotify_clone/player/widgets/mini_player.dart';
 import '../fake_audio_controller.dart';
 
 const _queue = [
-  Track(id: 't1', title: 'Song One', artist: 'Artist A', duration: Duration(minutes: 3), audioUrl: 'url-1'),
+  Track(
+    id: 't1',
+    title: 'Song One',
+    artist: 'Artist A',
+    duration: Duration(minutes: 3),
+    audioUrl: 'url-1',
+  ),
 ];
 
 Widget _host(PlayerBloc bloc) => MaterialApp(
-      home: BlocProvider.value(
-        value: bloc,
-        child: Scaffold(
-          body: Align(
-            alignment: Alignment.bottomCenter,
-            child: MiniPlayer(onTap: () {}),
-          ),
-        ),
+  home: BlocProvider.value(
+    value: bloc,
+    child: Scaffold(
+      body: Align(
+        alignment: Alignment.bottomCenter,
+        child: MiniPlayer(onTap: () {}),
       ),
-    );
+    ),
+  ),
+);
 
 void main() {
-  testWidgets('the equalizer over the artwork runs only while sound is coming out',
-      (tester) async {
+  testWidgets('the equalizer over the artwork runs only while sound is coming out', (tester) async {
     // strictPlayingContract so isPlaying comes from the engine's own reporting
     // rather than being poked in by hand.
     final audio = FakeAudioController()..strictPlayingContract = true;

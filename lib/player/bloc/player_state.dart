@@ -112,16 +112,16 @@ class PlayerState extends Equatable {
 
   @override
   List<Object?> get props => [
-        queue,
-        sourceQueue,
-        currentIndex,
-        isPlaying,
-        isLoading,
-        position,
-        duration,
-        isShuffled,
-        repeatMode,
-        volume,
-        crossfadeDuration,
-      ];
+    queue,
+    sourceQueue,
+    currentIndex,
+    isPlaying,
+    isLoading,
+    position,
+    duration,
+    isShuffled,
+    repeatMode,
+    volume,
+    crossfadeDuration,
+  ];
 }

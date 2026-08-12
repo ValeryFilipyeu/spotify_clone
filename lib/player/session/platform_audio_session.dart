@@ -63,8 +63,6 @@ class PlatformAudioSession implements PlaybackAudioSession {
     // `pause` means a definite interruption that has now finished (a call
     // ending), so picking playback back up is expected. `unknown` means the
     // platform will not vouch for that, and `duck` never stopped us at all.
-    return AudioInterruptionEnded(
-      shouldResume: event.type == platform.AudioInterruptionType.pause,
-    );
+    return AudioInterruptionEnded(shouldResume: event.type == platform.AudioInterruptionType.pause);
   }
 }

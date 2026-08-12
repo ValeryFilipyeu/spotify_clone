@@ -24,7 +24,9 @@ class LandingPage extends StatelessWidget {
               Text(
                 'Your next favorite song is one tap away.',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: SpotifyColors.textSecondary),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: SpotifyColors.textSecondary),
               ),
               const Spacer(),
               SpotifyPrimaryButton(

@@ -16,7 +16,11 @@ const _queue = [
 ];
 
 /// Boots a bloc playing `_queue[startIndex]` and renders the sheet against it.
-Future<PlayerBloc> _pumpSheet(WidgetTester tester, FakeAudioController audio, int startIndex) async {
+Future<PlayerBloc> _pumpSheet(
+  WidgetTester tester,
+  FakeAudioController audio,
+  int startIndex,
+) async {
   final bloc = PlayerBloc(audioController: audio);
   addTearDown(bloc.close);
   bloc.add(PlayerTrackStarted(queue: _queue, startIndex: startIndex));
@@ -68,7 +72,9 @@ void main() {
     final bloc = await _pumpSheet(tester, audio, 1); // 't2' playing, up next: t3, t4
 
     final fourRow = find.ancestor(of: find.text('Four'), matching: find.byType(ListTile));
-    await tester.tap(find.descendant(of: fourRow, matching: find.byIcon(Icons.remove_circle_outline)));
+    await tester.tap(
+      find.descendant(of: fourRow, matching: find.byIcon(Icons.remove_circle_outline)),
+    );
     await tester.pumpAndSettle();
 
     expect(bloc.state.queue.map((t) => t.id).toList(), ['t1', 't2', 't3']);

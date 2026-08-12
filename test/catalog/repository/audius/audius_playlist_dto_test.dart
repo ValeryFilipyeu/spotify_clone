@@ -19,7 +19,14 @@ void main() {
     test('reads the embedded tracklist, so detail costs one request', () {
       final playlist = AudiusPlaylistDto.fromJson(fixtureData('audius/playlist_by_id').first);
 
-      expect(playlist.tracks.map((t) => t.id), ['Xb48b', '1gwBr', '1gpdX', 'ml8yw', '3OA5k', 'JB53Z']);
+      expect(playlist.tracks.map((t) => t.id), [
+        'Xb48b',
+        '1gwBr',
+        '1gpdX',
+        'ml8yw',
+        '3OA5k',
+        'JB53Z',
+      ]);
     });
 
     test('a search result carries no tracks, and that is not an error', () {
@@ -66,14 +73,18 @@ void main() {
 
   group('toDomain', () {
     test('derives a stable cover tint from the id', () {
-      final item = AudiusPlaylistDto.fromJson(fixtureData('audius/playlist_by_id').first).toDomain();
+      final item = AudiusPlaylistDto.fromJson(
+        fixtureData('audius/playlist_by_id').first,
+      ).toDomain();
 
       expect(item.coverColor, CoverPalette.forSeed('RKxOQ'));
       expect(CoverPalette.colors, contains(item.coverColor));
     });
 
     test('maps onto the domain item the UI already draws', () {
-      final item = AudiusPlaylistDto.fromJson(fixtureData('audius/playlist_by_id').first).toDomain();
+      final item = AudiusPlaylistDto.fromJson(
+        fixtureData('audius/playlist_by_id').first,
+      ).toDomain();
 
       expect(item.id, 'RKxOQ');
       expect(item.title, 'Lofi Space inspired');

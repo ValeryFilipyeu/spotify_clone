@@ -39,13 +39,18 @@ class HomeView extends StatelessWidget {
           switch (state.status) {
             case HomeStatus.initial:
             case HomeStatus.loading:
-              return const Center(child: CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: SpotifyColors.green,
+                  semanticsLabel: 'Loading',
+                ),
+              );
             case HomeStatus.failure:
               return ErrorRetry(
                 message: state.errorMessage ?? 'Something went wrong.',
-                onRetry: () => context
-                    .read<HomeCubit>()
-                    .loadSections(context.read<PlayHistoryCubit>().state.recentIds),
+                onRetry: () => context.read<HomeCubit>().loadSections(
+                  context.read<PlayHistoryCubit>().state.recentIds,
+                ),
               );
             case HomeStatus.success:
               // Nested builder, like LibraryView's: the catalog comes from one
@@ -74,7 +79,8 @@ class HomeView extends StatelessWidget {
                         section: section,
                         // push under THIS tab so the detail screen stacks inside
                         // Home (tab bar stays) and the back button returns here.
-                        onItemTap: (itemId) => context.push(Routes.detailUnder(Routes.home, itemId)),
+                        onItemTap: (itemId) =>
+                            context.push(Routes.detailUnder(Routes.home, itemId)),
                       );
                     },
                   );

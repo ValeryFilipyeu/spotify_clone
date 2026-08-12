@@ -8,8 +8,20 @@ import '../fake_audio_controller.dart';
 /// Scaled-down stand-ins for a real playlist: every track is long enough to be
 /// crossfade-eligible (more than 2x the fade).
 const _queue = [
-  Track(id: 't1', title: 'One', artist: 'A', duration: Duration(milliseconds: 1500), audioUrl: 'url-1'),
-  Track(id: 't2', title: 'Two', artist: 'B', duration: Duration(milliseconds: 1500), audioUrl: 'url-2'),
+  Track(
+    id: 't1',
+    title: 'One',
+    artist: 'A',
+    duration: Duration(milliseconds: 1500),
+    audioUrl: 'url-1',
+  ),
+  Track(
+    id: 't2',
+    title: 'Two',
+    artist: 'B',
+    duration: Duration(milliseconds: 1500),
+    audioUrl: 'url-2',
+  ),
   Track(id: 't3', title: 'Three', artist: 'C', duration: Duration(seconds: 30), audioUrl: 'url-3'),
 ];
 
@@ -73,15 +85,21 @@ void main() {
 
     // The duration must be track 1's own -- a stale value here silently moves
     // the fade window out of reach and looks exactly like "crossfade is gone".
-    expect(bloc.state.duration, const Duration(milliseconds: 1500),
-        reason: 'duration must belong to the track actually playing');
+    expect(
+      bloc.state.duration,
+      const Duration(milliseconds: 1500),
+      reason: 'duration must belong to the track actually playing',
+    );
 
     // 5. THE POINT: crossfade must still fire from here.
     audio.emitBuffering(false);
     final crossfadesBefore = audio.crossfades.length;
     await _wait(1600);
 
-    expect(audio.crossfades.length, greaterThan(crossfadesBefore),
-        reason: 'crossfade must still work after all that navigation');
+    expect(
+      audio.crossfades.length,
+      greaterThan(crossfadesBefore),
+      reason: 'crossfade must still work after all that navigation',
+    );
   });
 }

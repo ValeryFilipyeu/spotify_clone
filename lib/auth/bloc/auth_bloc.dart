@@ -14,19 +14,23 @@ import 'auth_state.dart';
 /// driven by this bloc's state.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({required AuthRepository authRepository})
-      // ignore: prefer_initializing_formals -- keeps the public param name.
-      : _authRepository = authRepository,
-        super(const AuthState.unknown()) {
+    // ignore: prefer_initializing_formals -- keeps the public param name.
+    : _authRepository = authRepository,
+      super(const AuthState.unknown()) {
     on<AuthUserChanged>(_onUserChanged);
     on<AuthLogOutRequested>(_onLogOutRequested);
-    _userSubscription = _authRepository.authStateChanges.listen((user) => add(AuthUserChanged(user)));
+    _userSubscription = _authRepository.authStateChanges.listen(
+      (user) => add(AuthUserChanged(user)),
+    );
   }
 
   final AuthRepository _authRepository;
   late final StreamSubscription<dynamic> _userSubscription;
 
   void _onUserChanged(AuthUserChanged event, Emitter<AuthState> emit) {
-    emit(event.user == null ? const AuthState.unauthenticated() : AuthState.authenticated(event.user!));
+    emit(
+      event.user == null ? const AuthState.unauthenticated() : AuthState.authenticated(event.user!),
+    );
   }
 
   Future<void> _onLogOutRequested(AuthLogOutRequested event, Emitter<AuthState> emit) {

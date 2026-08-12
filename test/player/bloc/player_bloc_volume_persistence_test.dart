@@ -60,10 +60,10 @@ void main() {
     tearDown(() => users.close());
 
     PlayerBloc buildBloc() => PlayerBloc(
-          audioController: audio,
-          settingsRepository: settings,
-          userIdChanges: users.stream,
-        );
+      audioController: audio,
+      settingsRepository: settings,
+      userIdChanges: users.stream,
+    );
 
     test('applies the signed-in account\'s saved volume to state and the engine', () async {
       settings.volumes[_alice] = 0.35;

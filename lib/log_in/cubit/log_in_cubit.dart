@@ -6,9 +6,9 @@ import 'log_in_state.dart';
 
 class LogInCubit extends Cubit<LogInState> {
   LogInCubit({required AuthRepository authRepository})
-      // ignore: prefer_initializing_formals -- keeps the public param name.
-      : _authRepository = authRepository,
-        super(const LogInState());
+    // ignore: prefer_initializing_formals -- keeps the public param name.
+    : _authRepository = authRepository,
+      super(const LogInState());
 
   final AuthRepository _authRepository;
 

@@ -171,8 +171,7 @@ List<double> equalizerLevels({
 }) {
   final swing = energy.clamp(0.0, 1.0) * (1 - restingFraction);
   return [
-    for (var index = 0; index < barCount; index++)
-      restingFraction + swing * _swingAt(index, phase),
+    for (var index = 0; index < barCount; index++) restingFraction + swing * _swingAt(index, phase),
   ];
 }
 
@@ -194,8 +193,8 @@ class _EqualizerPainter extends CustomPainter {
     required this.color,
     required this.barCount,
     required this.spacing,
-  })  : _fill = Paint()..color = color,
-        super(repaint: repaint);
+  }) : _fill = Paint()..color = color,
+       super(repaint: repaint);
 
   /// Held as animations, not as the doubles they currently read, so [paint] can
   /// sample them live. That is the point of `super(repaint:)`: the render object
@@ -220,20 +219,13 @@ class _EqualizerPainter extends CustomPainter {
     // Fully rounded ends. Where a bar is shorter than it is wide, RRect scales
     // the radii down for us rather than drawing something self-intersecting.
     final radius = Radius.circular(barWidth / 2);
-    final levels = equalizerLevels(
-      barCount: barCount,
-      phase: phase.value,
-      energy: energy.value,
-    );
+    final levels = equalizerLevels(barCount: barCount, phase: phase.value, energy: energy.value);
 
     for (var index = 0; index < barCount; index++) {
       final left = index * (barWidth + spacing);
       final top = size.height * (1 - levels[index]);
       // Bars grow upward from the bottom edge, so the baseline stays put.
-      canvas.drawRRect(
-        RRect.fromLTRBR(left, top, left + barWidth, size.height, radius),
-        _fill,
-      );
+      canvas.drawRRect(RRect.fromLTRBR(left, top, left + barWidth, size.height, radius), _fill);
     }
   }
 

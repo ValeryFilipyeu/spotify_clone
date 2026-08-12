@@ -8,7 +8,13 @@ import '../fake_audio_controller.dart';
 /// Mirrors "Daily Mix 1": a very short first track followed by long ones.
 /// Scaled down so the real 250ms ticker gets through it quickly.
 const _queue = [
-  Track(id: 't1', title: 'Short', artist: 'A', duration: Duration(milliseconds: 1200), audioUrl: 'url-1'),
+  Track(
+    id: 't1',
+    title: 'Short',
+    artist: 'A',
+    duration: Duration(milliseconds: 1200),
+    audioUrl: 'url-1',
+  ),
   Track(id: 't2', title: 'Long', artist: 'B', duration: Duration(seconds: 30), audioUrl: 'url-2'),
   Track(id: 't3', title: 'Long2', artist: 'C', duration: Duration(seconds: 30), audioUrl: 'url-3'),
 ];
@@ -36,9 +42,13 @@ void main() {
     // Let the 1200ms track run past its fade window (900ms) and well beyond.
     await Future<void>.delayed(const Duration(milliseconds: 2500));
 
-    expect(audio.crossfades.map((c) => c.url).toList(), ['url-2'],
-        reason: 'the short first track should hand over to t2 once, and t2 '
-            '(30s long) should not immediately hand over again');
+    expect(
+      audio.crossfades.map((c) => c.url).toList(),
+      ['url-2'],
+      reason:
+          'the short first track should hand over to t2 once, and t2 '
+          '(30s long) should not immediately hand over again',
+    );
     expect(bloc.state.currentIndex, 1);
   });
 

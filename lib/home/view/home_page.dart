@@ -18,8 +18,9 @@ class HomePage extends StatelessWidget {
       // The history read here is the *current* one, which covers the usual case
       // of it already having loaded with the session. HomeView listens for any
       // that arrives later.
-      create: (context) => HomeCubit(catalogRepository: context.read<CatalogRepository>())
-        ..loadSections(context.read<PlayHistoryCubit>().state.recentIds),
+      create: (context) =>
+          HomeCubit(catalogRepository: context.read<CatalogRepository>())
+            ..loadSections(context.read<PlayHistoryCubit>().state.recentIds),
       child: const HomeView(),
     );
   }

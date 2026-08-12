@@ -54,15 +54,19 @@ Future<void> pumpCard(WidgetTester tester, TargetPlatform platform) async {
   );
   addTearDown(cubit.close);
 
-  await tester.pumpWidget(MaterialApp(
-    theme: theme,
-    home: Scaffold(
-      body: BlocProvider.value(
-        value: cubit,
-        child: Center(child: CatalogCard(item: _item, onTap: () {})),
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: theme,
+      home: Scaffold(
+        body: BlocProvider.value(
+          value: cubit,
+          child: Center(
+            child: CatalogCard(item: _item, onTap: () {}),
+          ),
+        ),
       ),
     ),
-  ));
+  );
   await tester.pumpAndSettle();
 }
 
@@ -76,10 +80,9 @@ void main() {
 
         // The scrim is a plain sibling sized to the tap target, so if the two
         // stop agreeing on that size the heart drifts out of its disc.
-        final scrim = tester.getRect(find.descendant(
-          of: find.byType(CatalogCard),
-          matching: find.byType(IgnorePointer),
-        ));
+        final scrim = tester.getRect(
+          find.descendant(of: find.byType(CatalogCard), matching: find.byType(IgnorePointer)),
+        );
         final heart = tester.getRect(find.byType(LikeButton));
 
         expect(heart.center, scrim.center);

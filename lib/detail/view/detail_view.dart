@@ -23,13 +23,21 @@ class DetailView extends StatelessWidget {
           switch (state.status) {
             case DetailStatus.initial:
             case DetailStatus.loading:
-              return _ScaffoldedCenter(child: const CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
+              return _ScaffoldedCenter(
+                child: const CircularProgressIndicator(
+                  color: SpotifyColors.green,
+                  semanticsLabel: 'Loading',
+                ),
+              );
             case DetailStatus.failure:
               return _ScaffoldedCenter(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(state.errorMessage ?? 'Something went wrong.', textAlign: TextAlign.center),
+                    Text(
+                      state.errorMessage ?? 'Something went wrong.',
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               );
@@ -119,7 +127,10 @@ class _DetailContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.subtitle, style: textTheme.bodyLarge?.copyWith(color: SpotifyColors.textSecondary)),
+                Text(
+                  item.subtitle,
+                  style: textTheme.bodyLarge?.copyWith(color: SpotifyColors.textSecondary),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   '${detail.tracks.length} songs • ${_formatTotal(detail.totalDuration)}',

@@ -131,7 +131,12 @@ void main() {
     blocTest<PlayerBloc, PlayerState>(
       'the position ticker does not advance while buffering',
       build: () => PlayerBloc(audioController: audio),
-      seed: () => const PlayerState(queue: _queue, currentIndex: 0, duration: Duration(minutes: 3), isLoading: true),
+      seed: () => const PlayerState(
+        queue: _queue,
+        currentIndex: 0,
+        duration: Duration(minutes: 3),
+        isLoading: true,
+      ),
       act: (bloc) => audio.emitPlaying(true),
       wait: const Duration(milliseconds: 700),
       verify: (bloc) => expect(bloc.state.position, Duration.zero),
@@ -142,7 +147,8 @@ void main() {
     blocTest<PlayerBloc, PlayerState>(
       'buffering=false clears isLoading even while already playing',
       build: () => PlayerBloc(audioController: audio),
-      seed: () => const PlayerState(queue: _queue, currentIndex: 0, isLoading: true, isPlaying: true),
+      seed: () =>
+          const PlayerState(queue: _queue, currentIndex: 0, isLoading: true, isPlaying: true),
       act: (bloc) => audio.emitBuffering(false),
       verify: (bloc) => expect(bloc.state.isLoading, isFalse),
     );

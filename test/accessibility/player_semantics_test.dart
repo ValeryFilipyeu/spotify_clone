@@ -19,8 +19,20 @@ import 'semantics_probe.dart';
 const _queue = [
   Track(id: 't1', title: 'One', artist: 'Artist A', duration: Duration(minutes: 3), audioUrl: 'u1'),
   Track(id: 't2', title: 'Two', artist: 'Artist B', duration: Duration(minutes: 4), audioUrl: 'u2'),
-  Track(id: 't3', title: 'Three', artist: 'Artist C', duration: Duration(minutes: 2), audioUrl: 'u3'),
-  Track(id: 't4', title: 'Four', artist: 'Artist D', duration: Duration(minutes: 5), audioUrl: 'u4'),
+  Track(
+    id: 't3',
+    title: 'Three',
+    artist: 'Artist C',
+    duration: Duration(minutes: 2),
+    audioUrl: 'u3',
+  ),
+  Track(
+    id: 't4',
+    title: 'Four',
+    artist: 'Artist D',
+    duration: Duration(minutes: 5),
+    audioUrl: 'u4',
+  ),
 ];
 
 class _FakeLikesRepository implements LikesRepository {
@@ -66,10 +78,15 @@ Future<void> withPlayer(
 
   try {
     bloc.add(PlayerTrackStarted(queue: _queue, startIndex: startIndex));
-    await tester.pumpWidget(MultiBlocProvider(
-      providers: [BlocProvider.value(value: bloc), BlocProvider.value(value: likes)],
-      child: MaterialApp(home: Scaffold(body: child)),
-    ));
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: bloc),
+          BlocProvider.value(value: likes),
+        ],
+        child: MaterialApp(home: Scaffold(body: child)),
+      ),
+    );
     await tester.pump();
 
     if (loading) {
@@ -99,142 +116,196 @@ Future<void> _flush(WidgetTester tester) async {
 void main() {
   group('the full player', () {
     testWidgets('names every icon-only control', (tester) async {
-      await withPlayer(tester, const FullPlayerPage(), startIndex: 1, body: (_) async {
-        // Every one of these was an unnamed glyph before this pass.
-        for (final name in [
-          'Close Now Playing',
-          'Previous track',
-          'Next track',
-          'Pause',
-          'Queue',
-          'Playback settings',
-        ]) {
-          expect(find.byTooltip(name), findsOneWidget, reason: name);
-        }
-      });
+      await withPlayer(
+        tester,
+        const FullPlayerPage(),
+        startIndex: 1,
+        body: (_) async {
+          // Every one of these was an unnamed glyph before this pass.
+          for (final name in [
+            'Close Now Playing',
+            'Previous track',
+            'Next track',
+            'Pause',
+            'Queue',
+            'Playback settings',
+          ]) {
+            expect(find.byTooltip(name), findsOneWidget, reason: name);
+          }
+        },
+      );
     });
 
     testWidgets('the play button says which action it offers', (tester) async {
-      await withPlayer(tester, const FullPlayerPage(), body: (bloc) async {
-        expect(spokenName(tester, find.byTooltip('Pause')), contains('Pause'));
+      await withPlayer(
+        tester,
+        const FullPlayerPage(),
+        body: (bloc) async {
+          expect(spokenName(tester, find.byTooltip('Pause')), contains('Pause'));
 
-        bloc.add(const PlayerPlayPauseToggled());
-        await _flush(tester);
+          bloc.add(const PlayerPlayPauseToggled());
+          await _flush(tester);
 
-        expect(find.byTooltip('Play'), findsOneWidget);
-        expect(find.byTooltip('Pause'), findsNothing);
-      });
+          expect(find.byTooltip('Play'), findsOneWidget);
+          expect(find.byTooltip('Pause'), findsNothing);
+        },
+      );
     });
 
     // The spinner replaces the glyph, and ProgressIndicator emits no semantics
     // of its own -- so without a tooltip this button would be nameless exactly
     // when a user most needs to know what it is doing.
     testWidgets('is still named while loading', (tester) async {
-      await withPlayer(tester, const FullPlayerPage(), loading: true, body: (_) async {
-        expect(find.byTooltip('Loading'), findsWidgets);
-      });
+      await withPlayer(
+        tester,
+        const FullPlayerPage(),
+        loading: true,
+        body: (_) async {
+          expect(find.byTooltip('Loading'), findsWidgets);
+        },
+      );
     });
 
-    testWidgets('shuffle and repeat announce their state, not just their colour',
-        (tester) async {
-      await withPlayer(tester, const FullPlayerPage(), body: (bloc) async {
-        bool selected(String tooltip) =>
-            tester.getSemantics(find.byTooltip(tooltip)).flagsCollection.isSelected == Tristate.isTrue;
+    testWidgets('shuffle and repeat announce their state, not just their colour', (tester) async {
+      await withPlayer(
+        tester,
+        const FullPlayerPage(),
+        body: (bloc) async {
+          bool selected(String tooltip) =>
+              tester.getSemantics(find.byTooltip(tooltip)).flagsCollection.isSelected ==
+              Tristate.isTrue;
 
-        expect(selected('Enable shuffle'), isFalse);
-        expect(selected('Repeat off'), isFalse);
+          expect(selected('Enable shuffle'), isFalse);
+          expect(selected('Repeat off'), isFalse);
 
-        bloc.add(const PlayerShuffleToggled());
-        bloc.add(const PlayerRepeatModeCycled()); // off -> all
-        await _flush(tester);
+          bloc.add(const PlayerShuffleToggled());
+          bloc.add(const PlayerRepeatModeCycled()); // off -> all
+          await _flush(tester);
 
-        expect(selected('Disable shuffle'), isTrue);
-        expect(selected('Repeat all tracks'), isTrue);
-      });
+          expect(selected('Disable shuffle'), isTrue);
+          expect(selected('Repeat all tracks'), isTrue);
+        },
+      );
     });
 
     // The old labels described the NEXT action, which read as a plain lie out
     // loud: repeat-all announced itself as "Repeat one track".
     testWidgets('repeat names the mode it is actually in', (tester) async {
-      await withPlayer(tester, const FullPlayerPage(), body: (bloc) async {
-        bloc.add(const PlayerRepeatModeCycled()); // -> all
-        await _flush(tester);
-        expect(find.byTooltip('Repeat all tracks'), findsOneWidget);
+      await withPlayer(
+        tester,
+        const FullPlayerPage(),
+        body: (bloc) async {
+          bloc.add(const PlayerRepeatModeCycled()); // -> all
+          await _flush(tester);
+          expect(find.byTooltip('Repeat all tracks'), findsOneWidget);
 
-        bloc.add(const PlayerRepeatModeCycled()); // -> one
-        await _flush(tester);
-        expect(find.byTooltip('Repeat this track'), findsOneWidget);
-      });
+          bloc.add(const PlayerRepeatModeCycled()); // -> one
+          await _flush(tester);
+          expect(find.byTooltip('Repeat this track'), findsOneWidget);
+        },
+      );
     });
 
-    testWidgets('the sliders speak positions and volume, not raw numbers',
-        (tester) async {
-      await withPlayer(tester, const FullPlayerPage(), body: (_) async {
-        // Was "124000" or a bare percentage before: the slider's raw value is
-        // milliseconds.
-        expect(spokenText(tester), contains('Position 0 seconds of 3 minutes'));
-        expect(spokenText(tester), contains('Volume 100 percent'));
-      });
+    testWidgets('the sliders speak positions and volume, not raw numbers', (tester) async {
+      await withPlayer(
+        tester,
+        const FullPlayerPage(),
+        body: (_) async {
+          // Was "124000" or a bare percentage before: the slider's raw value is
+          // milliseconds.
+          expect(spokenText(tester), contains('Position 0 seconds of 3 minutes'));
+          expect(spokenText(tester), contains('Volume 100 percent'));
+        },
+      );
     });
 
     testWidgets('the like button says what it would like', (tester) async {
-      await withPlayer(tester, const FullPlayerPage(), body: (_) async {
-        expect(find.byTooltip('Save One to Your Library'), findsOneWidget);
+      await withPlayer(
+        tester,
+        const FullPlayerPage(),
+        body: (_) async {
+          expect(find.byTooltip('Save One to Your Library'), findsOneWidget);
 
-        await tester.tap(find.byTooltip('Save One to Your Library'));
-        await _flush(tester);
+          await tester.tap(find.byTooltip('Save One to Your Library'));
+          await _flush(tester);
 
-        final heart = find.byTooltip('Remove One from Your Library');
-        expect(heart, findsOneWidget);
-        expect(tester.getSemantics(heart).flagsCollection.isSelected == Tristate.isTrue, isTrue);
-      });
+          final heart = find.byTooltip('Remove One from Your Library');
+          expect(heart, findsOneWidget);
+          expect(tester.getSemantics(heart).flagsCollection.isSelected == Tristate.isTrue, isTrue);
+        },
+      );
     });
 
     testWidgets('meets the tap-target and labelling guidelines', (tester) async {
-      await withPlayer(tester, const FullPlayerPage(), body: (_) async {
-        await expectAccessible(tester);
-      });
+      await withPlayer(
+        tester,
+        const FullPlayerPage(),
+        body: (_) async {
+          await expectAccessible(tester);
+        },
+      );
     });
   });
 
   group('the mini player', () {
-    Widget bar() => Align(alignment: Alignment.bottomCenter, child: MiniPlayer(onTap: () {}));
+    Widget bar() => Align(
+      alignment: Alignment.bottomCenter,
+      child: MiniPlayer(onTap: () {}),
+    );
 
     testWidgets('names its play button', (tester) async {
-      await withPlayer(tester, bar(), body: (_) async {
-        expect(find.byTooltip('Pause'), findsOneWidget);
-      });
+      await withPlayer(
+        tester,
+        bar(),
+        body: (_) async {
+          expect(find.byTooltip('Pause'), findsOneWidget);
+        },
+      );
     });
 
     testWidgets('announces a track change nobody asked for', (tester) async {
-      await withPlayer(tester, bar(), body: (bloc) async {
-        final node = tester.getSemantics(find.bySemanticsLabel('Now playing: One by Artist A'));
-        expect(node.flagsCollection.isLiveRegion, isTrue,
-            reason: 'an auto-advance moves no focus, so it has to announce itself');
+      await withPlayer(
+        tester,
+        bar(),
+        body: (bloc) async {
+          final node = tester.getSemantics(find.bySemanticsLabel('Now playing: One by Artist A'));
+          expect(
+            node.flagsCollection.isLiveRegion,
+            isTrue,
+            reason: 'an auto-advance moves no focus, so it has to announce itself',
+          );
 
-        bloc.add(const PlayerNextRequested());
-        await _flush(tester);
+          bloc.add(const PlayerNextRequested());
+          await _flush(tester);
 
-        expect(find.bySemanticsLabel('Now playing: Two by Artist B'), findsOneWidget);
-      });
+          expect(find.bySemanticsLabel('Now playing: Two by Artist B'), findsOneWidget);
+        },
+      );
     });
 
     testWidgets('meets the tap-target and labelling guidelines', (tester) async {
-      await withPlayer(tester, bar(), body: (_) async {
-        await expectAccessible(tester);
-      });
+      await withPlayer(
+        tester,
+        bar(),
+        body: (_) async {
+          await expectAccessible(tester);
+        },
+      );
     });
   });
 
   group('the queue sheet', () {
-    testWidgets('labels the remove button and the drag handle per track',
-        (tester) async {
-      await withPlayer(tester, const QueueSheet(), body: (_) async {
-        expect(find.byTooltip('Remove Two from queue'), findsOneWidget);
-        // The drag handle is deliberately not in the tree: it would be a
-        // focusable stop offering an interaction nobody can perform by ear.
-        expect(find.bySemanticsLabel(RegExp('[Rr]eorder')), findsNothing);
-      });
+    testWidgets('labels the remove button and the drag handle per track', (tester) async {
+      await withPlayer(
+        tester,
+        const QueueSheet(),
+        body: (_) async {
+          expect(find.byTooltip('Remove Two from queue'), findsOneWidget);
+          // The drag handle is deliberately not in the tree: it would be a
+          // focusable stop offering an interaction nobody can perform by ear.
+          expect(find.bySemanticsLabel(RegExp('[Rr]eorder')), findsNothing);
+        },
+      );
     });
 
     // Dragging a handle is not something you can do without sight. Flutter's own
@@ -242,29 +313,38 @@ void main() {
     // change to the sheet dropping them.
     testWidgets('rows can be reordered without dragging', (tester) async {
       // Up next: Two, Three, Four -- three rows, so there is somewhere to move.
-      await withPlayer(tester, const QueueSheet(), body: (_) async {
-        expect(
-          customActionLabels(tester),
-          containsAll(<String>['Move down', 'Move to the end']),
-        );
-      });
+      await withPlayer(
+        tester,
+        const QueueSheet(),
+        body: (_) async {
+          expect(customActionLabels(tester), containsAll(<String>['Move down', 'Move to the end']));
+        },
+      );
     });
 
     testWidgets('marks the playing row as selected', (tester) async {
-      await withPlayer(tester, const QueueSheet(), body: (_) async {
-        expect(
-          rowIsSelected(tester, 'One'),
-          isTrue,
-          reason: 'green text is otherwise the only cue that this one is playing',
-        );
-        expect(rowIsSelected(tester, 'Three'), isFalse, reason: 'and only that row');
-      });
+      await withPlayer(
+        tester,
+        const QueueSheet(),
+        body: (_) async {
+          expect(
+            rowIsSelected(tester, 'One'),
+            isTrue,
+            reason: 'green text is otherwise the only cue that this one is playing',
+          );
+          expect(rowIsSelected(tester, 'Three'), isFalse, reason: 'and only that row');
+        },
+      );
     });
 
     testWidgets('meets the tap-target and labelling guidelines', (tester) async {
-      await withPlayer(tester, const QueueSheet(), body: (_) async {
-        await expectAccessible(tester);
-      });
+      await withPlayer(
+        tester,
+        const QueueSheet(),
+        body: (_) async {
+          await expectAccessible(tester);
+        },
+      );
     });
   });
 }

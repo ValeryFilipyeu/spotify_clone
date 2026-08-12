@@ -87,16 +87,27 @@ class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStat
     final t = _controller.value * total;
     if (t < pauseMs) return 0; // hold at start
     if (t < pauseMs + scrollMs) {
-      return overflow * Curves.easeInOut.transform(((t - pauseMs) / scrollMs).clamp(0.0, 1.0)); // out
+      return overflow *
+          Curves.easeInOut.transform(((t - pauseMs) / scrollMs).clamp(0.0, 1.0)); // out
     }
     if (t < 2 * pauseMs + scrollMs) return overflow; // hold at end
-    return overflow * (1 - Curves.easeInOut.transform(((t - 2 * pauseMs - scrollMs) / scrollMs).clamp(0.0, 1.0))); // back
+    return overflow *
+        (1 -
+            Curves.easeInOut.transform(
+              ((t - 2 * pauseMs - scrollMs) / scrollMs).clamp(0.0, 1.0),
+            )); // back
   }
 
   @override
   Widget build(BuildContext context) {
     final style = widget.style ?? DefaultTextStyle.of(context).style;
-    final text = Text(widget.text, maxLines: 1, softWrap: false, overflow: TextOverflow.visible, style: style);
+    final text = Text(
+      widget.text,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.visible,
+      style: style,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {

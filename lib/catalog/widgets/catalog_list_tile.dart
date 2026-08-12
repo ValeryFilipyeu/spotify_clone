@@ -22,17 +22,20 @@ class CatalogListTile extends StatelessWidget {
       leading: SizedBox(
         width: 48,
         height: 48,
-        child: CoverArt(
-          url: item.coverUrl,
-          color: item.coverColor,
-          borderRadius: 4,
-          iconSize: 22,
-        ),
+        child: CoverArt(url: item.coverUrl, color: item.coverColor, borderRadius: 4, iconSize: 22),
       ),
-      title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-      subtitle: Text(item.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
+      title: Text(
+        item.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        item.subtitle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+      ),
       trailing: LikeButton(id: item.id, itemName: item.title),
     );
   }

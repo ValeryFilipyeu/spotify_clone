@@ -15,7 +15,9 @@ import 'package:spotify_clone/likes/repository/likes_repository.dart';
 /// already played things.
 class _FakeHistoryRepository implements PlayHistoryRepository {
   _FakeHistoryRepository([Map<String, List<String>>? seed])
-      : _byUser = {for (final e in (seed ?? const {}).entries) e.key: [...e.value]};
+    : _byUser = {
+        for (final e in (seed ?? const {}).entries) e.key: [...e.value],
+      };
 
   final Map<String, List<String>> _byUser;
 
@@ -43,10 +45,7 @@ const _alice = 'alice@spotify.com';
 
 /// Home with the two app-wide cubits it composes, and nothing else: no router
 /// and no AuthBloc, since both are only touched by taps these tests don't make.
-Future<PlayHistoryCubit> _pumpHome(
-  WidgetTester tester, {
-  List<String> history = const [],
-}) async {
+Future<PlayHistoryCubit> _pumpHome(WidgetTester tester, {List<String> history = const []}) async {
   // A stream each: Stream.value is single-subscription, and both cubits listen.
   Stream<AppUser?> signedIn() => Stream.value(const AppUser(_alice));
   final playHistory = PlayHistoryCubit(
@@ -59,16 +58,19 @@ Future<PlayHistoryCubit> _pumpHome(
     await likes.close();
   });
 
-  await tester.pumpWidget(MultiBlocProvider(
-    providers: [
-      BlocProvider.value(value: playHistory),
-      BlocProvider.value(value: likes),
-      BlocProvider(
-        create: (_) => HomeCubit(catalogRepository: const FakeCatalogRepository())..loadSections(),
-      ),
-    ],
-    child: const MaterialApp(home: HomeView()),
-  ));
+  await tester.pumpWidget(
+    MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: playHistory),
+        BlocProvider.value(value: likes),
+        BlocProvider(
+          create: (_) =>
+              HomeCubit(catalogRepository: const FakeCatalogRepository())..loadSections(),
+        ),
+      ],
+      child: const MaterialApp(home: HomeView()),
+    ),
+  );
   await tester.pumpAndSettle();
 
   return playHistory;
@@ -96,15 +98,17 @@ void main() {
       expect(find.text('Popular playlists'), findsOneWidget);
     });
 
-    testWidgets('has no Recently played row for an account that has played nothing',
-        (tester) async {
+    testWidgets('has no Recently played row for an account that has played nothing', (
+      tester,
+    ) async {
       await _pumpHome(tester);
 
       expect(find.text('Recently played'), findsNothing);
     });
 
-    testWidgets("shows what this account actually played, before the catalog's own rows",
-        (tester) async {
+    testWidgets("shows what this account actually played, before the catalog's own rows", (
+      tester,
+    ) async {
       await _pumpHome(tester, history: ['jazz']);
 
       expect(find.text('Recently played'), findsOneWidget);

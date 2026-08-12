@@ -52,16 +52,16 @@ String spokenText(WidgetTester tester) => allSemantics(tester)
 
 /// Labels of every node flagged as a heading.
 List<String> headings(WidgetTester tester) => [
-      for (final data in allSemantics(tester))
-        if (data.flagsCollection.isHeader && data.label.isNotEmpty) data.label,
-    ];
+  for (final data in allSemantics(tester))
+    if (data.flagsCollection.isHeader && data.label.isNotEmpty) data.label,
+];
 
 /// Every custom action offered anywhere in the tree, by label.
 Set<String> customActionLabels(WidgetTester tester) => {
-      for (final data in allSemantics(tester))
-        for (final id in data.customSemanticsActionIds ?? const <int>[])
-          ?CustomSemanticsAction.getAction(id)?.label,
-    };
+  for (final data in allSemantics(tester))
+    for (final id in data.customSemanticsActionIds ?? const <int>[])
+      ?CustomSemanticsAction.getAction(id)?.label,
+};
 
 /// Whether the row containing [title] is marked selected. The flag sits on the
 /// row's own node, above the node holding the title text.

@@ -16,9 +16,9 @@ import 'search_state.dart';
 /// nine times.
 class SearchCubit extends Cubit<SearchState> {
   SearchCubit({required CatalogRepository catalogRepository})
-      // ignore: prefer_initializing_formals -- keeps the public param name.
-      : _catalogRepository = catalogRepository,
-        super(const SearchState());
+    // ignore: prefer_initializing_formals -- keeps the public param name.
+    : _catalogRepository = catalogRepository,
+      super(const SearchState());
 
   final CatalogRepository _catalogRepository;
 
@@ -36,7 +36,9 @@ class SearchCubit extends Cubit<SearchState> {
 
     if (query.trim().isEmpty) {
       // Blank query: abandon any pending search and fall back to the prompt.
-      emit(state.copyWith(query: query, status: SearchStatus.initial, results: const SearchResults()));
+      emit(
+        state.copyWith(query: query, status: SearchStatus.initial, results: const SearchResults()),
+      );
       return;
     }
 
@@ -61,10 +63,12 @@ class SearchCubit extends Cubit<SearchState> {
       emit(state.copyWith(status: SearchStatus.success, results: results));
     } catch (_) {
       if (query != state.query.trim()) return;
-      emit(state.copyWith(
-        status: SearchStatus.failure,
-        errorMessage: 'Search failed. Please try again.',
-      ));
+      emit(
+        state.copyWith(
+          status: SearchStatus.failure,
+          errorMessage: 'Search failed. Please try again.',
+        ),
+      );
     }
   }
 

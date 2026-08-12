@@ -31,7 +31,11 @@ GoRouter createRouter(AuthBloc authBloc) {
     refreshListenable: GoRouterRefreshStream(authBloc.stream),
     redirect: (context, state) {
       final status = authBloc.state.status;
-      final onAuthRoute = {Routes.landing, Routes.signUp, Routes.logIn}.contains(state.matchedLocation);
+      final onAuthRoute = {
+        Routes.landing,
+        Routes.signUp,
+        Routes.logIn,
+      }.contains(state.matchedLocation);
 
       if (status == AuthStatus.unknown) return null;
       if (status == AuthStatus.unauthenticated && !onAuthRoute) return Routes.landing;
@@ -49,29 +53,36 @@ GoRouter createRouter(AuthBloc authBloc) {
       // so opening a playlist stacks INSIDE the active tab rather than covering
       // the tab bar.
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => ScaffoldWithNavBar(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) =>
+            ScaffoldWithNavBar(navigationShell: navigationShell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: Routes.home,
-              builder: (context, state) => const HomePage(),
-              routes: [_detailRoute()],
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: Routes.search,
-              builder: (context, state) => const SearchPage(),
-              routes: [_detailRoute()],
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: Routes.library,
-              builder: (context, state) => const LibraryPage(),
-              routes: [_detailRoute()],
-            ),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.home,
+                builder: (context, state) => const HomePage(),
+                routes: [_detailRoute()],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.search,
+                builder: (context, state) => const SearchPage(),
+                routes: [_detailRoute()],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.library,
+                builder: (context, state) => const LibraryPage(),
+                routes: [_detailRoute()],
+              ),
+            ],
+          ),
         ],
       ),
 
@@ -90,6 +101,6 @@ GoRouter createRouter(AuthBloc authBloc) {
 /// call (a GoRoute config isn't meant to be shared across parents). Its path is
 /// relative (`detail/:id`), so the full location becomes e.g. `/home/detail/dm1`.
 GoRoute _detailRoute() => GoRoute(
-      path: Routes.detailChild,
-      builder: (context, state) => DetailPage(itemId: state.pathParameters['id']!),
-    );
+  path: Routes.detailChild,
+  builder: (context, state) => DetailPage(itemId: state.pathParameters['id']!),
+);

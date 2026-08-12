@@ -46,7 +46,9 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('an authenticated session boots into the tab shell and switches tabs', (tester) async {
+  testWidgets('an authenticated session boots into the tab shell and switches tabs', (
+    tester,
+  ) async {
     // Seed a restored session for the seeded demo account so the app boots
     // straight into the authenticated shell (bypassing the login flow).
     final storage = _InMemorySessionStorage({'auth_session_email': 'test@spotify.com'});
@@ -54,13 +56,15 @@ void main() {
     await repository.restoreSession();
 
     final store = _InMemoryKeyValueStore();
-    await tester.pumpWidget(MyApp(
-      authRepository: repository,
-      likesRepository: LocalLikesRepository(store),
-      playHistoryRepository: LocalPlayHistoryRepository(store),
-      playbackSettingsRepository: LocalPlaybackSettingsRepository(store),
-      audioController: FakeAudioController(),
-    ));
+    await tester.pumpWidget(
+      MyApp(
+        authRepository: repository,
+        likesRepository: LocalLikesRepository(store),
+        playHistoryRepository: LocalPlayHistoryRepository(store),
+        playbackSettingsRepository: LocalPlaybackSettingsRepository(store),
+        audioController: FakeAudioController(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // The three tab destinations are present (this is the shell chrome).

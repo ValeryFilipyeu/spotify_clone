@@ -16,8 +16,9 @@ class LibraryPage extends StatelessWidget {
     return BlocProvider(
       // Whatever is liked right now; LibraryView keeps it in step as that
       // changes, including the first restore if it has not finished yet.
-      create: (context) => LibraryCubit(catalogRepository: context.read<CatalogRepository>())
-        ..loadLibrary(context.read<LikesCubit>().state.likedIds),
+      create: (context) =>
+          LibraryCubit(catalogRepository: context.read<CatalogRepository>())
+            ..loadLibrary(context.read<LikesCubit>().state.likedIds),
       child: const LibraryView(),
     );
   }

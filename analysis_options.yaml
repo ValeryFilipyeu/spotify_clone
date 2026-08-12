@@ -9,6 +9,19 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+# Wider than Dart's default 80. Chosen from what this codebase already is rather
+# than by preference: 99% of its lines were already under 100 characters, so this
+# reflows the genuine outliers and leaves everything else where the author put
+# it. The data tables in the fake catalog are the clearest case -- one item per
+# line reads as a table, and at 80 each becomes a five-line paragraph.
+#
+# Declared here and not as a `--line-length` flag on purpose: since Dart 3.7 a
+# bare `dart format` reads this, so editors, pre-commit hooks and CI all agree
+# without each being configured separately. A flag would only bind whoever
+# remembered to pass it.
+formatter:
+  page_width: 100
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

@@ -137,7 +137,10 @@ void main() {
       // Matching an artist surfaces that artist's songs from across catalogs.
       final byArtist = await repository.search('miles davis');
       expect(byArtist.tracks, isNotEmpty);
-      expect(byArtist.tracks.every((h) => h.track.artist.toLowerCase().contains('miles davis')), isTrue);
+      expect(
+        byArtist.tracks.every((h) => h.track.artist.toLowerCase().contains('miles davis')),
+        isTrue,
+      );
     });
 
     test('search returns empty results for a blank query', () async {

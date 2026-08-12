@@ -75,9 +75,17 @@ void main() {
         await _settle();
         bloc.add(const PlayerShuffleToggled());
         await _settle();
-        bloc.add(const PlayerQueueAppended(
-          Track(id: 'tx', title: 'Extra', artist: 'X', duration: Duration(minutes: 1), audioUrl: 'url-x'),
-        ));
+        bloc.add(
+          const PlayerQueueAppended(
+            Track(
+              id: 'tx',
+              title: 'Extra',
+              artist: 'X',
+              duration: Duration(minutes: 1),
+              audioUrl: 'url-x',
+            ),
+          ),
+        );
         await _settle();
         bloc.add(const PlayerShuffleToggled()); // back off
       },
@@ -171,7 +179,8 @@ void main() {
     blocTest<PlayerBloc, PlayerState>(
       'Next wraps around when repeat-all is on',
       build: () => PlayerBloc(audioController: audio),
-      seed: () => const PlayerState(queue: _queue, currentIndex: 3, repeatMode: PlayerRepeatMode.all),
+      seed: () =>
+          const PlayerState(queue: _queue, currentIndex: 3, repeatMode: PlayerRepeatMode.all),
       act: (bloc) => bloc.add(const PlayerNextRequested()),
       verify: (bloc) {
         expect(bloc.state.currentIndex, 0);
@@ -196,7 +205,10 @@ void main() {
 
       const all = PlayerState(queue: _queue, currentIndex: 3, repeatMode: PlayerRepeatMode.all);
       expect(all.hasNext, isTrue);
-      expect(const PlayerState(queue: _queue, repeatMode: PlayerRepeatMode.all).hasPrevious, isTrue);
+      expect(
+        const PlayerState(queue: _queue, repeatMode: PlayerRepeatMode.all).hasPrevious,
+        isTrue,
+      );
       expect(const PlayerState(queue: _queue).hasPrevious, isFalse);
     });
   });

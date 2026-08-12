@@ -16,9 +16,9 @@ class SignUpView extends StatelessWidget {
     return BlocListener<SignUpCubit, SignUpState>(
       listenWhen: (previous, current) => current.status == SignUpStatus.failure,
       listener: (context, state) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(state.errorMessage ?? 'Something went wrong.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(state.errorMessage ?? 'Something went wrong.')));
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('Sign up')),
@@ -28,7 +28,10 @@ class SignUpView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Sign up to start listening.', style: Theme.of(context).textTheme.headlineSmall),
+                Text(
+                  'Sign up to start listening.',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 const SizedBox(height: 32),
                 BlocBuilder<SignUpCubit, SignUpState>(
                   buildWhen: (previous, current) =>
@@ -38,7 +41,9 @@ class SignUpView extends StatelessWidget {
                       labelText: 'Email address',
                       keyboardType: TextInputType.emailAddress,
                       enabled: state.status != SignUpStatus.submitting,
-                      errorText: state.email.isEmpty || state.isEmailValid ? null : 'Enter a valid email address.',
+                      errorText: state.email.isEmpty || state.isEmailValid
+                          ? null
+                          : 'Enter a valid email address.',
                       onChanged: context.read<SignUpCubit>().emailChanged,
                     );
                   },
@@ -71,8 +76,9 @@ class SignUpView extends StatelessWidget {
                       labelText: 'Confirm password',
                       obscureText: true,
                       enabled: state.status != SignUpStatus.submitting,
-                      errorText:
-                          state.confirmPassword.isEmpty || state.isConfirmPasswordValid ? null : 'Passwords do not match.',
+                      errorText: state.confirmPassword.isEmpty || state.isConfirmPasswordValid
+                          ? null
+                          : 'Passwords do not match.',
                       onChanged: context.read<SignUpCubit>().confirmPasswordChanged,
                     );
                   },

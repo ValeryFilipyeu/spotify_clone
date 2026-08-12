@@ -9,9 +9,9 @@ import 'sign_up_state.dart';
 /// authenticated and the router redirects to Home on its own.
 class SignUpCubit extends Cubit<SignUpState> {
   SignUpCubit({required AuthRepository authRepository})
-      // ignore: prefer_initializing_formals -- keeps the public param name.
-      : _authRepository = authRepository,
-        super(const SignUpState());
+    // ignore: prefer_initializing_formals -- keeps the public param name.
+    : _authRepository = authRepository,
+      super(const SignUpState());
 
   final AuthRepository _authRepository;
 

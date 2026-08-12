@@ -45,7 +45,8 @@ void main() {
 
     blocTest<AuthBloc, AuthState>(
       'AuthLogOutRequested results in an unauthenticated state',
-      build: () => AuthBloc(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
+      build: () =>
+          AuthBloc(authRepository: FakeAuthRepository(sessionStorage: _InMemorySessionStorage())),
       act: (bloc) => bloc.add(const AuthLogOutRequested()),
       wait: const Duration(milliseconds: 50),
       verify: (bloc) => expect(bloc.state.status, AuthStatus.unauthenticated),

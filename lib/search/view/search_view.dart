@@ -37,9 +37,17 @@ class SearchView extends StatelessWidget {
               builder: (context, state) {
                 switch (state.status) {
                   case SearchStatus.initial:
-                    return const _Hint(icon: Icons.search, text: 'Search songs, playlists and albums');
+                    return const _Hint(
+                      icon: Icons.search,
+                      text: 'Search songs, playlists and albums',
+                    );
                   case SearchStatus.loading:
-                    return const Center(child: CircularProgressIndicator(color: SpotifyColors.green, semanticsLabel: 'Loading'));
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: SpotifyColors.green,
+                        semanticsLabel: 'Loading',
+                      ),
+                    );
                   case SearchStatus.failure:
                     return ErrorRetry(
                       message: state.errorMessage ?? 'Something went wrong.',
@@ -47,7 +55,10 @@ class SearchView extends StatelessWidget {
                     );
                   case SearchStatus.success:
                     if (state.results.isEmpty) {
-                      return _Hint(icon: Icons.sentiment_dissatisfied_outlined, text: 'No results for "${state.query.trim()}"');
+                      return _Hint(
+                        icon: Icons.sentiment_dissatisfied_outlined,
+                        text: 'No results for "${state.query.trim()}"',
+                      );
                     }
                     return _Results(results: state.results);
                 }
@@ -114,8 +125,13 @@ class _Hint extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: SpotifyColors.textSecondary),
             const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: SpotifyColors.textSecondary)),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: SpotifyColors.textSecondary),
+            ),
           ],
         ),
       ),

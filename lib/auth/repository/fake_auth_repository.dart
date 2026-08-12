@@ -12,8 +12,8 @@ import 'session_storage.dart';
 /// test/auth/bloc/auth_bloc_test.dart) with no mocking package required.
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({required SessionStorage sessionStorage})
-      // ignore: prefer_initializing_formals -- keeps the public param name.
-      : _sessionStorage = sessionStorage {
+    // ignore: prefer_initializing_formals -- keeps the public param name.
+    : _sessionStorage = sessionStorage {
     // Seeded so Log In is usable on a fresh install with no prior Sign Up.
     _users[_demoEmail] = _demoPassword;
   }

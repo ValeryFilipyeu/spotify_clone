@@ -10,7 +10,9 @@ import 'package:spotify_clone/likes/repository/likes_repository.dart';
 /// to exercise the cubit's optimistic-then-revert path.
 class _FakeLikesRepository implements LikesRepository {
   _FakeLikesRepository({Map<String, Set<String>>? seed, this.failMutations = false})
-      : _byUser = {for (final e in (seed ?? const {}).entries) e.key: {...e.value}};
+    : _byUser = {
+        for (final e in (seed ?? const {}).entries) e.key: {...e.value},
+      };
 
   final Map<String, Set<String>> _byUser;
   final bool failMutations;
@@ -43,7 +45,10 @@ Future<void> _settle() => Future<void>.delayed(Duration.zero);
 void main() {
   group('LikesCubit', () {
     test('initial state is loading with no likes', () {
-      final cubit = LikesCubit(repository: _FakeLikesRepository(), authStateChanges: Stream.value(null));
+      final cubit = LikesCubit(
+        repository: _FakeLikesRepository(),
+        authStateChanges: Stream.value(null),
+      );
       expect(cubit.state, const LikesState());
       expect(cubit.state.status, LikesStatus.loading);
       cubit.close();
@@ -52,9 +57,11 @@ void main() {
     test("loads the signed-in account's likes on sign-in", () async {
       final auth = StreamController<AppUser?>();
       final cubit = LikesCubit(
-        repository: _FakeLikesRepository(seed: {
-          _alice: {'ab1', 'dm2-2'},
-        }),
+        repository: _FakeLikesRepository(
+          seed: {
+            _alice: {'ab1', 'dm2-2'},
+          },
+        ),
         authStateChanges: auth.stream,
       );
       addTearDown(() {
@@ -72,9 +79,11 @@ void main() {
     test('clears likes on sign-out', () async {
       final auth = StreamController<AppUser?>();
       final cubit = LikesCubit(
-        repository: _FakeLikesRepository(seed: {
-          _alice: {'ab1'},
-        }),
+        repository: _FakeLikesRepository(
+          seed: {
+            _alice: {'ab1'},
+          },
+        ),
         authStateChanges: auth.stream,
       );
       addTearDown(() {
@@ -95,10 +104,12 @@ void main() {
     test("switching accounts loads the new account's likes, not the old", () async {
       final auth = StreamController<AppUser?>();
       final cubit = LikesCubit(
-        repository: _FakeLikesRepository(seed: {
-          _alice: {'ab1'},
-          _bob: {'jazz-1'},
-        }),
+        repository: _FakeLikesRepository(
+          seed: {
+            _alice: {'ab1'},
+            _bob: {'jazz-1'},
+          },
+        ),
         authStateChanges: auth.stream,
       );
       addTearDown(() {
@@ -137,7 +148,10 @@ void main() {
     });
 
     test('toggle before sign-in is a no-op', () async {
-      final cubit = LikesCubit(repository: _FakeLikesRepository(), authStateChanges: Stream.value(null));
+      final cubit = LikesCubit(
+        repository: _FakeLikesRepository(),
+        authStateChanges: Stream.value(null),
+      );
       addTearDown(cubit.close);
 
       await cubit.toggle('ab1');

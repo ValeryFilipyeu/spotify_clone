@@ -129,8 +129,20 @@ void main() {
       // 10s track with a 6s fade: 10s is not more than 2x6s, so it must not
       // crossfade -- and position 0 must not already count as "near the end".
       const shortQueue = [
-        Track(id: 's1', title: 'S1', artist: 'A', duration: Duration(seconds: 10), audioUrl: 'url-s1'),
-        Track(id: 's2', title: 'S2', artist: 'B', duration: Duration(seconds: 10), audioUrl: 'url-s2'),
+        Track(
+          id: 's1',
+          title: 'S1',
+          artist: 'A',
+          duration: Duration(seconds: 10),
+          audioUrl: 'url-s1',
+        ),
+        Track(
+          id: 's2',
+          title: 'S2',
+          artist: 'B',
+          duration: Duration(seconds: 10),
+          audioUrl: 'url-s2',
+        ),
       ];
       final bloc = await tickAt(const Duration(seconds: 9), queue: shortQueue);
 
@@ -186,10 +198,10 @@ void main() {
     tearDown(() => users.close());
 
     PlayerBloc buildBloc() => PlayerBloc(
-          audioController: audio,
-          settingsRepository: settings,
-          userIdChanges: users.stream,
-        );
+      audioController: audio,
+      settingsRepository: settings,
+      userIdChanges: users.stream,
+    );
 
     test('is off by default', () {
       final bloc = PlayerBloc(audioController: audio);

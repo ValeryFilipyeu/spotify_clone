@@ -8,9 +8,27 @@ import 'fake_audio_controller.dart';
 
 /// Scaled-down "Daily Mix 1": a short first track, then longer ones.
 const _queue = [
-  Track(id: 't1', title: 'One', artist: 'A', duration: Duration(milliseconds: 1500), audioUrl: 'url-1'),
-  Track(id: 't2', title: 'Two', artist: 'B', duration: Duration(milliseconds: 1500), audioUrl: 'url-2'),
-  Track(id: 't3', title: 'Three', artist: 'C', duration: Duration(milliseconds: 1500), audioUrl: 'url-3'),
+  Track(
+    id: 't1',
+    title: 'One',
+    artist: 'A',
+    duration: Duration(milliseconds: 1500),
+    audioUrl: 'url-1',
+  ),
+  Track(
+    id: 't2',
+    title: 'Two',
+    artist: 'B',
+    duration: Duration(milliseconds: 1500),
+    audioUrl: 'url-2',
+  ),
+  Track(
+    id: 't3',
+    title: 'Three',
+    artist: 'C',
+    duration: Duration(milliseconds: 1500),
+    audioUrl: 'url-3',
+  ),
 ];
 
 const _durations = {
@@ -70,7 +88,11 @@ void main() {
     // 1. First crossfade: t1 -> t2.
     await _wait(1500);
     expect(bloc.state.currentIndex, 1, reason: 'first crossfade should have happened');
-    expect(players[1].setUrls, contains('url-2'), reason: 'incoming track loads on the spare player');
+    expect(
+      players[1].setUrls,
+      contains('url-2'),
+      reason: 'incoming track loads on the spare player',
+    );
 
     // 2. Pause and resume.
     bloc.add(const PlayerPlayPauseToggled());
@@ -102,8 +124,11 @@ void main() {
 
     expect(bloc.state.currentIndex, 0, reason: 'back on the first track');
     // A stale duration here silently moves the fade window out of reach.
-    expect(bloc.state.duration, const Duration(milliseconds: 1500),
-        reason: 'duration must be the playing track\'s own');
+    expect(
+      bloc.state.duration,
+      const Duration(milliseconds: 1500),
+      reason: 'duration must be the playing track\'s own',
+    );
     expect(bloc.state.isLoading, isFalse, reason: 'a stuck isLoading freezes the ticker');
     expect(bloc.state.crossfadeDuration, _fade, reason: 'the setting must survive');
 
@@ -111,8 +136,11 @@ void main() {
     final loadsBefore = players.expand((p) => p.setUrls).length;
     await _wait(1600);
 
-    expect(bloc.state.currentIndex, 1,
-        reason: 'crossfade (or at least advance) must still work after all that');
+    expect(
+      bloc.state.currentIndex,
+      1,
+      reason: 'crossfade (or at least advance) must still work after all that',
+    );
     expect(players.expand((p) => p.setUrls).length, greaterThan(loadsBefore));
   });
 }

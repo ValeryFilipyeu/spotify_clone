@@ -46,10 +46,12 @@ class LibraryCubit extends Cubit<LibraryState> {
       emit(state.copyWith(status: LibraryStatus.success, items: items, tracks: tracks));
     } catch (_) {
       if (isClosed) return;
-      emit(state.copyWith(
-        status: LibraryStatus.failure,
-        errorMessage: 'Could not load your library. Please try again.',
-      ));
+      emit(
+        state.copyWith(
+          status: LibraryStatus.failure,
+          errorMessage: 'Could not load your library. Please try again.',
+        ),
+      );
     }
   }
 
@@ -68,6 +70,5 @@ class LibraryCubit extends Cubit<LibraryState> {
     await loadLibrary(wanted);
   }
 
-  static bool _setEquals(Set<String> a, Set<String> b) =>
-      a.length == b.length && a.containsAll(b);
+  static bool _setEquals(Set<String> a, Set<String> b) => a.length == b.length && a.containsAll(b);
 }

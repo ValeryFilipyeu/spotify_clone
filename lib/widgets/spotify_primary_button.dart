@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 /// A full-width green pill button standardizing the loading-spinner swap
 /// used by every submit button in the auth flow.
 class SpotifyPrimaryButton extends StatelessWidget {
-  const SpotifyPrimaryButton({super.key, required this.label, required this.onPressed, this.isLoading = false});
+  const SpotifyPrimaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.isLoading = false,
+  });
 
   final String label;
   final VoidCallback? onPressed;

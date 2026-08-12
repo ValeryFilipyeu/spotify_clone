@@ -17,13 +17,7 @@ import '../../theme/spotify_colors.dart';
 /// SizedBox or an AspectRatio) and decodes the bitmap at the size it will
 /// actually be painted at.
 class CoverArt extends StatelessWidget {
-  const CoverArt({
-    super.key,
-    this.url,
-    this.color,
-    this.borderRadius = 8,
-    this.iconSize = 40,
-  });
+  const CoverArt({super.key, this.url, this.color, this.borderRadius = 8, this.iconSize = 40});
 
   /// The remote cover, or null for something with no artwork.
   final String? url;

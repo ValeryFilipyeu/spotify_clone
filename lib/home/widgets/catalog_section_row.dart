@@ -21,7 +21,10 @@ class CatalogSectionRow extends StatelessWidget {
           // headings are how you navigate it without sight.
           child: Semantics(
             header: true,
-            child: Text(section.title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+            child: Text(
+              section.title,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
         ),
         SizedBox(

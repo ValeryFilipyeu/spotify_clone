@@ -10,7 +10,9 @@ import 'package:spotify_clone/history/repository/play_history_repository.dart';
 /// exercise the cubit's optimistic-then-revert path.
 class _FakeHistoryRepository implements PlayHistoryRepository {
   _FakeHistoryRepository({Map<String, List<String>>? seed, this.failWrites = false})
-      : _byUser = {for (final e in (seed ?? const {}).entries) e.key: [...e.value]};
+    : _byUser = {
+        for (final e in (seed ?? const {}).entries) e.key: [...e.value],
+      };
 
   final Map<String, List<String>> _byUser;
   final bool failWrites;
@@ -49,7 +51,11 @@ void main() {
     test("loads the signed-in account's history", () async {
       final auth = StreamController<AppUser?>();
       final cubit = PlayHistoryCubit(
-        repository: _FakeHistoryRepository(seed: {_alice: ['dm1', 'lofi']}),
+        repository: _FakeHistoryRepository(
+          seed: {
+            _alice: ['dm1', 'lofi'],
+          },
+        ),
         authStateChanges: auth.stream,
       );
       addTearDown(() async {
@@ -64,7 +70,11 @@ void main() {
     });
 
     test('records to the front, immediately', () async {
-      final repository = _FakeHistoryRepository(seed: {_alice: ['dm1']});
+      final repository = _FakeHistoryRepository(
+        seed: {
+          _alice: ['dm1'],
+        },
+      );
       final auth = StreamController<AppUser?>();
       final cubit = PlayHistoryCubit(repository: repository, authStateChanges: auth.stream);
       addTearDown(() async {
@@ -81,7 +91,11 @@ void main() {
     });
 
     test('replaying what is already at the front costs nothing', () async {
-      final repository = _FakeHistoryRepository(seed: {_alice: ['dm1', 'lofi']});
+      final repository = _FakeHistoryRepository(
+        seed: {
+          _alice: ['dm1', 'lofi'],
+        },
+      );
       final auth = StreamController<AppUser?>();
       final cubit = PlayHistoryCubit(repository: repository, authStateChanges: auth.stream);
       addTearDown(() async {
@@ -101,10 +115,7 @@ void main() {
     // and it must not remember it for whoever signs in next.
     test('ignores a play with nobody signed in', () async {
       final repository = _FakeHistoryRepository();
-      final cubit = PlayHistoryCubit(
-        repository: repository,
-        authStateChanges: Stream.value(null),
-      );
+      final cubit = PlayHistoryCubit(repository: repository, authStateChanges: Stream.value(null));
       addTearDown(cubit.close);
       await _settle();
 
@@ -117,7 +128,12 @@ void main() {
     test('a failed write reverts, so the row never lies about what was saved', () async {
       final auth = StreamController<AppUser?>();
       final cubit = PlayHistoryCubit(
-        repository: _FakeHistoryRepository(seed: {_alice: ['dm1']}, failWrites: true),
+        repository: _FakeHistoryRepository(
+          seed: {
+            _alice: ['dm1'],
+          },
+          failWrites: true,
+        ),
         authStateChanges: auth.stream,
       );
       addTearDown(() async {
@@ -135,7 +151,11 @@ void main() {
     test('forgets the previous account on sign-out', () async {
       final auth = StreamController<AppUser?>();
       final cubit = PlayHistoryCubit(
-        repository: _FakeHistoryRepository(seed: {_alice: ['dm1']}),
+        repository: _FakeHistoryRepository(
+          seed: {
+            _alice: ['dm1'],
+          },
+        ),
         authStateChanges: auth.stream,
       );
       addTearDown(() async {
@@ -154,10 +174,12 @@ void main() {
     test('never shows one account the other one is history', () async {
       final auth = StreamController<AppUser?>();
       final cubit = PlayHistoryCubit(
-        repository: _FakeHistoryRepository(seed: {
-          _alice: ['dm1'],
-          _bob: ['jazz'],
-        }),
+        repository: _FakeHistoryRepository(
+          seed: {
+            _alice: ['dm1'],
+            _bob: ['jazz'],
+          },
+        ),
         authStateChanges: auth.stream,
       );
       addTearDown(() async {

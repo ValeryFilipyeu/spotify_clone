@@ -94,22 +94,36 @@ class MiniPlayer extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            MarqueeText(track.title,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                            MarqueeText(track.artist,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary)),
+                            MarqueeText(
+                              track.title,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            MarqueeText(
+                              track.artist,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+                            ),
                           ],
                         ),
                       ),
                     ),
                     IconButton(
                       icon: state.isLoading
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
-                      tooltip: state.isLoading
-                          ? 'Loading'
-                          : (state.isPlaying ? 'Pause' : 'Play'),
-                      onPressed: () => context.read<PlayerBloc>().add(const PlayerPlayPauseToggled()),
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Icon(
+                              state.isPlaying ? Icons.pause : Icons.play_arrow,
+                              color: Colors.white,
+                            ),
+                      tooltip: state.isLoading ? 'Loading' : (state.isPlaying ? 'Pause' : 'Play'),
+                      onPressed: () =>
+                          context.read<PlayerBloc>().add(const PlayerPlayPauseToggled()),
                     ),
                     // Dismiss the player: stop playback and clear the queue.
                     // PlayerStopped empties the queue, so currentTrack becomes

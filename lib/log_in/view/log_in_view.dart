@@ -16,9 +16,9 @@ class LogInView extends StatelessWidget {
     return BlocListener<LogInCubit, LogInState>(
       listenWhen: (previous, current) => current.status == LogInStatus.failure,
       listener: (context, state) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(state.errorMessage ?? 'Something went wrong.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(state.errorMessage ?? 'Something went wrong.')));
       },
       child: Scaffold(
         appBar: AppBar(title: const Text('Log in')),
@@ -43,7 +43,9 @@ class LogInView extends StatelessWidget {
                       labelText: 'Email address',
                       keyboardType: TextInputType.emailAddress,
                       enabled: state.status != LogInStatus.submitting,
-                      errorText: state.email.isEmpty || state.isEmailValid ? null : 'Enter a valid email address.',
+                      errorText: state.email.isEmpty || state.isEmailValid
+                          ? null
+                          : 'Enter a valid email address.',
                       onChanged: context.read<LogInCubit>().emailChanged,
                     );
                   },

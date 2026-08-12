@@ -89,7 +89,10 @@ class CatalogCard extends StatelessWidget {
                     child: Container(
                       width: _heartScrim,
                       height: _heartScrim,
-                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
                   LikeButton(id: item.id, itemName: item.title, size: 18),

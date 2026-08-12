@@ -126,10 +126,34 @@ class FakeCatalogRepository implements CatalogRepository {
     CatalogSection(
       title: 'Made for you',
       items: [
-        CatalogItem(id: 'dm1', title: 'Daily Mix 1', subtitle: 'Tame Impala, MGMT & more', coverColor: 0xFF1DB954, coverUrl: _cover('dm1')),
-        CatalogItem(id: 'dm2', title: 'Daily Mix 2', subtitle: 'Radiohead, Interpol & more', coverColor: 0xFFE13300, coverUrl: _cover('dm2')),
-        CatalogItem(id: 'dw', title: 'Discover Weekly', subtitle: 'Your weekly mixtape', coverColor: 0xFF7358FF, coverUrl: _cover('dw')),
-        CatalogItem(id: 'rr', title: 'Release Radar', subtitle: 'New from artists you follow', coverColor: 0xFF2D46B9, coverUrl: _cover('rr')),
+        CatalogItem(
+          id: 'dm1',
+          title: 'Daily Mix 1',
+          subtitle: 'Tame Impala, MGMT & more',
+          coverColor: 0xFF1DB954,
+          coverUrl: _cover('dm1'),
+        ),
+        CatalogItem(
+          id: 'dm2',
+          title: 'Daily Mix 2',
+          subtitle: 'Radiohead, Interpol & more',
+          coverColor: 0xFFE13300,
+          coverUrl: _cover('dm2'),
+        ),
+        CatalogItem(
+          id: 'dw',
+          title: 'Discover Weekly',
+          subtitle: 'Your weekly mixtape',
+          coverColor: 0xFF7358FF,
+          coverUrl: _cover('dw'),
+        ),
+        CatalogItem(
+          id: 'rr',
+          title: 'Release Radar',
+          subtitle: 'New from artists you follow',
+          coverColor: 0xFF2D46B9,
+          coverUrl: _cover('rr'),
+        ),
       ],
     ),
     // This used to be called "Recently played" and was the same four playlists
@@ -140,19 +164,67 @@ class FakeCatalogRepository implements CatalogRepository {
     CatalogSection(
       title: 'Popular playlists',
       items: [
-        CatalogItem(id: 'lofi', title: 'Lo-Fi Beats', subtitle: 'Chill instrumental hip-hop', coverColor: 0xFFBA5D07, coverUrl: _cover('lofi')),
-        CatalogItem(id: 'focus', title: 'Deep Focus', subtitle: 'Keep calm and focus', coverColor: 0xFF503750, coverUrl: _cover('focus')),
-        CatalogItem(id: 'run', title: 'Running Mix', subtitle: 'Uptempo motivation', coverColor: 0xFF8D67AB, coverUrl: _cover('run')),
-        CatalogItem(id: 'jazz', title: 'Jazz Vibes', subtitle: 'The perfect backdrop', coverColor: 0xFF477D95, coverUrl: _cover('jazz')),
+        CatalogItem(
+          id: 'lofi',
+          title: 'Lo-Fi Beats',
+          subtitle: 'Chill instrumental hip-hop',
+          coverColor: 0xFFBA5D07,
+          coverUrl: _cover('lofi'),
+        ),
+        CatalogItem(
+          id: 'focus',
+          title: 'Deep Focus',
+          subtitle: 'Keep calm and focus',
+          coverColor: 0xFF503750,
+          coverUrl: _cover('focus'),
+        ),
+        CatalogItem(
+          id: 'run',
+          title: 'Running Mix',
+          subtitle: 'Uptempo motivation',
+          coverColor: 0xFF8D67AB,
+          coverUrl: _cover('run'),
+        ),
+        CatalogItem(
+          id: 'jazz',
+          title: 'Jazz Vibes',
+          subtitle: 'The perfect backdrop',
+          coverColor: 0xFF477D95,
+          coverUrl: _cover('jazz'),
+        ),
       ],
     ),
     CatalogSection(
       title: 'Popular albums',
       items: [
-        CatalogItem(id: 'ab1', title: 'Currents', subtitle: 'Tame Impala', coverColor: 0xFFE8115B, coverUrl: _cover('ab1')),
-        CatalogItem(id: 'ab2', title: 'In Rainbows', subtitle: 'Radiohead', coverColor: 0xFF148A08, coverUrl: _cover('ab2')),
-        CatalogItem(id: 'ab3', title: 'Random Access Memories', subtitle: 'Daft Punk', coverColor: 0xFFDC148C, coverUrl: _cover('ab3')),
-        CatalogItem(id: 'ab4', title: 'Blonde', subtitle: 'Frank Ocean', coverColor: 0xFF056952, coverUrl: _cover('ab4')),
+        CatalogItem(
+          id: 'ab1',
+          title: 'Currents',
+          subtitle: 'Tame Impala',
+          coverColor: 0xFFE8115B,
+          coverUrl: _cover('ab1'),
+        ),
+        CatalogItem(
+          id: 'ab2',
+          title: 'In Rainbows',
+          subtitle: 'Radiohead',
+          coverColor: 0xFF148A08,
+          coverUrl: _cover('ab2'),
+        ),
+        CatalogItem(
+          id: 'ab3',
+          title: 'Random Access Memories',
+          subtitle: 'Daft Punk',
+          coverColor: 0xFFDC148C,
+          coverUrl: _cover('ab3'),
+        ),
+        CatalogItem(
+          id: 'ab4',
+          title: 'Blonde',
+          subtitle: 'Frank Ocean',
+          coverColor: 0xFF056952,
+          coverUrl: _cover('ab4'),
+        ),
       ],
     ),
   ];
@@ -177,10 +249,22 @@ class FakeCatalogRepository implements CatalogRepository {
     ('https://www.kozco.com/tech/32.mp3', Duration(seconds: 32)),
     ('https://www.kozco.com/tech/organfinale.mp3', Duration(seconds: 13)),
     ('https://archive.org/download/testmp3testfile/mpthreetest.mp3', Duration(seconds: 12)),
-    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', Duration(minutes: 6, seconds: 12)),
-    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', Duration(minutes: 7, seconds: 5)),
-    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', Duration(minutes: 5, seconds: 44)),
-    ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', Duration(minutes: 5, seconds: 53)),
+    (
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+      Duration(minutes: 6, seconds: 12),
+    ),
+    (
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+      Duration(minutes: 7, seconds: 5),
+    ),
+    (
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+      Duration(minutes: 5, seconds: 44),
+    ),
+    (
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+      Duration(minutes: 5, seconds: 53),
+    ),
     ('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', Duration(minutes: 7)),
   ];
 

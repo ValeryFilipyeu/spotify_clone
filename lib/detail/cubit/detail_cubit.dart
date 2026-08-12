@@ -8,9 +8,9 @@ import 'detail_state.dart';
 /// DetailPage), delegating the fetch to the injected repository.
 class DetailCubit extends Cubit<DetailState> {
   DetailCubit({required CatalogRepository catalogRepository})
-      // ignore: prefer_initializing_formals -- keeps the public param name.
-      : _catalogRepository = catalogRepository,
-        super(const DetailState());
+    // ignore: prefer_initializing_formals -- keeps the public param name.
+    : _catalogRepository = catalogRepository,
+      super(const DetailState());
 
   final CatalogRepository _catalogRepository;
 
@@ -20,9 +20,16 @@ class DetailCubit extends Cubit<DetailState> {
       final detail = await _catalogRepository.fetchDetail(itemId);
       emit(state.copyWith(status: DetailStatus.success, detail: detail));
     } on CatalogItemNotFound {
-      emit(state.copyWith(status: DetailStatus.failure, errorMessage: "We couldn't find that album."));
+      emit(
+        state.copyWith(status: DetailStatus.failure, errorMessage: "We couldn't find that album."),
+      );
     } catch (_) {
-      emit(state.copyWith(status: DetailStatus.failure, errorMessage: 'Could not load this album. Please try again.'));
+      emit(
+        state.copyWith(
+          status: DetailStatus.failure,
+          errorMessage: 'Could not load this album. Please try again.',
+        ),
+      );
     }
   }
 }

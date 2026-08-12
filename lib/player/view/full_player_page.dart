@@ -29,7 +29,10 @@ class FullPlayerPage extends StatelessWidget {
           tooltip: 'Close Now Playing',
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Now Playing', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        title: const Text(
+          'Now Playing',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
         centerTitle: true,
         actions: [
           IconButton(
@@ -73,10 +76,18 @@ class FullPlayerPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            MarqueeText(track.title,
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                            MarqueeText(track.artist,
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: SpotifyColors.textSecondary)),
+                            MarqueeText(
+                              track.title,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            MarqueeText(
+                              track.artist,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleMedium?.copyWith(color: SpotifyColors.textSecondary),
+                            ),
                           ],
                         ),
                       ),
@@ -120,11 +131,10 @@ class _ScrubberState extends State<_Scrubber> {
   // Tabular figures so every digit is the same width -- the elapsed-time label
   // updates continuously while dragging, and with Poppins' default
   // proportional figures the number visibly wiggles as the digits change.
-  TextStyle? _timeStyle(BuildContext context) =>
-      Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: SpotifyColors.textSecondary,
-        fontFeatures: const [FontFeature.tabularFigures()],
-      );
+  TextStyle? _timeStyle(BuildContext context) => Theme.of(context).textTheme.bodySmall?.copyWith(
+    color: SpotifyColors.textSecondary,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -154,12 +164,14 @@ class _ScrubberState extends State<_Scrubber> {
             semanticFormatterCallback: (value) => totalMs == 0
                 ? 'Playback position unavailable'
                 : 'Position ${spokenDuration(Duration(milliseconds: value.round()))} '
-                    'of ${spokenDuration(widget.state.duration)}',
+                      'of ${spokenDuration(widget.state.duration)}',
             onChanged: totalMs == 0 ? null : (value) => setState(() => _dragValue = value),
             onChangeEnd: totalMs == 0
                 ? null
                 : (value) {
-                    context.read<PlayerBloc>().add(PlayerSeekRequested(Duration(milliseconds: value.round())));
+                    context.read<PlayerBloc>().add(
+                      PlayerSeekRequested(Duration(milliseconds: value.round())),
+                    );
                     setState(() => _dragValue = null);
                   },
           ),
@@ -169,8 +181,14 @@ class _ScrubberState extends State<_Scrubber> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(formatDuration(_dragValue != null ? Duration(milliseconds: _dragValue!.round()) : widget.state.position),
-                  style: _timeStyle(context)),
+              Text(
+                formatDuration(
+                  _dragValue != null
+                      ? Duration(milliseconds: _dragValue!.round())
+                      : widget.state.position,
+                ),
+                style: _timeStyle(context),
+              ),
               Text(formatDuration(widget.state.duration), style: _timeStyle(context)),
             ],
           ),
@@ -239,15 +257,17 @@ class _Controls extends StatelessWidget {
               // The outer 64x64 SizedBox pins the circle, so swapping the glyph
               // for the spinner (different intrinsic size) can't reflow anything.
               icon: state.isLoading
-                  ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black))
+                  ? const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black),
+                    )
                   : Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.black),
               // Tracks all three states the glyph shows. The spinner contributes
               // no semantics of its own (ProgressIndicator only emits a node when
               // given a semanticsLabel), so while loading this tooltip is the
               // button's ONLY name.
-              tooltip: state.isLoading
-                  ? 'Loading'
-                  : (state.isPlaying ? 'Pause' : 'Play'),
+              tooltip: state.isLoading ? 'Loading' : (state.isPlaying ? 'Pause' : 'Play'),
               onPressed: () => bloc.add(const PlayerPlayPauseToggled()),
             ),
           ),

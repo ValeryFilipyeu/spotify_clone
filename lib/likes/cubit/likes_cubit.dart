@@ -15,11 +15,11 @@ import 'likes_state.dart';
 /// signed-in user's set on login and clearing it on logout, so switching
 /// accounts never shows the previous user's library.
 class LikesCubit extends Cubit<LikesState> {
-  LikesCubit({
-    required LikesRepository repository,
-    required Stream<AppUser?> authStateChanges,
-  })  : _repository = repository, // ignore: prefer_initializing_formals -- keeps the public param name.
-        super(const LikesState()) {
+  // Callers still pass `repository:`: Dart derives the public argument name from
+  // the private field, which is what the `// ignore: prefer_initializing_formals`
+  // that used to sit here was working around.
+  LikesCubit({required this._repository, required Stream<AppUser?> authStateChanges})
+    : super(const LikesState()) {
     _authSub = authStateChanges.listen(_onUserChanged);
   }
 

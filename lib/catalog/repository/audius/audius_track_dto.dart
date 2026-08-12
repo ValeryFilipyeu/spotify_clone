@@ -59,7 +59,8 @@ class AudiusTrackDto {
       // second line, and every payload observed carries one.
       artist: json.object('user', at: at).string('name', at: '$at.user'),
       durationSeconds: json.integer('duration', at: at),
-      artworkUrl: artwork?.stringOrNull(preferredArtworkSize) ??
+      artworkUrl:
+          artwork?.stringOrNull(preferredArtworkSize) ??
           artwork?.stringOrNull('1000x1000') ??
           artwork?.stringOrNull('150x150'),
       isStreamable: _readStreamable(json),
@@ -87,11 +88,11 @@ class AudiusTrackDto {
   /// persisted through history and handed to the OS media session, storing an
   /// expiring url would mean a queue that plays now and 404s in an hour.
   Track toDomain({required Uri streamUrl}) => Track(
-        id: id,
-        title: title,
-        artist: artist,
-        duration: Duration(seconds: durationSeconds),
-        audioUrl: streamUrl.toString(),
-        coverUrl: artworkUrl,
-      );
+    id: id,
+    title: title,
+    artist: artist,
+    duration: Duration(seconds: durationSeconds),
+    audioUrl: streamUrl.toString(),
+    coverUrl: artworkUrl,
+  );
 }

@@ -68,11 +68,7 @@ void main() {
       await repository.logOut();
       await Future<void>.delayed(Duration.zero);
 
-      expect(emitted, [
-        null,
-        const AppUser('stream@example.com'),
-        null,
-      ]);
+      expect(emitted, [null, const AppUser('stream@example.com'), null]);
 
       await subscription.cancel();
     });

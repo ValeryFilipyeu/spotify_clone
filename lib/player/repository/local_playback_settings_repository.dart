@@ -37,7 +37,7 @@ class LocalPlaybackSettingsRepository implements PlaybackSettingsRepository {
 
   @override
   Future<void> saveCrossfadeDuration(String userId, Duration duration) => _store.write(
-        _crossfadeKey(userId),
-        (duration.isNegative ? Duration.zero : duration).inMilliseconds.toString(),
-      );
+    _crossfadeKey(userId),
+    (duration.isNegative ? Duration.zero : duration).inMilliseconds.toString(),
+  );
 }

@@ -19,10 +19,10 @@ class SpotifyWordmark extends StatelessWidget {
         Text(
           'spotify clone',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w800,
-                color: SpotifyColors.white,
-              ),
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            color: SpotifyColors.white,
+          ),
         ),
       ],
     );

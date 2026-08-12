@@ -163,12 +163,9 @@ class _FakeHttpClientResponse implements HttpClientResponse {
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    return Stream<List<int>>.value(Uint8List.fromList(_onePixelPng)).listen(
-      onData,
-      onError: onError,
-      onDone: onDone,
-      cancelOnError: cancelOnError,
-    );
+    return Stream<List<int>>.value(
+      Uint8List.fromList(_onePixelPng),
+    ).listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
 
   @override

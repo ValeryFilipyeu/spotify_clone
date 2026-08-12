@@ -35,21 +35,28 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       final sections = await _catalogRepository.fetchHomeSections();
       if (isClosed) return;
-      emit(state.copyWith(
-        status: HomeStatus.success,
-        sections: sections,
-        // Indexed straight off the sections. Home's rows are the overwhelming
-        // majority of what a user has recently played, so this alone resolves
-        // most of the personal row without a second request.
-        itemsById: {
-          for (final section in sections)
-            for (final item in section.items) item.id: item,
-        },
-      ));
+      emit(
+        state.copyWith(
+          status: HomeStatus.success,
+          sections: sections,
+          // Indexed straight off the sections. Home's rows are the overwhelming
+          // majority of what a user has recently played, so this alone resolves
+          // most of the personal row without a second request.
+          itemsById: {
+            for (final section in sections)
+              for (final item in section.items) item.id: item,
+          },
+        ),
+      );
       await resolveMissing(recentIds);
     } catch (_) {
       if (isClosed) return;
-      emit(state.copyWith(status: HomeStatus.failure, errorMessage: 'Could not load your music. Please try again.'));
+      emit(
+        state.copyWith(
+          status: HomeStatus.failure,
+          errorMessage: 'Could not load your music. Please try again.',
+        ),
+      );
     }
   }
 
@@ -74,10 +81,9 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       final items = await _catalogRepository.fetchItemsByIds(missing);
       if (isClosed || items.isEmpty) return;
-      emit(state.copyWith(itemsById: {
-        ...state.itemsById,
-        for (final item in items) item.id: item,
-      }));
+      emit(
+        state.copyWith(itemsById: {...state.itemsById, for (final item in items) item.id: item}),
+      );
     } catch (_) {
       // Retried on the next history change: drop these from the attempted set
       // so a transient failure is not permanent.

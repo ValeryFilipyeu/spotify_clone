@@ -20,9 +20,9 @@ class CrossfadeAudioController implements AudioController {
   CrossfadeAudioController({
     required AudioController Function() createPlayer,
     Duration rampStep = const Duration(milliseconds: 50),
-        // ignore_for_file: prefer_initializing_formals -- keeps public param names.
-  })  : _players = [createPlayer(), createPlayer()],
-        _rampStep = rampStep {
+    // ignore_for_file: prefer_initializing_formals -- keeps public param names.
+  }) : _players = [createPlayer(), createPlayer()],
+       _rampStep = rampStep {
     _bindActive();
   }
 

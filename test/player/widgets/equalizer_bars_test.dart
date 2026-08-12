@@ -31,15 +31,20 @@ List<RRect> _paintedBars(WidgetTester tester) {
   ];
 }
 
-Widget _host(EqualizerBars bars) => MaterialApp(home: Scaffold(body: Center(child: bars)));
+Widget _host(EqualizerBars bars) => MaterialApp(
+  home: Scaffold(body: Center(child: bars)),
+);
 
 void main() {
   group('the wave', () {
     test('never leaves the box', () {
       for (final phase in _cycle()) {
         for (final level in _levels(phase)) {
-          expect(level, inInclusiveRange(kEqualizerRestingFraction, 1.0),
-              reason: 'a bar at phase $phase would be drawn outside its bounds');
+          expect(
+            level,
+            inInclusiveRange(kEqualizerRestingFraction, 1.0),
+            reason: 'a bar at phase $phase would be drawn outside its bounds',
+          );
         }
       }
     });
@@ -54,8 +59,11 @@ void main() {
         final here = _levels(phase);
         final aCycleLater = _levels(phase + 1);
         for (var bar = 0; bar < here.length; bar++) {
-          expect(aCycleLater[bar], closeTo(here[bar], 1e-9),
-              reason: 'bar $bar does not repeat at phase $phase');
+          expect(
+            aCycleLater[bar],
+            closeTo(here[bar], 1e-9),
+            reason: 'bar $bar does not repeat at phase $phase',
+          );
         }
       }
     });
@@ -85,10 +93,7 @@ void main() {
 
     test('rests flat with no energy, whatever the phase', () {
       for (final phase in _cycle(samples: 24)) {
-        expect(
-          _levels(phase, energy: 0),
-          everyElement(closeTo(kEqualizerRestingFraction, 1e-9)),
-        );
+        expect(_levels(phase, energy: 0), everyElement(closeTo(kEqualizerRestingFraction, 1e-9)));
       }
     });
 
@@ -98,8 +103,7 @@ void main() {
   });
 
   group('painting', () {
-    testWidgets('draws one rounded bar per bar, sitting on the baseline',
-        (tester) async {
+    testWidgets('draws one rounded bar per bar, sitting on the baseline', (tester) async {
       await tester.pumpWidget(_host(const EqualizerBars(isActive: true)));
 
       final bars = _paintedBars(tester);
@@ -121,16 +125,14 @@ void main() {
       expect(bars.last.right, closeTo(18, 0.001));
     });
 
-    testWidgets('paused, every bar is painted at the same resting height',
-        (tester) async {
+    testWidgets('paused, every bar is painted at the same resting height', (tester) async {
       await tester.pumpWidget(_host(const EqualizerBars(isActive: false)));
 
       final heights = _paintedBars(tester).map((bar) => bar.height);
       expect(heights, everyElement(closeTo(11 * kEqualizerRestingFraction, 0.001)));
     });
 
-    testWidgets('repaints straight off the ticker, rebuilding nothing',
-        (tester) async {
+    testWidgets('repaints straight off the ticker, rebuilding nothing', (tester) async {
       // The whole point of handing the painter a repaint Listenable: the render
       // object subscribes to the ticker itself, so a frame costs a paint and
       // nothing else. Two independent things are checked, because
@@ -143,19 +145,23 @@ void main() {
       //    above the equalizer is dirty in this test, so every increment is the
       //    equalizer marking itself for paint and no-one else.
       var builds = 0;
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: RepaintBoundary(
-              key: const ValueKey('boundary'),
-              child: Builder(builder: (context) {
-                builds++;
-                return const EqualizerBars(isActive: true);
-              }),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: RepaintBoundary(
+                key: const ValueKey('boundary'),
+                child: Builder(
+                  builder: (context) {
+                    builds++;
+                    return const EqualizerBars(isActive: true);
+                  },
+                ),
+              ),
             ),
           ),
         ),
-      ));
+      );
 
       final boundary = tester.renderObject<RenderRepaintBoundary>(
         find.byKey(const ValueKey('boundary')),
@@ -183,9 +189,7 @@ void main() {
       await tester.pumpWidget(_host(const EqualizerBars(isActive: true)));
       await tester.pump(const Duration(milliseconds: 400)); // the settle
 
-      final tallest = _paintedBars(tester)
-          .map((bar) => bar.height)
-          .reduce((a, b) => a > b ? a : b);
+      final tallest = _paintedBars(tester).map((bar) => bar.height).reduce((a, b) => a > b ? a : b);
       expect(tallest, greaterThan(resting));
     });
   });
@@ -232,10 +236,7 @@ void main() {
 
       final before = _paintedBars(tester).map((bar) => bar.height).toList();
       await tester.pump(const Duration(milliseconds: 200));
-      expect(
-        _paintedBars(tester).map((bar) => bar.height).toList(),
-        isNot(orderedEquals(before)),
-      );
+      expect(_paintedBars(tester).map((bar) => bar.height).toList(), isNot(orderedEquals(before)));
     });
 
     testWidgets('leaves nothing running once disposed', (tester) async {

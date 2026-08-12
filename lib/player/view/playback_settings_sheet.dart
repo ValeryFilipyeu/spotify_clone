@@ -42,7 +42,9 @@ class PlaybackSettingsSheet extends StatelessWidget {
                   header: true,
                   child: Text(
                     'Playback',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -54,9 +56,9 @@ class PlaybackSettingsSheet extends StatelessWidget {
                     Text(
                       seconds == 0 ? 'Off' : '$seconds s',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: seconds == 0 ? SpotifyColors.textSecondary : SpotifyColors.green,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: seconds == 0 ? SpotifyColors.textSecondary : SpotifyColors.green,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -75,14 +77,16 @@ class PlaybackSettingsSheet extends StatelessWidget {
                       : 'Crossfade ${value.round()} ${value.round() == 1 ? 'second' : 'seconds'}',
                   activeColor: SpotifyColors.green,
                   inactiveColor: Colors.white24,
-                  onChanged: (value) => context
-                      .read<PlayerBloc>()
-                      .add(PlayerCrossfadeDurationChanged(Duration(seconds: value.round()))),
+                  onChanged: (value) => context.read<PlayerBloc>().add(
+                    PlayerCrossfadeDurationChanged(Duration(seconds: value.round())),
+                  ),
                 ),
                 Text(
                   'Lets you hear the end of one track as the next one begins. '
                   'Tracks shorter than twice the crossfade change over normally.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
                 ),
               ],
             );

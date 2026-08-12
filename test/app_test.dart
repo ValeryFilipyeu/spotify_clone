@@ -50,13 +50,15 @@ void main() {
     final audioController = FakeAudioController();
 
     final store = _InMemoryKeyValueStore();
-    await tester.pumpWidget(MyApp(
-      authRepository: repository,
-      likesRepository: LocalLikesRepository(store),
-      playHistoryRepository: LocalPlayHistoryRepository(store),
-      playbackSettingsRepository: LocalPlaybackSettingsRepository(store),
-      audioController: audioController,
-    ));
+    await tester.pumpWidget(
+      MyApp(
+        authRepository: repository,
+        likesRepository: LocalLikesRepository(store),
+        playHistoryRepository: LocalPlayHistoryRepository(store),
+        playbackSettingsRepository: LocalPlaybackSettingsRepository(store),
+        audioController: audioController,
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Sign up free'), findsOneWidget);

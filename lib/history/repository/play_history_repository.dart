@@ -25,7 +25,5 @@ abstract class PlayHistoryRepository {
 /// list differently, what the screen showed and what got persisted would drift
 /// apart. Replaying an item you played an hour ago should move it, not add a
 /// second copy -- hence remove-then-prepend rather than a plain insert.
-List<String> withMostRecent(List<String> ids, String itemId) => [
-      itemId,
-      ...ids.where((id) => id != itemId),
-    ].take(PlayHistoryRepository.maxEntries).toList();
+List<String> withMostRecent(List<String> ids, String itemId) =>
+    [itemId, ...ids.where((id) => id != itemId)].take(PlayHistoryRepository.maxEntries).toList();

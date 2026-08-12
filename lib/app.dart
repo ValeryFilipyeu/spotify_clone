@@ -93,7 +93,9 @@ class MyApp extends StatelessWidget {
               settingsRepository: context.read<PlaybackSettingsRepository>(),
               // Mapped to a bare id: the player needs to know *which* account
               // it is playing for, not anything else about the user.
-              userIdChanges: context.read<AuthRepository>().authStateChanges.map((user) => user?.email),
+              userIdChanges: context.read<AuthRepository>().authStateChanges.map(
+                (user) => user?.email,
+              ),
               mediaSession: mediaSession,
               audioSession: audioSession,
             ),

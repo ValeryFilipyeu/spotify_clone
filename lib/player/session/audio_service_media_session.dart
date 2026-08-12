@@ -54,16 +54,18 @@ class AudioServiceMediaSession extends BaseAudioHandler implements MediaSession 
     // zero is left off entirely: audio_service hides the seek bar when the
     // duration is unknown, which is better than drawing one of length 0.
     final artUrl = nowPlaying.artUrl;
-    mediaItem.add(MediaItem(
-      id: nowPlaying.id,
-      title: nowPlaying.title,
-      artist: nowPlaying.artist,
-      duration: nowPlaying.duration > Duration.zero ? nowPlaying.duration : null,
-      // audio_service downloads and caches this itself, then hands it to
-      // MPNowPlayingInfoCenter / the Android notification. tryParse, not parse:
-      // a malformed url must cost us the artwork, not the whole session update.
-      artUri: artUrl == null ? null : Uri.tryParse(artUrl),
-    ));
+    mediaItem.add(
+      MediaItem(
+        id: nowPlaying.id,
+        title: nowPlaying.title,
+        artist: nowPlaying.artist,
+        duration: nowPlaying.duration > Duration.zero ? nowPlaying.duration : null,
+        // audio_service downloads and caches this itself, then hands it to
+        // MPNowPlayingInfoCenter / the Android notification. tryParse, not parse:
+        // a malformed url must cost us the artwork, not the whole session update.
+        artUri: artUrl == null ? null : Uri.tryParse(artUrl),
+      ),
+    );
 
     // Only offer buttons that would actually do something -- on the first track
     // of a queue there is nothing to skip back to.
@@ -73,33 +75,34 @@ class AudioServiceMediaSession extends BaseAudioHandler implements MediaSession 
       if (nowPlaying.hasNext) MediaControl.skipToNext,
     ];
 
-    playbackState.add(PlaybackState(
-      controls: controls,
-      // Android's collapsed notification shows at most three.
-      androidCompactActionIndices: List.generate(controls.length, (i) => i),
-      systemActions: const {
-        MediaAction.seek,
-        // On iOS these turn the skip buttons into press-and-hold seek as well.
-        MediaAction.seekForward,
-        MediaAction.seekBackward,
-      },
-      processingState:
-          nowPlaying.isLoading ? AudioProcessingState.loading : AudioProcessingState.ready,
-      playing: nowPlaying.isPlaying,
-      // The OS extrapolates from here using its own clock while `playing` is
-      // true, which is why we do not have to publish on every position tick.
-      updatePosition: nowPlaying.position,
-    ));
+    playbackState.add(
+      PlaybackState(
+        controls: controls,
+        // Android's collapsed notification shows at most three.
+        androidCompactActionIndices: List.generate(controls.length, (i) => i),
+        systemActions: const {
+          MediaAction.seek,
+          // On iOS these turn the skip buttons into press-and-hold seek as well.
+          MediaAction.seekForward,
+          MediaAction.seekBackward,
+        },
+        processingState: nowPlaying.isLoading
+            ? AudioProcessingState.loading
+            : AudioProcessingState.ready,
+        playing: nowPlaying.isPlaying,
+        // The OS extrapolates from here using its own clock while `playing` is
+        // true, which is why we do not have to publish on every position tick.
+        updatePosition: nowPlaying.position,
+      ),
+    );
   }
 
   @override
   Future<void> clear() async {
     mediaItem.add(null);
-    playbackState.add(PlaybackState(
-      controls: const [],
-      processingState: AudioProcessingState.idle,
-      playing: false,
-    ));
+    playbackState.add(
+      PlaybackState(controls: const [], processingState: AudioProcessingState.idle, playing: false),
+    );
   }
 
   Future<void> dispose() => _commands.close();

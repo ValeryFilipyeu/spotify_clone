@@ -14,11 +14,23 @@ const _items = [
 
 const _trackHits = [
   TrackHit(
-    track: Track(id: 't-karma', title: 'Karma Police', artist: 'Radiohead', duration: Duration(minutes: 4), audioUrl: 'u'),
+    track: Track(
+      id: 't-karma',
+      title: 'Karma Police',
+      artist: 'Radiohead',
+      duration: Duration(minutes: 4),
+      audioUrl: 'u',
+    ),
     album: _album,
   ),
   TrackHit(
-    track: Track(id: 't-nude', title: 'Nude', artist: 'Radiohead', duration: Duration(minutes: 4), audioUrl: 'u'),
+    track: Track(
+      id: 't-nude',
+      title: 'Nude',
+      artist: 'Radiohead',
+      duration: Duration(minutes: 4),
+      audioUrl: 'u',
+    ),
     album: _album,
   ),
 ];
@@ -40,10 +52,17 @@ class _RecordingCatalogRepository implements CatalogRepository {
     if (needle.isEmpty) return const SearchResults();
     return SearchResults(
       items: items
-          .where((i) => i.title.toLowerCase().contains(needle) || i.subtitle.toLowerCase().contains(needle))
+          .where(
+            (i) =>
+                i.title.toLowerCase().contains(needle) || i.subtitle.toLowerCase().contains(needle),
+          )
           .toList(),
       tracks: trackHits
-          .where((h) => h.track.title.toLowerCase().contains(needle) || h.track.artist.toLowerCase().contains(needle))
+          .where(
+            (h) =>
+                h.track.title.toLowerCase().contains(needle) ||
+                h.track.artist.toLowerCase().contains(needle),
+          )
           .toList(),
     );
   }
@@ -85,7 +104,8 @@ void main() {
   group('SearchCubit', () {
     late _RecordingCatalogRepository repo;
 
-    _RecordingCatalogRepository fullRepo() => _RecordingCatalogRepository(items: _items, trackHits: _trackHits);
+    _RecordingCatalogRepository fullRepo() =>
+        _RecordingCatalogRepository(items: _items, trackHits: _trackHits);
 
     blocTest<SearchCubit, SearchState>(
       'a blank query returns to the prompt and never hits the repository',
@@ -126,7 +146,10 @@ void main() {
         isA<SearchState>()
             .having((s) => s.status, 'status', SearchStatus.success)
             .having((s) => s.results.items.map((i) => i.id).toList(), 'album ids', ['b'])
-            .having((s) => s.results.tracks.map((h) => h.track.id).toList(), 'song ids', ['t-karma', 't-nude']),
+            .having((s) => s.results.tracks.map((h) => h.track.id).toList(), 'song ids', [
+              't-karma',
+              't-nude',
+            ]),
       ],
     );
 
@@ -142,7 +165,9 @@ void main() {
         isA<SearchState>()
             .having((s) => s.status, 'status', SearchStatus.success)
             .having((s) => s.results.items, 'albums', isEmpty)
-            .having((s) => s.results.tracks.map((h) => h.track.id).toList(), 'song ids', ['t-karma']),
+            .having((s) => s.results.tracks.map((h) => h.track.id).toList(), 'song ids', [
+              't-karma',
+            ]),
       ],
     );
 

@@ -8,7 +8,13 @@ import '../../widgets/duration_format.dart';
 
 /// One row in the tracklist: position number, title + artist, and duration.
 class TrackTile extends StatelessWidget {
-  const TrackTile({super.key, required this.position, required this.track, this.onTap, this.isCurrent = false});
+  const TrackTile({
+    super.key,
+    required this.position,
+    required this.track,
+    this.onTap,
+    this.isCurrent = false,
+  });
 
   final int position;
   final Track track;

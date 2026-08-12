@@ -9,10 +9,9 @@ import 'spotify_colors.dart';
 abstract final class SpotifyTheme {
   static ThemeData dark() {
     final base = ThemeData.dark(useMaterial3: true);
-    final textTheme = GoogleFonts.poppinsTextTheme(base.textTheme).apply(
-      bodyColor: SpotifyColors.white,
-      displayColor: SpotifyColors.white,
-    );
+    final textTheme = GoogleFonts.poppinsTextTheme(
+      base.textTheme,
+    ).apply(bodyColor: SpotifyColors.white, displayColor: SpotifyColors.white);
 
     return base.copyWith(
       scaffoldBackgroundColor: SpotifyColors.black,
@@ -109,12 +108,16 @@ abstract final class SpotifyTheme {
         indicatorColor: Colors.transparent,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => textTheme.labelSmall?.copyWith(
-            color: states.contains(WidgetState.selected) ? SpotifyColors.white : SpotifyColors.textSecondary,
+            color: states.contains(WidgetState.selected)
+                ? SpotifyColors.white
+                : SpotifyColors.textSecondary,
           ),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
-            color: states.contains(WidgetState.selected) ? SpotifyColors.white : SpotifyColors.textSecondary,
+            color: states.contains(WidgetState.selected)
+                ? SpotifyColors.white
+                : SpotifyColors.textSecondary,
           ),
         ),
       ),

@@ -16,11 +16,11 @@ import 'play_history_state.dart';
 /// song in search results), because those are the only places that know which
 /// catalog item the queue came from. PlayerBloc only ever sees a list of tracks.
 class PlayHistoryCubit extends Cubit<PlayHistoryState> {
-  PlayHistoryCubit({
-    required PlayHistoryRepository repository,
-    required Stream<AppUser?> authStateChanges,
-  })  : _repository = repository, // ignore: prefer_initializing_formals -- keeps the public param name.
-        super(const PlayHistoryState()) {
+  // Callers still pass `repository:`: Dart derives the public argument name from
+  // the private field, which is what the `// ignore: prefer_initializing_formals`
+  // that used to sit here was working around.
+  PlayHistoryCubit({required this._repository, required Stream<AppUser?> authStateChanges})
+    : super(const PlayHistoryState()) {
     _authSub = authStateChanges.listen(_onUserChanged);
   }
 
