@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/spotify_colors.dart';
@@ -17,10 +18,22 @@ import '../../theme/spotify_colors.dart';
 /// SizedBox or an AspectRatio) and decodes the bitmap at the size it will
 /// actually be painted at.
 class CoverArt extends StatelessWidget {
-  const CoverArt({super.key, this.url, this.color, this.borderRadius = 8, this.iconSize = 40});
+  const CoverArt({
+    super.key,
+    this.urls = const [],
+    this.color,
+    this.borderRadius = 8,
+    this.iconSize = 40,
+  });
 
-  /// The remote cover, or null for something with no artwork.
-  final String? url;
+  /// Interchangeable sources for the same image, best first, or empty for
+  /// something with no artwork.
+  ///
+  /// More than one because a catalog served from a network of independent nodes
+  /// hands out several hosts for the same bytes, and individual nodes go down --
+  /// see [CatalogItem.coverUrls]. A caller with a single url passes a
+  /// one-element list and gets the old behaviour exactly.
+  final List<String> urls;
 
   /// ARGB tint for the placeholder gradient. Null gets a neutral dark one --
   /// what the player screens use, since a track carries no colour of its own.
@@ -33,7 +46,12 @@ class CoverArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = this.url;
+    // Blanks dropped here rather than guarded against downstream, so the state
+    // below can treat the list as "things worth fetching" and index it freely.
+    final sources = [
+      for (final url in urls)
+        if (url.isNotEmpty) url,
+    ];
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: Stack(
@@ -42,7 +60,7 @@ class CoverArt extends StatelessWidget {
         fit: StackFit.passthrough,
         children: [
           _Placeholder(color: color, iconSize: iconSize),
-          if (url != null && url.isNotEmpty) _Cover(url: url),
+          if (sources.isNotEmpty) _Cover(urls: sources),
         ],
       ),
     );
@@ -74,20 +92,35 @@ class _Placeholder extends StatelessWidget {
 }
 
 class _Cover extends StatefulWidget {
-  const _Cover({required this.url});
+  const _Cover({required this.urls});
 
-  final String url;
+  /// At least one, none of them empty.
+  final List<String> urls;
 
   @override
   State<_Cover> createState() => _CoverState();
 }
 
+/// Fetches [_Cover.urls] in order, moving to the next one the moment the current
+/// one fails or stalls, and once they are exhausted going round again on a
+/// growing delay.
+///
+/// The order matters more than it looks. Waiting *before* asking again only
+/// makes sense when the plan is to ask the same host, and the two reasons a
+/// cover fails want opposite treatment:
+///
+///  * The host is down. Measured on Audius, this is per-node and sticky -- a
+///    dead node answered 502 five times running, for its own content and for
+///    content it had never seen. No delay will fix that; another host will, at
+///    once. So the first pass through the list waits for nothing.
+///  * The network is down, or every host refused a burst at the same time
+///    (Home asks for a dozen covers in one go, which is what a rate limiter is
+///    built to refuse). Here a different host is no better, and spacing the
+///    attempts out is the whole remedy. So once the list is spent, the delays
+///    start.
 class _CoverState extends State<_Cover> {
-  /// How long to wait before each retry. The length of this list IS the retry
-  /// budget, and the delays grow so a host that is refusing everyone for a
-  /// moment is not hammered: covers load in a burst (Home asks for a dozen at
-  /// once), and a burst is exactly what a rate limiter answers with a refusal.
-  /// Spreading the retries out is what lets the burst drain.
+  /// How long to wait before each retry *after* every host has had a turn.
+  /// The length of this list is the extra budget beyond that first pass.
   static const List<Duration> _backoff = [
     Duration(milliseconds: 300),
     Duration(seconds: 1),
@@ -108,6 +141,21 @@ class _CoverState extends State<_Cover> {
   /// re-resolves the provider. Calling setState alone would change nothing,
   /// because the provider compares equal to the one that just failed.
   int _attempt = 0;
+
+  /// The host this attempt is aimed at. Cycles, so the delayed retries after the
+  /// first pass start again from the best source rather than sticking on the
+  /// last one, which is only where the walk happened to stop.
+  String get _url => widget.urls[_attempt % widget.urls.length];
+
+  /// How long to wait before attempt [n], or null when the budget is spent.
+  ///
+  /// Zero while sources remain untried: nothing has been learned about a host
+  /// that has not been asked, so there is nothing to back off from.
+  Duration? _delayBefore(int n) {
+    if (n < widget.urls.length) return Duration.zero;
+    final index = n - widget.urls.length;
+    return index < _backoff.length ? _backoff[index] : null;
+  }
 
   Timer? _scheduled;
   Timer? _watchdog;
@@ -137,7 +185,11 @@ class _CoverState extends State<_Cover> {
   @override
   void didUpdateWidget(_Cover oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.url != oldWidget.url) {
+    // By value, not by identity: the parent filters blanks out of its `urls` on
+    // every build, so the list arriving here is a fresh object each time even
+    // when it holds the same strings. Comparing with != would see a different
+    // cover on every rebuild and restart the walk for ever.
+    if (!listEquals(widget.urls, oldWidget.urls)) {
       // A different cover entirely -- the old one's budget does not apply.
       _scheduled?.cancel();
       _scheduled = null;
@@ -153,12 +205,17 @@ class _CoverState extends State<_Cover> {
     super.dispose();
   }
 
-  /// Queues another go at the same url, unless the budget is spent or one is
-  /// already queued (errorBuilder runs on every rebuild, not just the failure).
+  /// Queues the next attempt, unless the budget is spent or one is already
+  /// queued (errorBuilder runs on every rebuild, not just the failure).
   void _scheduleRetry() {
-    if (_scheduled != null || _attempt >= _backoff.length) return;
-    _scheduled = Timer(_backoff[_attempt], () async {
+    if (_scheduled != null) return;
+    final delay = _delayBefore(_attempt + 1);
+    if (delay == null) return;
+    _scheduled = Timer(delay, () async {
       if (!mounted) return;
+      // Even when the next attempt is a different host, and so a different
+      // provider: this one has to go, or cycling back round to it later would
+      // be answered out of the image cache with the failure it is holding.
       await _provider?.evict();
       if (!mounted) return;
       setState(() {
@@ -188,7 +245,7 @@ class _CoverState extends State<_Cover> {
           decodeWidth,
           null,
           NetworkImage(
-            widget.url,
+            _url,
             // Web only. There, Flutter's default is
             // WebHtmlElementStrategy.never: a NetworkImage is fetched as BYTES
             // over XHR so the engine can decode it into the canvas, which needs
@@ -233,10 +290,11 @@ class _CoverState extends State<_Cover> {
             );
           },
           // Draw nothing and let the placeholder stand -- deliberately silent,
-          // a missing cover is not worth an error icon -- but queue another go.
-          // Without this a single refused request (a rate limit, a lost packet
-          // on mobile, a captive portal) blanks that cover for the rest of the
-          // session, because nothing else ever re-resolves it.
+          // a missing cover is not worth an error icon -- but queue the next
+          // attempt. Without this a single refused request (a dead content node,
+          // a rate limit, a lost packet on mobile, a captive portal) blanks that
+          // cover for the rest of the session, because nothing else ever
+          // re-resolves it.
           errorBuilder: (context, error, stackTrace) {
             _scheduleRetry();
             return const SizedBox.shrink();

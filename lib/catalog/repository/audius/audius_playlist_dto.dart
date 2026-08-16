@@ -1,6 +1,7 @@
 import '../../../network/json_reader.dart';
 import '../../../theme/cover_palette.dart';
 import '../../models/catalog_item.dart';
+import 'audius_artwork.dart';
 import 'audius_track_dto.dart';
 
 /// One playlist or album as Audius sends it.
@@ -15,7 +16,7 @@ class AudiusPlaylistDto {
     required this.ownerName,
     required this.description,
     required this.isAlbum,
-    required this.artworkUrl,
+    required this.artworkUrls,
     required this.tracks,
   });
 
@@ -31,7 +32,8 @@ class AudiusPlaylistDto {
 
   final bool isAlbum;
 
-  final String? artworkUrl;
+  /// Every host that will serve this cover, best first. See [AudiusArtwork].
+  final List<String> artworkUrls;
 
   /// The tracklist, which both `/playlists/{id}` and `/playlists/search` embed
   /// in full rather than making callers ask separately. Worth reading here
@@ -43,7 +45,6 @@ class AudiusPlaylistDto {
   final List<AudiusTrackDto> tracks;
 
   factory AudiusPlaylistDto.fromJson(Map<String, Object?> json, {String at = ''}) {
-    final artwork = json.objectOrNull('artwork');
     final rawTracks = json.containsKey('tracks') && json['tracks'] != null
         ? json.objectList('tracks', at: at)
         : const <Map<String, Object?>>[];
@@ -54,10 +55,7 @@ class AudiusPlaylistDto {
       ownerName: json.object('user', at: at).string('name', at: '$at.user'),
       description: json.stringOrNull('description'),
       isAlbum: json.boolean('is_album'),
-      artworkUrl:
-          artwork?.stringOrNull(AudiusTrackDto.preferredArtworkSize) ??
-          artwork?.stringOrNull('1000x1000') ??
-          artwork?.stringOrNull('150x150'),
+      artworkUrls: AudiusArtwork.urlsFrom(json.objectOrNull('artwork')),
       tracks: [
         for (final (index, track) in rawTracks.indexed)
           AudiusTrackDto.fromJson(track, at: '$at.tracks[$index]'),
@@ -82,6 +80,6 @@ class AudiusPlaylistDto {
     subtitle: subtitle,
     // Derived from the id, because a real catalog has no opinion about it.
     coverColor: CoverPalette.forSeed(id),
-    coverUrl: artworkUrl,
+    coverUrls: artworkUrls,
   );
 }

@@ -48,7 +48,7 @@ class CatalogCard extends StatelessWidget {
                   SizedBox(
                     width: _width,
                     height: _width,
-                    child: CoverArt(url: item.coverUrl, color: item.coverColor),
+                    child: CoverArt(urls: item.coverUrls, color: item.coverColor),
                   ),
                   const SizedBox(height: 8),
                   Text(

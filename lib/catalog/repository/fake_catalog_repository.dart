@@ -125,7 +125,11 @@ class FakeCatalogRepository implements CatalogRepository {
   /// returns 640/300/64 per album) and each surface would pick the nearest;
   /// 600px is chosen to satisfy the largest consumer, the full player's cover,
   /// and [CoverArt] decodes it down to whatever it is painted at.
-  static String _cover(String id) => 'https://picsum.photos/seed/$id/600/600';
+  /// One source, in the list the domain expects. The hardcoded catalog has no
+  /// mirrors to offer: picsum is a single host, and inventing alternates that do
+  /// not exist would make the fake less like the thing it stands in for, not
+  /// more. Failing over is exercised where it lives, in `cover_art_test.dart`.
+  static List<String> _cover(String id) => ['https://picsum.photos/seed/$id/600/600'];
 
   // `final`, not `const`: the cover urls are computed from each item's id, which
   // beats writing twelve nearly-identical string literals by hand. Still built
@@ -139,28 +143,28 @@ class FakeCatalogRepository implements CatalogRepository {
           title: 'Daily Mix 1',
           subtitle: 'Tame Impala, MGMT & more',
           coverColor: 0xFF1DB954,
-          coverUrl: _cover('dm1'),
+          coverUrls: _cover('dm1'),
         ),
         CatalogItem(
           id: 'dm2',
           title: 'Daily Mix 2',
           subtitle: 'Radiohead, Interpol & more',
           coverColor: 0xFFE13300,
-          coverUrl: _cover('dm2'),
+          coverUrls: _cover('dm2'),
         ),
         CatalogItem(
           id: 'dw',
           title: 'Discover Weekly',
           subtitle: 'Your weekly mixtape',
           coverColor: 0xFF7358FF,
-          coverUrl: _cover('dw'),
+          coverUrls: _cover('dw'),
         ),
         CatalogItem(
           id: 'rr',
           title: 'Release Radar',
           subtitle: 'New from artists you follow',
           coverColor: 0xFF2D46B9,
-          coverUrl: _cover('rr'),
+          coverUrls: _cover('rr'),
         ),
       ],
     ),
@@ -177,28 +181,28 @@ class FakeCatalogRepository implements CatalogRepository {
           title: 'Lo-Fi Beats',
           subtitle: 'Chill instrumental hip-hop',
           coverColor: 0xFFBA5D07,
-          coverUrl: _cover('lofi'),
+          coverUrls: _cover('lofi'),
         ),
         CatalogItem(
           id: 'focus',
           title: 'Deep Focus',
           subtitle: 'Keep calm and focus',
           coverColor: 0xFF503750,
-          coverUrl: _cover('focus'),
+          coverUrls: _cover('focus'),
         ),
         CatalogItem(
           id: 'run',
           title: 'Running Mix',
           subtitle: 'Uptempo motivation',
           coverColor: 0xFF8D67AB,
-          coverUrl: _cover('run'),
+          coverUrls: _cover('run'),
         ),
         CatalogItem(
           id: 'jazz',
           title: 'Jazz Vibes',
           subtitle: 'The perfect backdrop',
           coverColor: 0xFF477D95,
-          coverUrl: _cover('jazz'),
+          coverUrls: _cover('jazz'),
         ),
       ],
     ),
@@ -210,28 +214,28 @@ class FakeCatalogRepository implements CatalogRepository {
           title: 'Currents',
           subtitle: 'Tame Impala',
           coverColor: 0xFFE8115B,
-          coverUrl: _cover('ab1'),
+          coverUrls: _cover('ab1'),
         ),
         CatalogItem(
           id: 'ab2',
           title: 'In Rainbows',
           subtitle: 'Radiohead',
           coverColor: 0xFF148A08,
-          coverUrl: _cover('ab2'),
+          coverUrls: _cover('ab2'),
         ),
         CatalogItem(
           id: 'ab3',
           title: 'Random Access Memories',
           subtitle: 'Daft Punk',
           coverColor: 0xFFDC148C,
-          coverUrl: _cover('ab3'),
+          coverUrls: _cover('ab3'),
         ),
         CatalogItem(
           id: 'ab4',
           title: 'Blonde',
           subtitle: 'Frank Ocean',
           coverColor: 0xFF056952,
-          coverUrl: _cover('ab4'),
+          coverUrls: _cover('ab4'),
         ),
       ],
     ),
@@ -295,7 +299,7 @@ class FakeCatalogRepository implements CatalogRepository {
               artist: track.artist,
               duration: track.duration,
               audioUrl: track.audioUrl,
-              coverUrl: _cover(entry.key),
+              coverUrls: _cover(entry.key),
             ),
         ],
     };

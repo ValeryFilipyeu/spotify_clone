@@ -155,7 +155,7 @@ void main() {
 
       expect(hit.album.title, hit.track.title);
       expect(hit.album.subtitle, hit.track.artist);
-      expect(hit.album.coverUrl, hit.track.coverUrl);
+      expect(hit.album.coverUrls, hit.track.coverUrls);
     });
   });
 

@@ -62,7 +62,7 @@ class FullPlayerPage extends StatelessWidget {
                     child: Center(
                       child: AspectRatio(
                         aspectRatio: 1,
-                        child: CoverArt(url: track.coverUrl, borderRadius: 12, iconSize: 96),
+                        child: CoverArt(urls: track.coverUrls, borderRadius: 12, iconSize: 96),
                       ),
                     ),
                   ),

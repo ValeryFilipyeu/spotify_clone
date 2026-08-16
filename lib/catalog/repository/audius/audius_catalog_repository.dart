@@ -222,7 +222,7 @@ class AudiusCatalogRepository implements CatalogRepository {
       title: dto.title,
       subtitle: dto.artist,
       coverColor: 0xFF282828,
-      coverUrl: dto.artworkUrl,
+      coverUrls: dto.artworkUrls,
     ),
   );
 

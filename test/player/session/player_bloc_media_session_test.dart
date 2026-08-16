@@ -242,7 +242,7 @@ void main() {
         artist: 'Artist C',
         duration: Duration(minutes: 2),
         audioUrl: 'url-3',
-        coverUrl: 'https://example.test/cover.jpg',
+        coverUrls: ['https://example.test/cover.jpg'],
       );
 
       bloc.add(const PlayerTrackStarted(queue: [withArt], startIndex: 0));
@@ -267,7 +267,7 @@ void main() {
         artist: 'Artist C',
         duration: Duration(minutes: 2),
         audioUrl: 'url-3',
-        coverUrl: 'https://example.test/cover.jpg',
+        coverUrls: ['https://example.test/cover.jpg'],
       );
 
       expect(

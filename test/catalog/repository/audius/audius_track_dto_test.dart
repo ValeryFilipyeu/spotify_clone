@@ -25,15 +25,15 @@ void main() {
     test('prefers the 480px artwork', () {
       final track = AudiusTrackDto.fromJson(fixtureData('audius/track_search').first);
 
-      expect(track.artworkUrl, endsWith('/480x480.jpg'));
+      expect(track.artworkUrls.first, endsWith('/480x480.jpg'));
     });
 
-    test('a track with no artwork parses, with a null cover', () {
-      // Not an error: CatalogItem.coverUrl and CoverArt both handle it, and the
+    test('a track with no artwork parses, with no cover sources', () {
+      // Not an error: CatalogItem.coverUrls and CoverArt both handle it, and the
       // gradient placeholder shows through.
       final track = AudiusTrackDto.fromJson(fixtureData('audius/track_without_artwork').first);
 
-      expect(track.artworkUrl, isNull);
+      expect(track.artworkUrls, isEmpty);
       expect(track.title, isNotEmpty);
     });
   });
@@ -92,7 +92,7 @@ void main() {
       expect(track.title, 'lofi type beat');
       expect(track.artist, '[bsdu]');
       expect(track.duration, const Duration(seconds: 334));
-      expect(track.coverUrl, endsWith('/480x480.jpg'));
+      expect(track.coverUrls.first, endsWith('/480x480.jpg'));
     });
   });
 

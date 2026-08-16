@@ -13,7 +13,7 @@ void main() {
       expect(playlist.name, 'Lofi Space inspired');
       expect(playlist.ownerName, 'Lofi Army');
       expect(playlist.isAlbum, isFalse);
-      expect(playlist.artworkUrl, endsWith('/480x480.jpg'));
+      expect(playlist.artworkUrls.first, endsWith('/480x480.jpg'));
     });
 
     test('reads the embedded tracklist, so detail costs one request', () {
@@ -89,7 +89,7 @@ void main() {
       expect(item.id, 'RKxOQ');
       expect(item.title, 'Lofi Space inspired');
       expect(item.subtitle, 'By Lofi Army');
-      expect(item.coverUrl, endsWith('/480x480.jpg'));
+      expect(item.coverUrls.first, endsWith('/480x480.jpg'));
     });
   });
 }

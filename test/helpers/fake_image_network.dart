@@ -60,17 +60,30 @@ Future<void> pumpWithNetworkImages(WidgetTester tester, Widget widget) async {
 /// pumping themselves -- a retry needs real time for each fetch and fake time
 /// for the backoff in between, which [pumpWithNetworkImages] cannot do for you.
 class FakeImageNetwork {
-  /// Every request the widget under test actually put on the wire. This is what
-  /// proves a retry re-fetched rather than being served the failure again.
-  int requests = 0;
+  /// Every url the widget under test actually put on the wire, in order. Which
+  /// host each attempt went to is the whole question for a failover, so counting
+  /// is not enough: a widget that retried the dead node three times and one that
+  /// walked three mirrors make the same number of requests.
+  final List<String> requestedUrls = [];
 
-  /// How many of those to answer with a 403, as a throttling CDN does.
+  int get requests => requestedUrls.length;
+
+  /// How many of the first requests to answer with a 403, as a throttling CDN
+  /// does. Counted, for tests about *how many* attempts happen.
   int failFirst = 0;
 
   /// How many to leave hanging: connected, no bytes, no error, for ever. This
   /// is what a failed image looks like on the web, where nothing reports an
   /// error -- so it is the case only the stall watchdog can get out of.
   int hangFirst = 0;
+
+  /// Urls that always fail, however often they are asked. Keyed by url rather
+  /// than counted, because that is how a dead content node behaves: it is not
+  /// the third request that fails, it is that host, every time.
+  Set<String> deadUrls = const {};
+
+  /// Urls that always hang -- the same idea, for the web's silent failure.
+  Set<String> stalledUrls = const {};
 
   /// MUST be called before the test body ends: flutter_test asserts no painting
   /// debug variable is left set, and it checks that before any tearDown runs.
@@ -82,13 +95,20 @@ class FakeImageNetwork {
   }
 }
 
-FakeImageNetwork installFakeImageNetwork({int failFirst = 0, int hangFirst = 0}) {
+FakeImageNetwork installFakeImageNetwork({
+  int failFirst = 0,
+  int hangFirst = 0,
+  Set<String> deadUrls = const {},
+  Set<String> stalledUrls = const {},
+}) {
   // Entries are keyed by url, so a url some earlier test failed to load would
   // come straight back out of the cache as a failure.
   PaintingBinding.instance.imageCache.clear();
   final network = FakeImageNetwork()
     ..failFirst = failFirst
-    ..hangFirst = hangFirst;
+    ..hangFirst = hangFirst
+    ..deadUrls = deadUrls
+    ..stalledUrls = stalledUrls;
   debugNetworkImageHttpClientProvider = () => _FakeHttpClient(network);
   return network;
 }
@@ -101,19 +121,21 @@ class _FakeHttpClient implements HttpClient {
   @override
   bool autoUncompress = true;
 
-  _FakeHttpClientRequest _request() {
-    _network.requests++;
+  _FakeHttpClientRequest _request(Uri url) {
+    _network.requestedUrls.add(url.toString());
     return _FakeHttpClientRequest(
-      refused: _network.requests <= _network.failFirst,
-      hangs: _network.requests <= _network.hangFirst,
+      refused:
+          _network.requests <= _network.failFirst || _network.deadUrls.contains(url.toString()),
+      hangs:
+          _network.requests <= _network.hangFirst || _network.stalledUrls.contains(url.toString()),
     );
   }
 
   @override
-  Future<HttpClientRequest> getUrl(Uri url) async => _request();
+  Future<HttpClientRequest> getUrl(Uri url) async => _request(url);
 
   @override
-  Future<HttpClientRequest> openUrl(String method, Uri url) async => _request();
+  Future<HttpClientRequest> openUrl(String method, Uri url) async => _request(url);
 
   @override
   void noSuchMethod(Invocation invocation) {}

@@ -93,7 +93,7 @@ class NowPlaying {
     isLoading: state.isLoading,
     hasNext: state.hasNext,
     hasPrevious: state.hasPrevious,
-    artUrl: track.coverUrl,
+    artUrl: track.primaryCoverUrl,
   );
 
   final String id;

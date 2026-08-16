@@ -22,7 +22,12 @@ class CatalogListTile extends StatelessWidget {
       leading: SizedBox(
         width: 48,
         height: 48,
-        child: CoverArt(url: item.coverUrl, color: item.coverColor, borderRadius: 4, iconSize: 22),
+        child: CoverArt(
+          urls: item.coverUrls,
+          color: item.coverColor,
+          borderRadius: 4,
+          iconSize: 22,
+        ),
       ),
       title: Text(
         item.title,

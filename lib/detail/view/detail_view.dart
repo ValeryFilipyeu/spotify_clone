@@ -114,7 +114,7 @@ class _DetailContent extends StatelessWidget {
                         BoxShadow(color: Colors.black54, blurRadius: 24, offset: Offset(0, 8)),
                       ],
                     ),
-                    child: CoverArt(url: item.coverUrl, color: item.coverColor, iconSize: 64),
+                    child: CoverArt(urls: item.coverUrls, color: item.coverColor, iconSize: 64),
                   ),
                 ),
               ),

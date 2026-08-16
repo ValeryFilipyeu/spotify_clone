@@ -1,5 +1,6 @@
 import '../../../network/json_reader.dart';
 import '../../models/track.dart';
+import 'audius_artwork.dart';
 
 /// One track as Audius sends it, reduced to the handful of fields this app can
 /// use.
@@ -15,7 +16,7 @@ class AudiusTrackDto {
     required this.title,
     required this.artist,
     required this.durationSeconds,
-    required this.artworkUrl,
+    required this.artworkUrls,
     required this.isStreamable,
   });
 
@@ -31,27 +32,18 @@ class AudiusTrackDto {
 
   final int durationSeconds;
 
-  /// A square cover, or null when the payload carries no usable artwork.
-  final String? artworkUrl;
+  /// Every host that will serve this track's square cover, best first, or empty
+  /// when the payload carries no usable artwork. See [AudiusArtwork].
+  final List<String> artworkUrls;
 
   /// Whether this track can actually be streamed by an anonymous listener.
   final bool isStreamable;
-
-  /// Which of the three sizes Audius offers to store.
-  ///
-  /// 480 rather than 1000: the largest place a cover is drawn is the full
-  /// player's artwork, and even at 3x device pixel ratio a 480px source covers
-  /// a 160pt square. `CoverArt` decodes down to the size it will paint anyway,
-  /// so asking for 1000 would only spend bandwidth to throw pixels away.
-  static const String preferredArtworkSize = '480x480';
 
   /// Reads a track out of [json].
   ///
   /// [at] is the path this object sits at in the payload, used only to make a
   /// [JsonFormatError] say where it happened.
   factory AudiusTrackDto.fromJson(Map<String, Object?> json, {String at = ''}) {
-    final artwork = json.objectOrNull('artwork');
-
     return AudiusTrackDto(
       id: json.string('id', at: at),
       title: json.string('title', at: at),
@@ -59,10 +51,7 @@ class AudiusTrackDto {
       // second line, and every payload observed carries one.
       artist: json.object('user', at: at).string('name', at: '$at.user'),
       durationSeconds: json.integer('duration', at: at),
-      artworkUrl:
-          artwork?.stringOrNull(preferredArtworkSize) ??
-          artwork?.stringOrNull('1000x1000') ??
-          artwork?.stringOrNull('150x150'),
+      artworkUrls: AudiusArtwork.urlsFrom(json.objectOrNull('artwork')),
       isStreamable: _readStreamable(json),
     );
   }
@@ -93,6 +82,6 @@ class AudiusTrackDto {
     artist: artist,
     duration: Duration(seconds: durationSeconds),
     audioUrl: streamUrl.toString(),
-    coverUrl: artworkUrl,
+    coverUrls: artworkUrls,
   );
 }

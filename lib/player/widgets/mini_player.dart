@@ -49,7 +49,7 @@ class MiniPlayer extends StatelessWidget {
                         height: 44,
                         child: Stack(
                           children: [
-                            CoverArt(url: track.coverUrl, borderRadius: 4, iconSize: 22),
+                            CoverArt(urls: track.coverUrls, borderRadius: 4, iconSize: 22),
                             // Sits over the artwork rather than beside it: the
                             // row's width belongs to the title, which already
                             // has to marquee to fit. The scrim keeps the green

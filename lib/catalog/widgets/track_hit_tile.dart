@@ -41,7 +41,7 @@ class TrackHitTile extends StatelessWidget {
         width: 40,
         height: 40,
         child: CoverArt(
-          url: hit.album.coverUrl,
+          urls: hit.album.coverUrls,
           color: hit.album.coverColor,
           borderRadius: 4,
           iconSize: 20,

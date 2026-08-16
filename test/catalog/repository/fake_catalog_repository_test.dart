@@ -76,18 +76,18 @@ void main() {
       final all = await repository.fetchItemsByIds(await allItemIds());
 
       for (final item in all) {
-        expect(item.coverUrl, isNotNull, reason: item.id);
-        expect(item.coverUrl, startsWith('https://'), reason: item.id);
+        expect(item.coverUrls, isNotEmpty, reason: item.id);
+        expect(item.coverUrls.single, startsWith('https://'), reason: item.id);
         // Deterministic per item: the same seed always returns the same photo,
         // so a cover never changes between runs.
-        expect(item.coverUrl, contains(item.id), reason: item.id);
+        expect(item.coverUrls.single, contains(item.id), reason: item.id);
       }
     });
 
     test('items have distinct covers', () async {
       final all = await repository.fetchItemsByIds(await allItemIds());
 
-      expect(all.map((i) => i.coverUrl).toSet(), hasLength(all.length));
+      expect(all.map((i) => i.coverUrls.single).toSet(), hasLength(all.length));
     });
 
     // The player only ever holds a queue of Tracks, so a track has to carry its
@@ -97,7 +97,7 @@ void main() {
 
       expect(hits, isNotEmpty);
       for (final hit in hits) {
-        expect(hit.track.coverUrl, hit.album.coverUrl, reason: hit.track.id);
+        expect(hit.track.coverUrls, hit.album.coverUrls, reason: hit.track.id);
       }
     });
 
