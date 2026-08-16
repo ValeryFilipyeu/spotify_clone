@@ -74,7 +74,7 @@ jobs:
       # Kept as an artifact rather than pushed to a coverage service: no account,
       # no token, and the number is already on the run's summary page. The file is
       # here for when a drop needs explaining line by line.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-lcov
