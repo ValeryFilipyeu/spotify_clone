@@ -22,6 +22,25 @@ include: package:flutter_lints/flutter.yaml
 formatter:
   page_width: 100
 
+# Written out by hand because FVM writes it otherwise, and writes it wrong: it
+# appends this block whenever the file lacks it, but appends it *inside* the
+# `linter:` section below, which leaves `rules:` empty and buries the commented
+# examples under `exclude`. Deleting it is not an option -- it comes straight
+# back on the next `fvm` command -- so the fix is to give it nothing to add.
+#
+# The contents are harmless and roughly what the analyzer does anyway: none of
+# these directories hold Dart source this project writes, and `build/` holds
+# generated output that should never be linted.
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
