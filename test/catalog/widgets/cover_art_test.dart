@@ -205,7 +205,7 @@ void main() {
           await advanceToNextAttempt(tester);
           expect(
             network.requestedUrls,
-            [_dead, _live],
+            orderedEquals([_dead, _live]),
             reason: 'the second attempt must be a different node, not the dead one again',
           );
 
@@ -229,11 +229,11 @@ void main() {
           await advanceToNextAttempt(tester);
           await advanceToNextAttempt(tester);
 
-          expect(network.requestedUrls, [
-            _dead,
-            _alsoDead,
-            _live,
-          ], reason: 'all three hosts tried without the clock moving at all');
+          expect(
+            network.requestedUrls,
+            orderedEquals([_dead, _alsoDead, _live]),
+            reason: 'all three hosts tried without the clock moving at all',
+          );
         } finally {
           network.restore();
         }
@@ -299,7 +299,7 @@ void main() {
 
           expect(
             network.requestedUrls,
-            [_dead, _live, _dead, _live, _dead],
+            orderedEquals([_dead, _live, _dead, _live, _dead]),
             reason: 'two hosts, then three delayed retries starting again from the best',
           );
           expect(find.byIcon(Icons.music_note), findsOneWidget);
@@ -336,10 +336,11 @@ void main() {
           rebuild(() {});
           await tester.pumpAndSettle();
 
-          expect(network.requestedUrls, [
-            _dead,
-            _live,
-          ], reason: 'the rebuild must not send it back to the dead host');
+          expect(
+            network.requestedUrls,
+            orderedEquals([_dead, _live]),
+            reason: 'the rebuild must not send it back to the dead host',
+          );
           expect(opacityOf(tester), 1.0, reason: 'and the cover is still on screen');
         } finally {
           network.restore();
