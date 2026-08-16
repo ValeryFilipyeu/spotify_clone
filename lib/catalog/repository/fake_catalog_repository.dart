@@ -13,6 +13,12 @@ class FakeCatalogRepository implements CatalogRepository {
   const FakeCatalogRepository();
 
   @override
+  void invalidate() {
+    // Nothing is remembered here, so there is nothing to discard. Caching lives
+    // in CachingCatalogRepository, which wraps this one.
+  }
+
+  @override
   Future<List<CatalogSection>> fetchHomeSections() async {
     await Future<void>.delayed(const Duration(milliseconds: 700));
     return _sections;
@@ -95,7 +101,9 @@ class FakeCatalogRepository implements CatalogRepository {
   // ---------------------------------------------------------------------------
 
   /// Every section's items flattened and de-duplicated by id (first occurrence
-  /// wins), computed once. Backs both [fetchAllItems] and [search].
+  /// wins), computed once. Backs [fetchItemsByIds], [fetchTracksByIds] and
+  /// [search] -- the whole catalog exists here so a lookup by id has something
+  /// to scan, which is a luxury of being hardcoded.
   static final List<CatalogItem> _allItems = _buildAllItems();
 
   static List<CatalogItem> _buildAllItems() {

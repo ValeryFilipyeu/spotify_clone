@@ -7,6 +7,7 @@ import 'app.dart';
 import 'auth/repository/fake_auth_repository.dart';
 import 'auth/repository/session_storage.dart';
 import 'catalog/repository/audius/audius_catalog_repository.dart';
+import 'catalog/repository/caching_catalog_repository.dart';
 import 'history/repository/local_play_history_repository.dart';
 import 'likes/repository/local_likes_repository.dart';
 import 'player/audio/crossfade_audio_controller.dart';
@@ -62,10 +63,16 @@ Future<void> main() async {
   // The real catalog. One long-lived client for the whole app, so its
   // connection pool and its in-flight de-duplication are shared: Home builds
   // several rows at once, and the same url wanted twice is one round trip.
-  final catalogRepository = AudiusCatalogRepository(
-    client: ApiClient(
-      baseUrl: AudiusCatalogRepository.baseUrl,
-      defaultQuery: const {'app_name': AudiusCatalogRepository.appName},
+  //
+  // Wrapped in the cache at this point and nowhere else -- the Audius
+  // implementation has no idea it is being cached, and the fake used by tests is
+  // deliberately left unwrapped so they see every call.
+  final catalogRepository = CachingCatalogRepository(
+    AudiusCatalogRepository(
+      client: ApiClient(
+        baseUrl: AudiusCatalogRepository.baseUrl,
+        defaultQuery: const {'app_name': AudiusCatalogRepository.appName},
+      ),
     ),
   );
 

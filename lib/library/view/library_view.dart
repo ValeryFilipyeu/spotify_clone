@@ -10,6 +10,7 @@ import '../../likes/cubit/likes_state.dart';
 import '../../router/app_routes.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/error_retry.dart';
+import '../../widgets/refresh_feedback.dart';
 import '../cubit/library_cubit.dart';
 import '../cubit/library_state.dart';
 
@@ -65,32 +66,46 @@ class LibraryView extends StatelessWidget {
                     return const _EmptyLibrary();
                   }
 
-                  return CustomScrollView(
-                    slivers: [
-                      if (likedItems.isNotEmpty) ...[
-                        const SliverSectionHeader('Playlists & albums'),
-                        SliverList.builder(
-                          itemCount: likedItems.length,
-                          itemBuilder: (context, index) {
-                            final item = likedItems[index];
-                            return CatalogListTile(
-                              item: item,
-                              // Push under THIS tab so detail stacks inside Library.
-                              onTap: () =>
-                                  context.push(Routes.detailUnder(Routes.library, item.id)),
-                            );
-                          },
-                        ),
+                  return RefreshIndicator(
+                    color: SpotifyColors.green,
+                    backgroundColor: SpotifyColors.surfaceBright,
+                    // Not passed the liked ids: the cubit already knows which
+                    // set it loaded, and re-reading them here would let the two
+                    // disagree mid-gesture.
+                    onRefresh: () =>
+                        refreshOrComplain(context, () => context.read<LibraryCubit>().refresh()),
+                    child: CustomScrollView(
+                      // Otherwise the pull is refused whenever the liked list is
+                      // short enough to fit the screen -- which is most of the
+                      // time here, and exactly when someone would try it.
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        if (likedItems.isNotEmpty) ...[
+                          const SliverSectionHeader('Playlists & albums'),
+                          SliverList.builder(
+                            itemCount: likedItems.length,
+                            itemBuilder: (context, index) {
+                              final item = likedItems[index];
+                              return CatalogListTile(
+                                item: item,
+                                // Push under THIS tab so detail stacks inside
+                                // Library.
+                                onTap: () =>
+                                    context.push(Routes.detailUnder(Routes.library, item.id)),
+                              );
+                            },
+                          ),
+                        ],
+                        if (likedTracks.isNotEmpty) ...[
+                          const SliverSectionHeader('Songs'),
+                          SliverList.builder(
+                            itemCount: likedTracks.length,
+                            itemBuilder: (context, index) => TrackHitTile(hit: likedTracks[index]),
+                          ),
+                        ],
+                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
                       ],
-                      if (likedTracks.isNotEmpty) ...[
-                        const SliverSectionHeader('Songs'),
-                        SliverList.builder(
-                          itemCount: likedTracks.length,
-                          itemBuilder: (context, index) => TrackHitTile(hit: likedTracks[index]),
-                        ),
-                      ],
-                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                    ],
+                    ),
                   );
                 },
               );

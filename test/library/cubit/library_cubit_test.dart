@@ -6,6 +6,9 @@ import 'package:spotify_clone/library/cubit/library_state.dart';
 
 class _ThrowingCatalogRepository implements CatalogRepository {
   @override
+  void invalidate() {}
+
+  @override
   Future<List<CatalogItem>> fetchItemsByIds(Iterable<String> ids) async => throw Exception('down');
 
   @override
@@ -19,6 +22,25 @@ class _ThrowingCatalogRepository implements CatalogRepository {
 
   @override
   Future<CatalogDetail> fetchDetail(String itemId) => throw UnimplementedError();
+}
+
+/// Counts loads and invalidations, for the refresh tests.
+class _RefreshableCatalog extends FakeCatalogRepository {
+  _RefreshableCatalog({this.failFrom});
+
+  final int? failFrom;
+  int itemLoads = 0;
+  int invalidations = 0;
+
+  @override
+  void invalidate() => invalidations++;
+
+  @override
+  Future<List<CatalogItem>> fetchItemsByIds(Iterable<String> ids) {
+    itemLoads++;
+    if (failFrom != null && itemLoads >= failFrom!) throw Exception('down');
+    return super.fetchItemsByIds(ids);
+  }
 }
 
 void main() {
@@ -99,5 +121,43 @@ void main() {
         isA<LibraryState>().having((s) => s.status, 'status', LibraryStatus.success),
       ],
     );
+
+    group('refresh', () {
+      test('discards the cache and reloads the same liked set', () async {
+        final catalog = _RefreshableCatalog();
+        final cubit = LibraryCubit(catalogRepository: catalog);
+        addTearDown(cubit.close);
+
+        await cubit.loadLibrary(const ['dm1']);
+        expect(await cubit.refresh(), isTrue);
+
+        expect(catalog.invalidations, 1);
+        expect(catalog.itemLoads, 2);
+      });
+
+      test('with nothing liked there is nothing to fetch', () async {
+        final catalog = _RefreshableCatalog();
+        final cubit = LibraryCubit(catalogRepository: catalog);
+        addTearDown(cubit.close);
+
+        await cubit.loadLibrary(const []);
+        expect(await cubit.refresh(), isTrue);
+
+        expect(catalog.itemLoads, 0);
+      });
+
+      test('a failed refresh keeps the list and reports the failure', () async {
+        final catalog = _RefreshableCatalog(failFrom: 2);
+        final cubit = LibraryCubit(catalogRepository: catalog);
+        addTearDown(cubit.close);
+
+        await cubit.loadLibrary(const ['dm1']);
+        final before = cubit.state.items;
+
+        expect(await cubit.refresh(), isFalse);
+        expect(cubit.state.status, LibraryStatus.success);
+        expect(cubit.state.items, before);
+      });
+    });
   });
 }

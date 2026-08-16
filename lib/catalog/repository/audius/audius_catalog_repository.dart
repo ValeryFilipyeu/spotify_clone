@@ -55,6 +55,12 @@ class AudiusCatalogRepository implements CatalogRepository {
   final ApiClient _client;
 
   @override
+  void invalidate() {
+    // Nothing is remembered here, so there is nothing to discard. Caching lives
+    // in CachingCatalogRepository, which wraps this one.
+  }
+
+  @override
   Future<List<CatalogSection>> fetchHomeSections() async {
     final rows = await Future.wait([
       for (final row in _homeRows) _sectionOrNull(row.title, row.query),

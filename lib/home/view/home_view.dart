@@ -9,6 +9,7 @@ import '../../history/cubit/play_history_state.dart';
 import '../../router/app_routes.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/error_retry.dart';
+import '../../widgets/refresh_feedback.dart';
 import '../../widgets/spotify_wordmark.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
@@ -67,22 +68,34 @@ class HomeView extends StatelessWidget {
                 builder: (context, history) {
                   final sections = state.sectionsFor(history.recentIds);
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    // +1 for the greeting, which scrolls with the content rather
-                    // than sitting in the app bar.
-                    itemCount: sections.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == 0) return const _Greeting();
-                      final section = sections[index - 1];
-                      return CatalogSectionRow(
-                        section: section,
-                        // push under THIS tab so the detail screen stacks inside
-                        // Home (tab bar stays) and the back button returns here.
-                        onItemTap: (itemId) =>
-                            context.push(Routes.detailUnder(Routes.home, itemId)),
-                      );
-                    },
+                  return RefreshIndicator(
+                    color: SpotifyColors.green,
+                    backgroundColor: SpotifyColors.surfaceBright,
+                    onRefresh: () => refreshOrComplain(
+                      context,
+                      () => context.read<HomeCubit>().refresh(history.recentIds),
+                    ),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      // Without this the list only accepts a pull when it is long
+                      // enough to scroll, so the gesture would work on a phone
+                      // and quietly do nothing on a tall window.
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      // +1 for the greeting, which scrolls with the content rather
+                      // than sitting in the app bar.
+                      itemCount: sections.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == 0) return const _Greeting();
+                        final section = sections[index - 1];
+                        return CatalogSectionRow(
+                          section: section,
+                          // push under THIS tab so the detail screen stacks
+                          // inside Home (tab bar stays) and back returns here.
+                          onItemTap: (itemId) =>
+                              context.push(Routes.detailUnder(Routes.home, itemId)),
+                        );
+                      },
+                    ),
                   );
                 },
               );
@@ -93,9 +106,15 @@ class HomeView extends StatelessWidget {
   }
 }
 
-/// "Good evening" over the first row. Reads the clock at build time -- there is
-/// nothing to keep in sync, since Home is rebuilt on every visit and no session
-/// is long enough for the greeting to go stale mid-scroll.
+/// "Good evening" over the first row. Reads the clock at build time and never
+/// updates itself.
+///
+/// Note this does *not* hold because Home is rebuilt on every visit -- it is
+/// not. The tab shell keeps each branch's Navigator alive, so this survives the
+/// whole session (see the tab-switch test in test/app_shell_test.dart). It holds
+/// because it is rebuilt whenever the play history changes and because nobody
+/// keeps the app open across the boundary from afternoon to evening and looks at
+/// the greeting when they get back.
 class _Greeting extends StatelessWidget {
   const _Greeting();
 

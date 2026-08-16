@@ -60,6 +60,41 @@ class HomeCubit extends Cubit<HomeState> {
     }
   }
 
+  /// Reloads from the source, discarding anything cached first.
+  ///
+  /// Pointedly does not emit [HomeStatus.loading]. This is driven by a pull-to-
+  /// refresh, which draws its own spinner; flipping to loading would replace the
+  /// list the user is holding on to with a blank screen.
+  ///
+  /// Returns whether it worked rather than emitting a failure, for the same
+  /// reason: a manual refresh that fails should leave the perfectly good rows
+  /// where they are and say so in passing, not tear the screen down for an error
+  /// page. The view decides how to mention it.
+  Future<bool> refresh([Iterable<String> recentIds = const []]) async {
+    _catalogRepository.invalidate();
+    try {
+      final sections = await _catalogRepository.fetchHomeSections();
+      if (isClosed) return false;
+      emit(
+        state.copyWith(
+          status: HomeStatus.success,
+          sections: sections,
+          itemsById: {
+            for (final section in sections)
+              for (final item in section.items) item.id: item,
+          },
+        ),
+      );
+      // An id that could not be resolved before deserves another go: the point
+      // of a refresh is to retry everything, including what quietly failed.
+      _attempted.clear();
+      await resolveMissing(recentIds);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Fetches whichever of [ids] the index does not already hold, and merges them
   /// in. Driven by the view when the play history arrives or changes.
   ///

@@ -44,4 +44,19 @@ abstract class CatalogRepository {
   /// Loads a single album/playlist (its header item plus its tracks).
   /// Throws [CatalogItemNotFound] if no item matches [itemId].
   Future<CatalogDetail> fetchDetail(String itemId);
+
+  /// Discards anything this source is holding on to, so the next read goes back
+  /// to wherever the data really lives.
+  ///
+  /// Exists for one caller: a user pulling to refresh. That gesture means "I do
+  /// not trust what is on screen", and without this it would be answered out of
+  /// the very cache being distrusted.
+  ///
+  /// A source that remembers nothing has nothing to discard, so most
+  /// implementations are an empty body. They still have to write it: `implements`
+  /// in Dart demands every member of the interface whether or not the interface
+  /// gave it a body, and all of these are `implements` rather than `extends`.
+  /// Left abstract for that reason -- a default body here would be inherited by
+  /// nobody while reading as though it were.
+  void invalidate();
 }

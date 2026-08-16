@@ -55,6 +55,28 @@ class LibraryCubit extends Cubit<LibraryState> {
     }
   }
 
+  /// Reloads the same liked set from the source, discarding anything cached.
+  ///
+  /// Like HomeCubit.refresh: no loading state, because the pull-to-refresh draws
+  /// its own, and a failure is reported back rather than emitted, so a bad
+  /// refresh leaves the working list alone.
+  Future<bool> refresh() async {
+    _catalogRepository.invalidate();
+    if (_loadedFor.isEmpty) return true; // nothing liked, nothing to fetch
+
+    try {
+      final (items, tracks) = await (
+        _catalogRepository.fetchItemsByIds(_loadedFor),
+        _catalogRepository.fetchTracksByIds(_loadedFor),
+      ).wait;
+      if (isClosed) return false;
+      emit(state.copyWith(status: LibraryStatus.success, items: items, tracks: tracks));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Reloads only if [likedIds] differs from what is already loaded. Driven by
   /// the view as the liked set changes -- liking something new has to fetch it,
   /// while unliking is handled in the view without a round trip.

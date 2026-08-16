@@ -9,6 +9,9 @@ import 'package:spotify_clone/home/cubit/home_state.dart';
 /// approach used for the auth tests.
 class _ThrowingCatalogRepository implements CatalogRepository {
   @override
+  void invalidate() {}
+
+  @override
   Future<List<CatalogSection>> fetchHomeSections() async {
     throw Exception('network down');
   }
@@ -55,6 +58,27 @@ class _CountingLookupRepository extends FakeCatalogRepository {
   Future<List<CatalogItem>> fetchItemsByIds(Iterable<String> ids) async {
     lookups++;
     return const [];
+  }
+}
+
+/// Counts loads and invalidations, for the refresh tests.
+class _RefreshableCatalog extends FakeCatalogRepository {
+  _RefreshableCatalog({this.failFrom});
+
+  /// Load number from which fetchHomeSections starts throwing (1-based).
+  final int? failFrom;
+
+  int homeLoads = 0;
+  int invalidations = 0;
+
+  @override
+  void invalidate() => invalidations++;
+
+  @override
+  Future<List<CatalogSection>> fetchHomeSections() {
+    homeLoads++;
+    if (failFrom != null && homeLoads >= failFrom!) throw Exception('network down');
+    return super.fetchHomeSections();
   }
 }
 
@@ -143,5 +167,52 @@ void main() {
             .having((state) => state.errorMessage, 'errorMessage', isNotNull),
       ],
     );
+
+    group('refresh', () {
+      test('discards what the source cached, then reloads', () async {
+        final catalog = _RefreshableCatalog();
+        final cubit = HomeCubit(catalogRepository: catalog);
+        addTearDown(cubit.close);
+
+        await cubit.loadSections();
+        expect(await cubit.refresh(), isTrue);
+
+        expect(catalog.invalidations, 1);
+        expect(catalog.homeLoads, 2);
+      });
+
+      blocTest<HomeCubit, HomeState>(
+        'does not flash a loading state over the rows already on screen',
+        // The pull-to-refresh draws its own spinner. Emitting loading here would
+        // replace the list the user is physically holding on to with a blank
+        // screen. Exactly two states for load-then-refresh, and only the first
+        // is loading -- the refresh re-emits the same content, which Cubit drops
+        // as a duplicate.
+        build: () => HomeCubit(catalogRepository: const FakeCatalogRepository()),
+        act: (cubit) async {
+          await cubit.loadSections();
+          await cubit.refresh();
+        },
+        expect: () => [
+          const HomeState(status: HomeStatus.loading),
+          isA<HomeState>().having((s) => s.status, 'status', HomeStatus.success),
+        ],
+      );
+
+      test('a failed refresh keeps the rows and reports the failure', () async {
+        // Tearing a working screen down for an error page would be a worse
+        // outcome than the stale data the user was already looking at.
+        final catalog = _RefreshableCatalog(failFrom: 2);
+        final cubit = HomeCubit(catalogRepository: catalog);
+        addTearDown(cubit.close);
+
+        await cubit.loadSections();
+        final sectionsBefore = cubit.state.sections;
+
+        expect(await cubit.refresh(), isFalse);
+        expect(cubit.state.status, HomeStatus.success);
+        expect(cubit.state.sections, sectionsBefore);
+      });
+    });
   });
 }

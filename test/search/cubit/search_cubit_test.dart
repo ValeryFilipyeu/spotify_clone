@@ -39,6 +39,9 @@ const _trackHits = [
 /// and records every query it was actually asked to search -- so a test can
 /// assert debouncing collapsed a burst of keystrokes into a single call.
 class _RecordingCatalogRepository implements CatalogRepository {
+  @override
+  void invalidate() {}
+
   _RecordingCatalogRepository({this.items = const [], this.trackHits = const []});
 
   final List<CatalogItem> items;
@@ -81,6 +84,9 @@ class _RecordingCatalogRepository implements CatalogRepository {
 }
 
 class _ThrowingCatalogRepository implements CatalogRepository {
+  @override
+  void invalidate() {}
+
   @override
   Future<SearchResults> search(String query) async => throw Exception('down');
 
