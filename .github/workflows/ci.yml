@@ -21,7 +21,7 @@ jobs:
     name: Analyze and test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-flutter
 
       # No --fatal-infos: `flutter analyze` already exits non-zero on an info,
@@ -85,7 +85,7 @@ jobs:
     name: Web (compiled to JavaScript)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-flutter
 
       # Flutter finds Chrome via CHROME_EXECUTABLE or the PATH, and the binary's
@@ -120,7 +120,7 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Not installed by the Flutter action, and Gradle needs it.
       - uses: actions/setup-java@v4
         with:
@@ -138,7 +138,7 @@ jobs:
     name: Build macOS and iOS
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-flutter
 
       # The two platforms whose bugs this project has actually hit -- and the
