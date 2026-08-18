@@ -46,3 +46,6 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+# Golden test output: written only when a golden fails, and regenerated
+# every run. The expected images live in test/golden/goldens/ and ARE tracked.
+test/golden/failures/

@@ -81,6 +81,20 @@ jobs:
           path: coverage/lcov.info
           if-no-files-found: warn
 
+      # A failed golden is unreadable from a log: the message says the images
+      # differ and cannot show you how. Flutter writes four PNGs per failure --
+      # masterImage (what was expected), testImage (what was rendered), and two
+      # diffs, masked and isolated -- and this is the only way off the runner.
+      #
+      # `if: failure()` rather than always(), because the directory only exists
+      # when something failed, and uploading nothing on every green run is noise.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: golden-failures
+          path: test/golden/failures/
+          if-no-files-found: ignore
+
   web:
     name: Web (compiled to JavaScript)
     runs-on: ubuntu-latest
