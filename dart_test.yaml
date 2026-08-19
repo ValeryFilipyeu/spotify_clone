@@ -11,5 +11,19 @@ tags:
     # reading a fixture needs dart:io. What is tagged here is pure Dart, and
     # tagged because the web is not merely another place to run it -- it computes
     # differently there. `int` is a JavaScript double, so arithmetic above 2^53
-    # loses precision that the VM keeps exactly. A test can pass on the VM for
-    # ever while the shipped web app is wrong.
+    # loses precision that the VM keeps exactly. A test can pass on the VM forever
+    # while the shipped web app is wrong.
+
+  golden:
+    # Golden (pixel) tests, VM-only and macOS-only.
+    #
+    # Excluded from the Linux `flutter test` job and run in the macOS one
+    # instead, because a golden belongs to the platform that rendered it. The
+    # same widgets diffed 0.46%-3.95% of their pixels between a Mac and a Linux
+    # runner -- every glyph and rectangle outline -- while a genuine layout
+    # regression measures around 0.15%. Drift larger than signal means no
+    # tolerance can separate them, so the platform is pinned instead of the
+    # threshold loosened. Numbers in test/golden/tolerant_comparator_io.dart.
+    #
+    # macOS rather than Linux so that whoever changes a widget can regenerate
+    # its golden on the machine they are working on.

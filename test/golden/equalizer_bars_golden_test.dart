@@ -1,3 +1,7 @@
+@TestOn('vm')
+@Tags(['golden'])
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotify_clone/player/widgets/equalizer_bars.dart';
