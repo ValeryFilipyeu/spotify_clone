@@ -36,8 +36,18 @@ jobs:
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test
 
+      # --exclude-tags golden: the pixel tests are verified in the macOS job
+      # instead. They are not portable, and not for want of trying -- the same
+      # widgets rendered here differ from the macOS goldens by 0.46%-3.95% of
+      # their pixels, against roughly 0.15% for a genuine layout regression, so
+      # running them on both platforms cannot distinguish drift from a bug. See
+      # dart_test.yaml.
+      #
+      # Coverage is measured from this run, so the figure excludes them. They
+      # exercise widgets already covered by the tests above; what they add is a
+      # picture, not a line.
       - name: Test
-        run: flutter test --coverage
+        run: flutter test --coverage --exclude-tags golden
 
       # Read straight out of lcov.info: LH is lines hit, LF lines found, one pair
       # per file. Avoids installing lcov just to print one number.
@@ -80,20 +90,6 @@ jobs:
           name: coverage-lcov
           path: coverage/lcov.info
           if-no-files-found: warn
-
-      # A failed golden is unreadable from a log: the message says the images
-      # differ and cannot show you how. Flutter writes four PNGs per failure --
-      # masterImage (what was expected), testImage (what was rendered), and two
-      # diffs, masked and isolated -- and this is the only way off the runner.
-      #
-      # `if: failure()` rather than always(), because the directory only exists
-      # when something failed, and uploading nothing on every green run is noise.
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: golden-failures
-          path: test/golden/failures/
-          if-no-files-found: ignore
 
   web:
     name: Web (compiled to JavaScript)
@@ -154,6 +150,27 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-flutter
+
+      # The goldens live here rather than in the Linux test job because a golden
+      # belongs to the platform that rendered it -- see dart_test.yaml for the
+      # measurements. First, so a pixel regression is reported in seconds rather
+      # than after the two builds below.
+      - name: Golden tests
+        run: flutter test --tags golden
+
+      # A failed golden is unreadable from a log: the message says the images
+      # differ and cannot show you how. Flutter writes four PNGs per failure --
+      # masterImage (what was expected), testImage (what was rendered), and two
+      # diffs, masked and isolated -- and this is the only way off the runner.
+      #
+      # `if: failure()` rather than always(), because the directory only exists
+      # when something failed, and uploading nothing on every green run is noise.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: golden-failures
+          path: test/golden/failures/
+          if-no-files-found: ignore
 
       # The two platforms whose bugs this project has actually hit -- and the
       # slowest job by a wide margin, which is why it is separate: the test

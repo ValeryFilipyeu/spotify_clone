@@ -4,6 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:spotify_clone/theme/spotify_theme.dart';
 
+// VM-only: the real comparator extends a `LocalFileComparator` that does not
+// exist in the web build of flutter_test. See tolerant_comparator_stub.dart.
+import 'tolerant_comparator_stub.dart' if (dart.library.io) 'tolerant_comparator_io.dart';
+
 /// Shared setup for the golden tests: a fixed surface, a fixed platform, and an
 /// exact comparator that reports how far off it was when it fails.
 ///
@@ -12,12 +16,21 @@ import 'package:spotify_clone/theme/spotify_theme.dart';
 /// Not typography. `flutter test` renders every glyph as a filled box -- there
 /// is no real font in the test environment, and none is loaded -- so a golden
 /// records where the *blocks* sit, how wide they are, and where they wrap or
-/// overflow. That is a feature rather than a limitation: font rasterization is
-/// the single largest source of golden churn between machines, and removing it
-/// leaves behind exactly the thing worth pinning, which is layout.
+/// overflow. Which is the useful part: a title that stops fitting, a subtitle
+/// that grows a third line, a control pushed off an edge.
 ///
-/// It also means these goldens say nothing about whether a label reads well.
-/// The semantics tests cover what is announced; these cover where it is.
+/// It also means these say nothing about whether a label reads well. The
+/// semantics tests cover what is announced; these cover where it is.
+///
+/// Worth being precise about, because the obvious inference from it is wrong.
+/// Boxes instead of letterforms does remove *typography* variance -- no hinting,
+/// no subpixel positioning of curves -- but the boxes are still drawn by the
+/// text engine, and their edges are exactly where two machines disagree. In the
+/// Linux/macOS comparison below, the difference in `cover_art_placeholder` was
+/// the outline of the icon glyph and nothing else: the gradient filling the
+/// whole square, and the rounded corners, were byte-identical. The three
+/// equalizer goldens, which contain no text at all, passed on Linux unchanged.
+/// Gradients and shape antialiasing travel; glyph edges do not.
 ///
 /// ## Why they can be trusted on a machine that did not write them
 ///
@@ -34,9 +47,16 @@ import 'package:spotify_clone/theme/spotify_theme.dart';
 ///  * **The device pixel ratio.** Fixed at 1, so a golden is not silently three
 ///    times larger in the repository than the layout it describes.
 ///
-/// The one difference left unpinned is the antialiasing of curves, computed by
-/// whatever CPU is running. Comparison is exact anyway, for a reason worth
-/// reading before loosening it -- see [useTolerantGoldens].
+/// ## Why they are macOS-only
+///
+/// What none of that pinning can fix is how the machine rasterizes an edge.
+/// Diffing the images CI rendered on Linux against these, the same code differs
+/// by 0.46% to 3.95% of pixels -- every glyph and rectangle *outline*, with
+/// channels off by up to 179 of 255 -- while a real regression measures 0.15%.
+/// Drift is larger than signal, so no tolerance can tell them apart and a
+/// golden belongs to the platform that wrote it. These are generated on macOS,
+/// verified on macOS in CI, and excluded from the Linux job by the `golden` tag.
+/// See [useTolerantGoldens] for the numbers.
 
 /// A golden's surface, in logical pixels.
 ///
@@ -139,71 +159,4 @@ void setUpGoldens() {
   // throws rather than doing it. The bundled fallback is what renders.
   GoogleFonts.config.allowRuntimeFetching = false;
   useTolerantGoldens();
-}
-
-/// Compares goldens exactly, and reports by how much when they differ.
-///
-/// The default [maxDifferentRatio] is zero -- exact -- and that is a decision
-/// with a measurement behind it rather than a default nobody chose.
-///
-/// The tempting move is to allow a small percentage, on the grounds that
-/// antialiasing along a curve is computed by whatever CPU is running and might
-/// disagree in the last bit between a developer's Mac and a Linux runner. The
-/// problem is scale. Changing [CoverArt]'s corner radius from 8 to 6 -- a change
-/// anyone would call visible, and a regression worth failing a build over --
-/// moves only **0.15% to 0.22%** of the pixels in these images, because it too
-/// only touches pixels along a curve. Measured, by making that exact change and
-/// reading the numbers below.
-///
-/// So a tolerance generous enough to absorb cross-platform antialiasing is, on
-/// this evidence, also generous enough to absorb real regressions: an early
-/// draft of this file allowed 0.5% and silently passed that sabotage. There is
-/// no safe number to guess at, and guessing wrong fails silently in the
-/// direction that matters.
-///
-/// Exact, therefore, until a real cross-platform failure provides the figure to
-/// set instead -- and if that figure is anywhere near 0.15%, the honest
-/// conclusion is that these goldens have to be generated on the platform that
-/// verifies them, not that the allowance should be raised to fit.
-void useTolerantGoldens({double maxDifferentRatio = 0}) {
-  final existing = goldenFileComparator as LocalFileComparator;
-  goldenFileComparator = _TolerantGoldenComparator(existing.basedir, maxDifferentRatio);
-}
-
-class _TolerantGoldenComparator extends LocalFileComparator {
-  /// [LocalFileComparator] wants the *test file* and keeps its directory, so
-  /// the basedir is handed back to it as a file inside itself.
-  _TolerantGoldenComparator(Uri basedir, this._maxDifferentRatio)
-    : super(basedir.resolve('golden_test.dart'));
-
-  final double _maxDifferentRatio;
-
-  @override
-  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
-    final result = await GoldenFileComparator.compareLists(
-      imageBytes,
-      await getGoldenBytes(golden),
-    );
-
-    if (result.passed) {
-      result.dispose();
-      return true;
-    }
-
-    if (result.diffPercent <= _maxDifferentRatio) {
-      // Under the ceiling: report it rather than passing in silence, so a
-      // steady climb towards the limit is visible before it starts failing.
-      debugPrint(
-        'Golden ${golden.pathSegments.last} differs by '
-        '${(result.diffPercent * 100).toStringAsFixed(4)}% of pixels, '
-        'within the ${(_maxDifferentRatio * 100).toStringAsFixed(2)}% allowance.',
-      );
-      result.dispose();
-      return true;
-    }
-
-    final failure = await generateFailureOutput(result, golden, basedir);
-    result.dispose();
-    throw FlutterError(failure);
-  }
 }
