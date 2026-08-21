@@ -78,6 +78,31 @@ extension JsonReader on Map<String, Object?> {
     return value is String && value.isNotEmpty ? value : null;
   }
 
+  /// A list of strings, treating absent or null as empty -- for a field that
+  /// only appears when it has something in it, like a track's list of artwork
+  /// hosts.
+  ///
+  /// An element that is not a string is an error rather than being skipped, for
+  /// the reason given on [objectList]: half a list is a shape change worth
+  /// hearing about, not something to quietly work around.
+  List<String> stringList(String key, {String at = ''}) {
+    final value = this[key];
+    if (value == null) return const [];
+    if (value is! List) {
+      throw JsonFormatError(_path(at, key), 'expected a list, got ${value.runtimeType}');
+    }
+    return [
+      for (final (index, element) in value.indexed)
+        if (element is String)
+          element
+        else
+          throw JsonFormatError(
+            '${_path(at, key)}[$index]',
+            'expected a string, got ${_describe(element)}',
+          ),
+    ];
+  }
+
   /// A required integer. Reads through `num` because a JSON number may decode
   /// as a double even when the API only ever sends whole ones.
   int integer(String key, {String at = ''}) {

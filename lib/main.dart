@@ -7,7 +7,8 @@ import 'app.dart';
 import 'auth/repository/fake_auth_repository.dart';
 import 'auth/repository/session_storage.dart';
 import 'catalog/repository/audius/audius_catalog_repository.dart';
-import 'catalog/repository/caching_catalog_repository.dart';
+import 'catalog/repository/offline/catalog_cache_store.dart';
+import 'catalog/repository/offline/offline_catalog_repository.dart';
 import 'history/repository/local_play_history_repository.dart';
 import 'likes/repository/local_likes_repository.dart';
 import 'player/audio/crossfade_audio_controller.dart';
@@ -60,26 +61,42 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final keyValueStore = SharedPreferencesStore(prefs);
 
-  // The real catalog. One long-lived client for the whole app, so its
-  // connection pool and its in-flight de-duplication are shared: Home builds
-  // several rows at once, and the same url wanted twice is one round trip.
+  // The real catalog, assembled here and nowhere else. Three layers, each of
+  // which the one below knows nothing about:
   //
-  // Wrapped in the cache at this point and nowhere else -- the Audius
-  // implementation has no idea it is being cached, and the fake used by tests is
-  // deliberately left unwrapped so they see every call.
-  final catalogRepository = CachingCatalogRepository(
+  //   offline  -- keeps answers on the device and serves them when the network
+  //               cannot be reached, and reports which of those is happening
+  //   caching  -- remembers answers for five minutes, so moving around the app
+  //               is free
+  //   audius   -- a plain translation of an HTTP API
+  //
+  // One long-lived ApiClient underneath, so its connection pool and its
+  // in-flight de-duplication are shared: Home builds several rows at once, and
+  // the same url wanted twice is one round trip.
+  //
+  // The order is not incidental and is therefore not written here: `chain` owns
+  // it, so that the reason for it and a test of it live together. See
+  // OfflineCatalogRepository.chain.
+  //
+  // The fake used by tests is deliberately left unwrapped by any of this, so
+  // they see every call.
+  final catalogRepository = OfflineCatalogRepository.chain(
     AudiusCatalogRepository(
       client: ApiClient(
         baseUrl: AudiusCatalogRepository.baseUrl,
         defaultQuery: const {'app_name': AudiusCatalogRepository.appName},
       ),
     ),
+    store: CatalogCacheStore(keyValueStore),
   );
 
   runApp(
     MyApp(
       authRepository: authRepository,
       catalogRepository: catalogRepository,
+      // The same object: the layer that discovers it is the layer that falls
+      // back to the saved copy.
+      offlineStatus: catalogRepository,
       likesRepository: LocalLikesRepository(keyValueStore),
       playHistoryRepository: LocalPlayHistoryRepository(keyValueStore),
       playbackSettingsRepository: LocalPlaybackSettingsRepository(keyValueStore),

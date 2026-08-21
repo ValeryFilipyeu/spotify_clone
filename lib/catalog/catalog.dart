@@ -6,3 +6,4 @@ export 'models/search_results.dart';
 export 'models/track.dart';
 export 'repository/catalog_repository.dart';
 export 'repository/fake_catalog_repository.dart';
+export 'repository/offline/offline_status.dart';

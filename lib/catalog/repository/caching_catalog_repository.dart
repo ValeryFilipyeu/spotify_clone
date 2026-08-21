@@ -98,8 +98,18 @@ class CachingCatalogRepository implements CatalogRepository {
   /// parts we cannot identify from here -- a playlist whose tracklist changed is
   /// invisible to Home's row. Clearing the lot costs a few requests that the
   /// user explicitly asked for.
+  ///
+  /// Passed on down as well as acted on here. A decorator that answers half of
+  /// the interface itself and swallows the other half is a hole in the chain:
+  /// whatever this wraps may be remembering something too, and the gesture was
+  /// aimed at all of it. Nothing beneath this in the app happens to remember
+  /// anything today, which is precisely why forwarding has to be written down
+  /// rather than left to be noticed the day something does.
   @override
-  void invalidate() => _entries.clear();
+  void invalidate() {
+    _entries.clear();
+    _source.invalidate();
+  }
 
   /// De-duplicated and sorted, so the same set of ids in a different order is
   /// the same key. The callers build these sets by iterating a liked or

@@ -7,6 +7,7 @@ import 'auth/bloc/auth_state.dart';
 import 'auth/repository/auth_repository.dart';
 import 'catalog/repository/catalog_repository.dart';
 import 'catalog/repository/fake_catalog_repository.dart';
+import 'catalog/repository/offline/offline_status.dart';
 import 'history/cubit/play_history_cubit.dart';
 import 'history/repository/play_history_repository.dart';
 import 'likes/cubit/likes_cubit.dart';
@@ -29,6 +30,7 @@ class MyApp extends StatelessWidget {
     required this.playbackSettingsRepository,
     required this.audioController,
     this.catalogRepository,
+    this.offlineStatus = const AlwaysOnline(),
     this.mediaSession,
     this.audioSession,
   });
@@ -57,6 +59,15 @@ class MyApp extends StatelessWidget {
   /// what every widget test wants -- deterministic data and no network.
   final CatalogRepository? catalogRepository;
 
+  /// Whether that catalog is currently answering from the network or from what it
+  /// saved. Comes from the same object as [catalogRepository] in main(), because
+  /// the layer that discovers it is the layer that falls back.
+  ///
+  /// Defaulted rather than nullable: a catalog that cannot go offline has an
+  /// honest answer to this question, and [AlwaysOnline] is it. Every widget test
+  /// gets that for free, and nothing downstream has to handle an absent status.
+  final OfflineStatus offlineStatus;
+
   /// The OS media session (lock screen, notification, headset buttons). Null in
   /// widget tests, which have no OS session to talk to; the player then simply
   /// has no presence outside the app.
@@ -81,6 +92,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<CatalogRepository>(
           create: (_) => catalogRepository ?? const FakeCatalogRepository(),
         ),
+        RepositoryProvider<OfflineStatus>.value(value: offlineStatus),
       ],
       child: MultiBlocProvider(
         providers: [
