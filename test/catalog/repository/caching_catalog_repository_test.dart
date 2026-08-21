@@ -5,8 +5,10 @@ import 'package:spotify_clone/catalog/repository/caching_catalog_repository.dart
 /// A source that counts what it was asked for, so a test can assert that a
 /// second call never reached it.
 class _CountingCatalog implements CatalogRepository {
+  int invalidations = 0;
+
   @override
-  void invalidate() {}
+  void invalidate() => invalidations++;
 
   final List<String> calls = [];
 
@@ -225,6 +227,17 @@ void main() {
 
       expect(source.countOf('home'), 2);
       expect(source.countOf('detail:one'), 2);
+    });
+
+    test('passes the gesture on to whatever it wraps', () async {
+      // A decorator that answers half the interface itself and swallows the other
+      // half is a hole in the chain. Nothing beneath this in the app remembers
+      // anything today -- which is exactly why forwarding has to be pinned rather
+      // than left to be noticed the day something does.
+      final repository = build();
+      repository.invalidate();
+
+      expect(source.invalidations, 1);
     });
 
     test('leaves the cache usable afterwards', () async {
