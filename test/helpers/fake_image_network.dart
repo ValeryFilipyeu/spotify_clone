@@ -18,26 +18,17 @@ const List<int> _onePixelPng = [
   0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82, // IEND
 ];
 
-/// Pumps [widget] with every network image answered by a real (if tiny) PNG, and
-/// waits until those images have actually loaded -- so a widget test can assert
-/// on a *drawn* [Image.network], not merely on one being in the tree.
+/// Pumps [widget] with every network image answered by a real (if tiny) PNG and
+/// waits for them to load, so a test can assert on a *drawn* image.
 ///
-/// Two things here are less obvious than they look, and both are why a plain
-/// `pumpWidget` + `pumpAndSettle` silently leaves every cover unloaded:
+/// Two reasons a plain `pumpWidget` + `pumpAndSettle` leaves every cover blank:
+/// the hook is [debugNetworkImageHttpClientProvider], not `HttpOverrides` (
+/// NetworkImage keeps one `static final` HttpClient a zone override never
+/// reaches); and the load needs [WidgetTester.runAsync], because fetch and
+/// decode finish on engine threads the fake clock never advances.
 ///
-///  * The client hook is [debugNetworkImageHttpClientProvider], NOT
-///    `HttpOverrides`. NetworkImage keeps a single `static final` HttpClient,
-///    created the first time anything resolves an image, so a zone-scoped
-///    override never reaches it. This is the seam Flutter provides for exactly
-///    that reason.
-///  * The load has to happen under [WidgetTester.runAsync]. Fetching and
-///    *decoding* an image both complete on the engine's own threads, which the
-///    test's fake clock never advances -- so inside an ordinary pump the frame
-///    simply never arrives.
-///
-/// The fake client itself is hand-rolled with `noSuchMethod` rather than pulling
-/// in a mocking package: HttpClient and friends have dozens of members between
-/// them and this needs exactly four.
+/// The client is hand-rolled with `noSuchMethod`: HttpClient has dozens of
+/// members and this needs four.
 Future<void> pumpWithNetworkImages(WidgetTester tester, Widget widget) async {
   final network = installFakeImageNetwork();
   try {

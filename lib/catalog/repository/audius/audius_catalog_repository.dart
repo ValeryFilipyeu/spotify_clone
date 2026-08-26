@@ -13,38 +13,29 @@ import 'audius_track_dto.dart';
 
 /// The catalog, backed by the Audius API.
 ///
-/// Audius is a public, keyless music API whose content is uploaded by its own
-/// users. That shapes two things this class has to deal with, neither of which
-/// a curated commercial catalog would have:
-///
-///  * there is no "Daily Mix" and no editorial personalisation, so Home is
-///    *composed* here out of what the API does offer; and
-///  * a "track" may be a three-hour DJ set, because nothing stops someone
-///    uploading one. See [maxTrackDuration].
+/// Audius is keyless and user-uploaded, which shapes two things: there is no
+/// editorial personalisation, so Home is *composed* here out of what the API
+/// offers; and a "track" may be a three-hour DJ set. See [maxTrackDuration].
 class AudiusCatalogRepository implements CatalogRepository {
   AudiusCatalogRepository({required this._client});
 
-  /// The public entry point. Audius runs a network of interchangeable discovery
-  /// nodes; this host redirects to a healthy one.
+  /// Redirects to a healthy node from Audius' discovery network.
   static final Uri baseUrl = Uri.parse('https://api.audius.co/v1');
 
-  /// Sent on every request. Audius asks callers to identify themselves; it is
-  /// not a key and needs no registration.
+  /// Audius asks callers to identify themselves. Not a key, no registration.
   static const String appName = 'SpotifyCloneLearning';
 
-  /// Longer than this and it is a mix or a podcast, not a song.
+  /// Longer than this is a mix or a podcast, not a song. The live API really
+  /// does return 10,940-second "tracks" beside three-minute ones.
   ///
-  /// Filtered here rather than in the mapper, which stays a faithful reading of
-  /// what the server said. The live API really does return 10,940-second
-  /// "tracks" next to three-minute ones, and one of those in a row of songs
-  /// makes the whole screen look broken.
+  /// Filtered here, not in the mapper, which stays a faithful reading.
   static const Duration maxTrackDuration = Duration(minutes: 15);
 
   /// How many items each home row shows.
   static const int _rowLength = 10;
 
-  /// Home's rows. The first is what Audius itself is featuring; the rest stand
-  /// in for the genre rows a real service would personalise.
+  /// The first row is what Audius features; the rest stand in for the genre
+  /// rows a real service would personalise.
   static const List<({String title, String? query})> _homeRows = [
     (title: 'Trending playlists', query: null),
     (title: 'Lo-fi & chill', query: 'lofi'),
@@ -56,8 +47,7 @@ class AudiusCatalogRepository implements CatalogRepository {
 
   @override
   void invalidate() {
-    // Nothing is remembered here, so there is nothing to discard. Caching lives
-    // in CachingCatalogRepository, which wraps this one.
+    // Nothing is remembered here; caching lives in the decorator above.
   }
 
   @override
@@ -67,9 +57,8 @@ class AudiusCatalogRepository implements CatalogRepository {
     ]);
 
     final sections = rows.nonNulls.toList();
-    // One row failing is survivable -- three of four is still a home screen.
-    // All of them failing is not: that is the network being down, and the
-    // screen should say so rather than render blank.
+    // Three rows of four is still a home screen. Zero is the network being
+    // down, and should say so rather than render blank.
     if (sections.isEmpty) {
       throw NetworkUnreachable(_client.uriFor('playlists/trending'), 'every home row failed');
     }
@@ -82,8 +71,7 @@ class AudiusCatalogRepository implements CatalogRepository {
       final data = await _getData(
         path,
         query: {
-          // Null-aware element: the trending row takes no query at all, and
-          // ApiClient drops a null value rather than sending `query=`.
+          // The trending row takes no query; ApiClient drops a null value.
           'query': ?query,
           'limit': '$_rowLength',
         },
@@ -107,8 +95,8 @@ class AudiusCatalogRepository implements CatalogRepository {
     final wanted = ids.toSet().toList();
     if (wanted.isEmpty) return const [];
 
-    // One request for the lot: `?id=a&id=b`. Ids Audius does not recognise are
-    // simply absent from the response, which is exactly the contract.
+    // One request for the lot. Unrecognised ids are simply absent, which is the
+    // contract.
     final data = await _getData('playlists', query: {'id': wanted});
     return _read(
       _client.uriFor('playlists'),
@@ -140,8 +128,7 @@ class AudiusCatalogRepository implements CatalogRepository {
     final needle = query.trim();
     if (needle.isEmpty) return const SearchResults();
 
-    // Songs and playlists are separate endpoints, asked for together: the two
-    // halves of the results screen have no reason to wait for each other.
+    // Separate endpoints, asked together: neither half should wait.
     final (tracks, items) = await (_searchTracks(needle), _searchPlaylists(needle)).wait;
 
     return SearchResults(items: items, tracks: tracks);
@@ -174,13 +161,10 @@ class AudiusCatalogRepository implements CatalogRepository {
   Future<CatalogDetail> fetchDetail(String itemId) async {
     final List<Map<String, Object?>> data;
     try {
-      // The tracklist comes embedded in this response, so opening an album is
-      // one request rather than a fetch-then-fetch-its-tracks pair.
+      // The tracklist is embedded, so opening an album is one request.
       data = await _getData('playlists/$itemId');
     } on HttpErrorStatus catch (failure) {
-      // A malformed id is answered with 400 ("invalid playlistId"), not 404.
-      // Either way the caller asked for something that is not there, and the
-      // interface has a type for that.
+      // A malformed id gets 400, not 404. Either way it is not there.
       if (failure.statusCode == 400 || failure.statusCode == 404) {
         throw CatalogItemNotFound(itemId);
       }
@@ -199,8 +183,7 @@ class AudiusCatalogRepository implements CatalogRepository {
     );
   }
 
-  /// Drops what cannot or should not be played: gated tracks, and uploads long
-  /// enough to be a mix rather than a song.
+  /// Drops gated tracks and anything long enough to be a mix.
   Iterable<AudiusTrackDto> _playable(Iterable<AudiusTrackDto> tracks) => tracks.where(
     (track) => track.isStreamable && Duration(seconds: track.durationSeconds) <= maxTrackDuration,
   );
@@ -208,13 +191,9 @@ class AudiusCatalogRepository implements CatalogRepository {
   Track _toTrack(AudiusTrackDto dto) =>
       dto.toDomain(streamUrl: _client.uriFor('tracks/${dto.id}/stream'));
 
-  /// Pairs a track with something to show as its album.
-  ///
-  /// An Audius track is a standalone upload: it has no reliable backlink to a
-  /// containing album, so there is nothing to look up. The stand-in is built
-  /// from the track itself, which is what the two surfaces that use it actually
-  /// want -- the search row prints `artist - album` and the library tile shows a
-  /// cover, and both read correctly this way.
+  /// Pairs a track with a stand-in album built from the track itself: an Audius
+  /// upload has no reliable backlink to one. Both surfaces that use it -- a
+  /// search row and a library tile -- read correctly this way.
   TrackHit _hitFor(AudiusTrackDto dto) => TrackHit(
     track: _toTrack(dto),
     album: CatalogItem(
@@ -236,11 +215,8 @@ class AudiusCatalogRepository implements CatalogRepository {
     return _read(_client.uriFor(path, query: query), () => json.objectList('data'));
   }
 
-  /// Runs a read and re-throws its [JsonFormatError] as an [ApiFailure].
-  ///
-  /// The reader knows which field was wrong but not which request produced it;
-  /// this is the layer that knows both, and callers above only ever have to
-  /// handle [ApiFailure].
+  /// Re-throws a [JsonFormatError] as an [ApiFailure]. The reader knows the
+  /// field, this layer knows the request, and callers above see only one type.
   T _read<T>(Uri uri, T Function() read) {
     try {
       return read();

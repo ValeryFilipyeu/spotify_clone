@@ -25,9 +25,8 @@ class HomeView extends StatelessWidget {
       appBar: AppBar(
         title: const SpotifyWordmark(fontSize: 18),
         actions: [
-          // Logout still lives here so the auth flow stays reachable. No
-          // navigation call -- dispatching the event flips AuthBloc to
-          // unauthenticated and the router redirects to Landing on its own.
+          // No navigation call: the event flips AuthBloc and the router
+          // redirects on its own.
           IconButton(
             icon: const Icon(Icons.logout, color: SpotifyColors.textSecondary),
             tooltip: 'Log out',
@@ -54,15 +53,12 @@ class HomeView extends StatelessWidget {
                 ),
               );
             case HomeStatus.success:
-              // Nested builder, like LibraryView's: the catalog comes from one
-              // cubit and what makes this screen *yours* from another, and this
-              // is where the two are put together. Playing something anywhere in
-              // the app therefore reorders Home with no reload.
+              // The catalog comes from one cubit and the personalisation from
+              // another; this is where they meet. Playing anything in the app
+              // reorders Home with no reload.
               return BlocConsumer<PlayHistoryCubit, PlayHistoryState>(
-                // History that arrives (or grows) after Home loaded may name
-                // items no row on this screen contains -- something played from
-                // search, say. Ask for those specifically; the cubit ignores ids
-                // it already holds, so the common case costs nothing.
+                // History may name items no row here contains -- something
+                // played from search. The cubit ignores ids it already holds.
                 listener: (context, history) =>
                     context.read<HomeCubit>().resolveMissing(history.recentIds),
                 builder: (context, history) {
@@ -77,20 +73,18 @@ class HomeView extends StatelessWidget {
                     ),
                     child: ListView.builder(
                       padding: const EdgeInsets.only(bottom: 24),
-                      // Without this the list only accepts a pull when it is long
-                      // enough to scroll, so the gesture would work on a phone
-                      // and quietly do nothing on a tall window.
+                      // Otherwise the pull only works when the list is long
+                      // enough to scroll.
                       physics: const AlwaysScrollableScrollPhysics(),
-                      // +1 for the greeting, which scrolls with the content rather
-                      // than sitting in the app bar.
+                      // +1 for the greeting, which scrolls with the content.
                       itemCount: sections.length + 1,
                       itemBuilder: (context, index) {
                         if (index == 0) return const _Greeting();
                         final section = sections[index - 1];
                         return CatalogSectionRow(
                           section: section,
-                          // push under THIS tab so the detail screen stacks
-                          // inside Home (tab bar stays) and back returns here.
+                          // Under THIS tab, so the tab bar stays and back
+                          // returns here.
                           onItemTap: (itemId) =>
                               context.push(Routes.detailUnder(Routes.home, itemId)),
                         );
@@ -109,12 +103,9 @@ class HomeView extends StatelessWidget {
 /// "Good evening" over the first row. Reads the clock at build time and never
 /// updates itself.
 ///
-/// Note this does *not* hold because Home is rebuilt on every visit -- it is
-/// not. The tab shell keeps each branch's Navigator alive, so this survives the
-/// whole session (see the tab-switch test in test/app_shell_test.dart). It holds
-/// because it is rebuilt whenever the play history changes and because nobody
-/// keeps the app open across the boundary from afternoon to evening and looks at
-/// the greeting when they get back.
+/// Home is *not* rebuilt per visit -- the tab shell keeps its Navigator alive all
+/// session. This holds only because a play-history change rebuilds it, and
+/// because nobody watches the greeting across the afternoon/evening boundary.
 class _Greeting extends StatelessWidget {
   const _Greeting();
 

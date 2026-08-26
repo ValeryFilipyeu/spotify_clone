@@ -6,21 +6,13 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotify_clone/theme/cover_palette.dart';
 
-/// The same hash, defined in arbitrary precision.
+/// The same hash in arbitrary precision, to catch the regression "same seed,
+/// same colour" cannot: on the web Dart's `int` is a double, so anything above
+/// 2^53 silently drops its low bits -- and a lossy hash is self-consistent.
 ///
-/// Pinning the implementation against an exact definition catches two different
-/// regressions: changing the algorithm, and losing precision while keeping it.
-/// The second is the one worth explaining. On the web Dart's `int` is a
-/// JavaScript double, so any intermediate value above 2^53 silently drops its
-/// low bits -- and a lossy hash is perfectly self-consistent, so "same seed,
-/// same colour" cannot detect it.
-///
-/// Note precision loss only *bites* under `flutter test --platform chrome`;
-/// on the VM ints are 64-bit and the arithmetic is exact either way. Measured
-/// with the textbook FNV-1a this deliberately does not use: computed in `int`
-/// and in `BigInt` it agrees on the VM and disagrees on chrome (1003383502 vs
-/// 2266066580 for seed 'RKxOQ'). Hence the mask in [CoverPalette], and hence
-/// this file being worth running on both platforms.
+/// Only bites under `--platform chrome`. Measured with the textbook FNV-1a this
+/// deliberately avoids: `int` and `BigInt` agree on the VM and disagree on
+/// chrome (1003383502 vs 2266066580 for 'RKxOQ'). Hence [CoverPalette]'s mask.
 int referenceHash(String seed) {
   var hash = BigInt.zero;
   for (final unit in seed.codeUnits) {

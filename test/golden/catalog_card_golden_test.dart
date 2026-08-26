@@ -54,26 +54,17 @@ Widget _card(WidgetTester tester, CatalogItem item) {
   );
 }
 
-/// The card is the densest piece of layout in the app -- a cover, two clipped
-/// text lines, and a heart sitting on a disc over the artwork -- and it has
-/// already had a bug in exactly that stack. From the widget's own notes, the
-/// heart and its disc were once two `Positioned`s pinned to the same corner,
-/// which drew the heart 4px up and right of the disc whenever the IconButton
-/// was not exactly 48x48.
+/// The densest layout in the app, and it has already had a bug in exactly this
+/// stack: the heart and its disc were once two `Positioned`s pinned to the same
+/// corner, drawing 4px apart wherever IconButton was not exactly 48x48.
 ///
-/// That is the class of bug a golden exists for: invisible to a finder-based
-/// test (both widgets present, both tappable, semantics unchanged) and obvious
-/// in a picture.
+/// That is what a golden is for -- invisible to a finder-based test, obvious in
+/// a picture.
 ///
-/// A note on what is NOT here, because it was tried and removed. The obvious
-/// companion test is "renders identically at desktop density", on the theory
-/// that a desktop's compact density shrinks the IconButton and moves the heart
-/// again. It cannot: the heart and disc are now centred inside a fixed 48x48
-/// box, so the button's own size no longer positions anything. That was
-/// confirmed by sabotage -- removing the fixed box, and separately removing the
-/// theme's `materialTapTargetSize` pin, both left the two platforms rendering
-/// byte-identical output. A test that cannot fail is worse than no test, so
-/// there is one golden of this card and not two.
+/// There is deliberately no companion "renders the same at desktop density"
+/// test: both are now centred in a fixed box, so the button's size positions
+/// nothing, and sabotaging either the box or the theme pin left the two
+/// platforms byte-identical. A test that cannot fail is worse than none.
 void main() {
   setUpAll(setUpGoldens);
 

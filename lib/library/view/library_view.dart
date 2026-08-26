@@ -15,9 +15,8 @@ import '../../widgets/refresh_feedback.dart';
 import '../cubit/library_cubit.dart';
 import '../cubit/library_state.dart';
 
-/// "Your Library" = everything the user has liked. This cubit-loaded catalog is
-/// intersected with the app-wide [LikesCubit] set, so unliking an item here
-/// (or anywhere) makes it drop out of the list immediately.
+/// Everything the user has liked. The loaded catalog is intersected with the
+/// live [LikesCubit] set, so unliking drops a row immediately.
 class LibraryView extends StatelessWidget {
   const LibraryView({super.key});
 
@@ -45,9 +44,8 @@ class LibraryView extends StatelessWidget {
               );
             case LibraryStatus.success:
               return BlocConsumer<LikesCubit, LikesState>(
-                // Liking something new means the catalog entry for it has not
-                // been fetched yet. The cubit ignores a set that has only shrunk,
-                // so unliking still costs no round trip.
+                // A new like has no catalog entry yet. The cubit ignores a set
+                // that only shrank, so unliking costs no round trip.
                 listener: (context, likes) => context.read<LibraryCubit>().syncWith(likes.likedIds),
                 builder: (context, likes) {
                   if (likes.status == LikesStatus.loading) {
@@ -72,15 +70,13 @@ class LibraryView extends StatelessWidget {
                   return RefreshIndicator(
                     color: SpotifyColors.green,
                     backgroundColor: SpotifyColors.surfaceBright,
-                    // Not passed the liked ids: the cubit already knows which
-                    // set it loaded, and re-reading them here would let the two
-                    // disagree mid-gesture.
+                    // The cubit knows what it loaded; re-reading here would let
+                    // the two disagree mid-gesture.
                     onRefresh: () =>
                         refreshOrComplain(context, () => context.read<LibraryCubit>().refresh()),
                     child: CustomScrollView(
-                      // Otherwise the pull is refused whenever the liked list is
-                      // short enough to fit the screen -- which is most of the
-                      // time here, and exactly when someone would try it.
+                      // Otherwise the pull is refused whenever the list fits the
+                      // screen, which here is most of the time.
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
                         if (likedItems.isNotEmpty) ...[
@@ -91,8 +87,7 @@ class LibraryView extends StatelessWidget {
                               final item = likedItems[index];
                               return CatalogListTile(
                                 item: item,
-                                // Push under THIS tab so detail stacks inside
-                                // Library.
+                                // Under THIS tab, so detail stacks in Library.
                                 onTap: () =>
                                     context.push(Routes.detailUnder(Routes.library, item.id)),
                               );

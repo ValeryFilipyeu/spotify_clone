@@ -8,11 +8,9 @@ import 'package:path_provider/path_provider.dart';
 
 import 'audio_cache.dart';
 
-// just_audio marks LockCachingAudioSource @experimental: it works and is widely
-// used, but its author reserves the right to change or drop it. Acknowledged
-// here rather than silenced everywhere, and it is the reason this class exists
-// as a seam at all -- if the class goes away, what has to be rewritten is one
-// method in one file, and nothing above AudioCache notices.
+// LockCachingAudioSource is @experimental upstream. Acknowledged here rather
+// than silenced everywhere; it is also why AudioCache is a seam, so losing the
+// class costs one method in one file.
 // ignore_for_file: experimental_member_use
 
 Future<AudioCache?> openAudioCache({int keepTracks = 5}) =>
@@ -20,53 +18,29 @@ Future<AudioCache?> openAudioCache({int keepTracks = 5}) =>
 
 /// Played tracks as files, the newest [keepTracks] of them.
 ///
-/// ## What does the downloading
-///
-/// just_audio's own [LockCachingAudioSource], which streams a track to the player
-/// and writes it to disk in the same pass -- so the first play is not slower and
-/// the second needs no network. Nothing here re-implements that; what this class
-/// adds is where the files go, how many are kept, and the two cases the library
-/// leaves to the caller.
+/// The downloading is just_audio's [LockCachingAudioSource], which streams to the
+/// player and writes to disk in one pass. This class only decides where the files
+/// go, how many are kept, and the two cases the library leaves to the caller.
 ///
 /// **A finished download goes back to the same class, not to a file source.**
-/// The obvious shortcut is `AudioSource.uri(Uri.file(path))`, and it is wrong on
-/// iOS in a way nothing here would notice: AVFoundation works out a local file's
-/// container format from its path *extension*, these files are named by hash and
-/// have none, so `AVURLAsset` refuses them with
-/// `AVErrorFileFormatNotRecognized` (-11828). Measured, not deduced -- every
-/// cached track loaded, showed in the player and played silence. Handed back to
-/// [LockCachingAudioSource] instead, the bytes are served through just_audio's
-/// own stream path together with the content type it recorded beside them while
-/// downloading, so nothing has to guess. It makes no request either: its
-/// `request()` short-circuits to the file the moment the cache file exists,
-/// which is what keeps a cached track playable with no network at all.
+/// `AudioSource.uri(Uri.file(path))` is the obvious shortcut and it is silently
+/// broken on iOS: AVFoundation reads a local file's format off its path
+/// extension, these are named by hash, and AVURLAsset refuses them with -11828 --
+/// so a cached track loads, appears in the player and plays silence. Going back
+/// through [LockCachingAudioSource] carries the recorded MIME type with the
+/// bytes, and makes no request, since its `request()` short-circuits to the file.
 ///
-/// Naming the files `<hash>.mp3` would also work, and would be a worse fix: the
-/// extension would have to be guessed from a MIME type that only arrives with
-/// the first response, so it would mean renaming the file after the download and
-/// keeping a MIME-to-extension table that is wrong for the first format this
-/// catalog does not serve.
-///
-/// **Two players must never download the same track at once.** The library
-/// downloads to `<file>.part` and renames it into place when it finishes, so a
-/// half-written file is never mistaken for a whole one -- but two sources writing
-/// one `.part` would interleave and the rename would publish the result. The
-/// window is narrow (it needs repeat-one, crossfade, and a track being heard for
-/// the first time) and the consequence is a corrupt file served confidently ever
-/// after, so [_downloading] closes it: the second asker streams without caching.
-///
-/// The cost of that guard is small and worth stating: a download abandoned
-/// part-way -- skipped before it finished -- leaves its url marked in-flight for
-/// the rest of the session, so it will not be cached again until the app
-/// restarts. Better than the alternative, which is a corrupt track.
+/// **Two players must never download the same track at once.** Both would write
+/// one `.part` and the rename would publish the interleaved result, so
+/// [_downloading] sends the second asker straight to the network. The cost: a
+/// download abandoned part-way stays marked in-flight until the app restarts.
 class FileAudioCache implements AudioCache {
   FileAudioCache(this.directory, {this.keepTracks = 5, DateTime Function()? clock})
     : _now = clock ?? DateTime.now;
 
   final Directory directory;
 
-  /// How many tracks survive. See [AudioCache] for why this is a count and not a
-  /// byte budget.
+  /// See [AudioCache] for why this is a count and not a byte budget.
   final int keepTracks;
 
   final DateTime Function() _now;
@@ -86,14 +60,10 @@ class FileAudioCache implements AudioCache {
     final file = fileFor(url);
 
     if (await file.exists()) {
-      // Touched so that "oldest" means least recently *played* rather than least
-      // recently downloaded. Replaying a cached track writes no bytes, so without
-      // this a favourite could be evicted the moment five newer tracks appeared.
-      // One metadata write per track start, which is nothing beside the megabytes
-      // this is deciding the fate of.
+      // Makes "oldest" mean least recently played, not least recently
+      // downloaded -- a replay writes no bytes and would otherwise age out.
       await _touch(file);
-      // Nothing left to download; see the class doc for why this is still the
-      // caching source and not a plain file.
+      // Still the caching source, not a plain file: see the class doc.
       return LockCachingAudioSource(Uri.parse(url), cacheFile: file);
     }
 
@@ -106,9 +76,7 @@ class FileAudioCache implements AudioCache {
         .then((_) => _downloading.remove(url))
         .ignore();
 
-    // Before the new one lands rather than after, so the cache is never briefly
-    // over its limit -- and because the file being downloaded does not exist yet,
-    // it cannot evict itself.
+    // Before the new one lands, so the cache is never briefly over its limit.
     await evict();
     return source;
   }
@@ -118,8 +86,7 @@ class FileAudioCache implements AudioCache {
   Future<void> evict() async {
     final tracks = <({File file, DateTime played})>[];
     await for (final entry in directory.list()) {
-      // A download in progress, and the type it will be. Neither is a track yet,
-      // and deleting a `.part` would sabotage the download writing it.
+      // Not tracks yet, and deleting a `.part` sabotages a live download.
       if (entry is! File || entry.path.endsWith('.part') || entry.path.endsWith('.mime')) {
         continue;
       }
@@ -132,13 +99,12 @@ class FileAudioCache implements AudioCache {
     if (tracks.length < keepTracks) return;
 
     tracks.sort((a, b) => a.played.compareTo(b.played));
-    // One short of the limit, because the caller is about to add one.
     for (final track in tracks.take(tracks.length - (keepTracks - 1))) {
       await _deleteWithCompanions(track.file);
     }
   }
 
-  /// A url as a filename, hashed for the reason given on [FileImageByteStore].
+  /// A url as a filename. Hashed: see [FileImageByteStore].
   @visibleForTesting
   File fileFor(String url) => File('${directory.path}/${sha1.convert(utf8.encode(url))}');
 
@@ -146,15 +112,12 @@ class FileAudioCache implements AudioCache {
     try {
       await file.setLastModified(_now());
     } on FileSystemException {
-      // Some filesystems refuse this. The cost is an eviction order that follows
-      // download time instead of play time, which is not worth failing playback
-      // over.
+      // Some filesystems refuse it. Not worth failing playback over.
     }
   }
 
-  /// A cached track is up to three files: the audio, its recorded mime type, and
-  /// possibly an abandoned partial download. Leaving either companion behind
-  /// would slowly fill the directory with litter no listing counts.
+  /// A track is up to three files: audio, `.mime`, and maybe an abandoned
+  /// `.part`. Companions left behind are litter no listing counts.
   Future<void> _deleteWithCompanions(File file) async {
     for (final path in [file.path, '${file.path}.mime', '${file.path}.part']) {
       try {

@@ -9,41 +9,29 @@ import 'package:spotify_clone/catalog/repository/offline/offline_catalog_reposit
 
 import '../../../helpers/fixtures.dart';
 
-/// How much room the offline cache actually takes, measured on real payloads.
+/// How much room the offline cache takes, measured on real payloads.
 ///
-/// The cache is kept in shared_preferences, which is not a database: the whole
-/// file is held in memory and rewritten when it changes. That makes size a
-/// correctness concern rather than a housekeeping one, and it is the sort of
-/// number that is quietly guessed once and then relied on for years. So it is
-/// measured here, from the same captured Audius responses the parser is tested
-/// against, and asserted -- loosely, because the point is not to police a few
-/// hundred bytes but to notice the day a model starts carrying something big.
+/// shared_preferences rewrites its whole file on every change, so size is a
+/// correctness concern -- and the sort of number that gets guessed once and
+/// relied on for years. Measured from the captured Audius responses the parser is
+/// tested against, and asserted loosely: the point is to notice the day a model
+/// starts carrying something big, not to police a few hundred bytes.
 ///
-/// The bounds below are roughly 1.5x what was measured. A field added to [Track]
-/// will not fail this; a [CatalogSection] that starts embedding tracklists will.
+/// | what                       |  bytes | per entity |
+/// | -------------------------- | ------ | ---------- |
+/// | a home screen, 4 rows x 10 |  23 KB |     573 B  |
+/// | one 100-track album        |  58 KB |     576 B  |
+/// | 64 remembered items        |  37 KB |     578 B  |
+/// | 64 remembered track hits   |  73 KB |    1140 B  |
 ///
-/// The numbers, and they are the reason both caps are what they are -- the first
-/// guess at them was three to five times too small, and the caps that guess
-/// justified were correspondingly too generous:
+/// The first guess at these was three to five times too small, which is why both
+/// caps moved. About 70% of each entity is cover urls -- a primary and three
+/// mirrors at ~100 characters each -- and a track hit doubles that by carrying a
+/// stand-in album beside its track.
 ///
-/// | what                            |  bytes | per entity |
-/// | ------------------------------- | ------ | ---------- |
-/// | a home screen, 4 rows x 10      |  23 KB |     573 B  |
-/// | one 100-track album             |  58 KB |     576 B  |
-/// | 64 remembered items             |  37 KB |     578 B  |
-/// | 64 remembered track hits        |  73 KB |    1140 B  |
-///
-/// Around 70% of every entity is cover urls: each carries a primary and three
-/// mirrors (see [AudiusArtwork]) at roughly 100 characters apiece. A track hit is
-/// double everything else because it carries a whole stand-in album next to its
-/// track, each with its own set.
-///
-/// Trimming the mirrors was considered and rejected. It would save a third of the
-/// space and cost the one thing the alternates are for: a saved page is *most*
-/// likely to be shown while something is unreachable, which is exactly when a
-/// cover's host being unreachable too is worth having an answer for.
-/// Read from the shipped default rather than copied, so the measurement can only
-/// ever describe the cache the app actually keeps.
+/// Dropping the mirrors would save a third and cost the one thing they are for: a
+/// saved page is most likely to be read while something is unreachable.
+/// Read from the shipped default, so this can only describe the real cache.
 const int _entityCap = OfflineCatalogRepository.defaultMaxEntities;
 
 void main() {

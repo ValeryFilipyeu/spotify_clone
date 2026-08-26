@@ -10,17 +10,14 @@ abstract final class Routes {
   static const String search = '/search';
   static const String library = '/library';
 
-  /// The detail screen is registered as a CHILD of each tab (so opening it
-  /// stacks inside the active tab rather than covering the tab bar). This is
-  /// the child segment pattern, e.g. `/home/detail/:id`.
+  /// A child segment of each tab, so detail stacks inside the active one:
+  /// `/home/detail/:id`.
   static const String detailChild = 'detail/:id';
 
-  /// The full-screen "Now Playing" view. A root-level route (outside the
-  /// shell) so it covers the tab bar and mini-player.
+  /// Root-level, outside the shell, so it covers the tab bar and mini-player.
   static const String player = '/player';
 
-  /// Builds a concrete detail location under a given tab base, so call sites
-  /// never hand-format the path and the detail always stacks inside the tab it
-  /// was opened from (e.g. `detailUnder(Routes.home, 'dm1')`).
+  /// A detail location under a tab base, so detail always stacks inside the tab
+  /// it was opened from: `detailUnder(Routes.home, 'dm1')`.
   static String detailUnder(String tabBase, String itemId) => '$tabBase/detail/$itemId';
 }

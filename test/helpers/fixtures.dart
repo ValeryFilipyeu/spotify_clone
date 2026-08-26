@@ -3,16 +3,12 @@ import 'dart:io';
 
 /// Loads a captured API payload from `test/fixtures/`.
 ///
-/// These are real responses, recorded off the live API and trimmed to a few
-/// entries with every field left intact -- not JSON written by hand to match
-/// what the parser expects. That difference is the whole value of them: a
-/// hand-written fixture only ever proves the parser agrees with its author,
-/// and it cannot contain the things a real payload does. The quirks these
-/// caught are documented where they are handled (`access.stream` versus
-/// `is_streamable`, per-track artwork hosts, three-hour "tracks").
+/// Real responses, trimmed to a few entries with every field intact -- not JSON
+/// written to match what the parser expects, which would only prove the parser
+/// agrees with its author. The quirks these caught are documented where they are
+/// handled (`access.stream` vs `is_streamable`, three-hour "tracks").
 ///
-/// Reads through `dart:io`, so these tests are VM-only. Nothing here needs to
-/// run in a browser.
+/// VM-only: reads through `dart:io`.
 Map<String, Object?> fixture(String path) {
   final file = File('test/fixtures/$path.json');
   if (!file.existsSync()) {

@@ -1,36 +1,13 @@
-/// The catalog's domain models as JSON.
+/// The catalog's domain models as JSON, for the two things that write them down:
+/// the offline cache and the saved playback session. (The id-keyed collections at
+/// the bottom are the cache's alone -- a session is a list, not a lookup.)
 ///
-/// Two things read and write it: the offline catalog cache, and the saved
-/// playback session that survives the app being closed. It lives beside the
-/// models rather than inside either of them for that reason -- the second
-/// consumer is what turned "how the offline cache happens to store a Track" into
-/// "how this app writes a Track down".
+/// A codec of its own rather than `toJson` on the models: serialisation put there
+/// is inherited by every consumer and quietly becomes *the app's* format, which
+/// makes renaming a field a migration.
 ///
-/// The id-keyed collections at the bottom are still the cache's alone; a session
-/// is an ordered list, not a lookup.
-///
-/// A codec of its own rather than `toJson`/`fromJson` on the models, for the
-/// same reason Audius' payloads are read by DTOs and not by the models: a model
-/// is what the app thinks in, and how one data source happens to write it to
-/// disk is that source's business. Put on the models, serialisation would be
-/// inherited by every consumer of them and would quietly become *the app's*
-/// format -- a promise nobody set out to make, and one that makes renaming a
-/// field a migration.
-///
-/// Reads go through [JsonReader], so a payload written by an older build with a
-/// field since renamed raises [JsonFormatError] naming that field, rather than a
-/// `TypeError` naming two types. [CatalogCacheStore] turns either into a miss.
-///
-/// Two deliberate asymmetries with the Audius DTOs, both of which come from the
-/// fact that this reads *our own* output rather than a stranger's:
-///
-///  * Field names are spelled out instead of shortened to save bytes. The whole
-///    cache is tens of kilobytes; being able to read a dumped payload while
-///    working out why a screen came back wrong is worth more than the
-///    difference.
-///  * [encodeItem] and friends are functions, not a class per model. A DTO
-///    exists to hold a foreign shape still while it is translated; here there is
-///    no foreign shape, only two directions of the same map.
+/// Reads go through [JsonReader], so a payload from an older build fails with a
+/// [JsonFormatError] naming the field. [CatalogCacheStore] turns that into a miss.
 library;
 
 import '../../network/json_reader.dart';
@@ -40,12 +17,9 @@ import 'catalog_section.dart';
 import 'search_results.dart';
 import 'track.dart';
 
-/// Identity and the things a row cannot be drawn without are read strictly:
-/// missing or empty means the entry is unusable, and an unusable entry should be
-/// a miss rather than a blank row.
-///
-/// Decoration is read leniently -- see [_text]. The same split [AudiusArtwork]
-/// makes, and for the same reason.
+/// Identity and anything a row cannot be drawn without is read strictly -- an
+/// unusable entry should be a miss, not a blank row. Decoration is lenient; see
+/// [_text].
 Map<String, Object?> encodeItem(CatalogItem item) => {
   'id': item.id,
   'title': item.title,

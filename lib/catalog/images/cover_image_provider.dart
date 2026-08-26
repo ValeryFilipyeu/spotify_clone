@@ -13,48 +13,32 @@ typedef ImageBytesFetch = Future<Uint8List> Function(Uri url);
 
 /// The provider [CoverArt] puts in the tree for one url.
 ///
-/// With no [store] -- on the web, and in every test that does not ask for one --
-/// this is the plain [NetworkImage] the widget used before any of this existed,
-/// including its web fallback strategy. That is the point of the null: the
-/// caching path is an addition on platforms that benefit, not a replacement of
-/// something that already worked.
+/// With no [store] -- on the web, and in tests -- this is exactly the plain
+/// [NetworkImage] used before caching existed. The caching path is an addition
+/// where it helps, not a replacement.
 ImageProvider coverImageProvider(String url, {ImageByteStore? store, ImageBytesFetch? fetch}) {
   if (store == null) {
     return NetworkImage(
       url,
-      // Web only, and load-bearing there -- see the note in CoverArt. Ignored
-      // everywhere else, so it costs nothing to keep on both paths.
+      // Web only, and load-bearing there; ignored elsewhere. See CoverArt.
       webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
     );
   }
   return CachedNetworkImage(url, store: store, fetch: fetch ?? fetchOverHttp);
 }
 
-/// A cover read from disk if it is there, and fetched and saved if it is not.
+/// A cover read from disk if it is there, fetched and saved if it is not.
 ///
-/// ## Why an ImageProvider rather than a cache in front of one
+/// A provider rather than a cache in front of one, because choosing between
+/// [FileImage] and [NetworkImage] is an async question and `build` is not.
 ///
-/// The obvious shape -- ask the store, then hand the answer to [FileImage] or
-/// [NetworkImage] -- cannot be built, because choosing between them is an
-/// asynchronous question and `build` is synchronous. A provider is the seam
-/// Flutter gives you for exactly this: [loadImage] is allowed to take its time,
-/// and everything above it (the fade, the retry walk, the eviction) goes on
-/// working without knowing where the bytes came from.
+/// Two things [CoverArt]'s host-walk depends on and this must preserve:
 ///
-/// ## What it must not break
-///
-/// [CoverArt] walks a list of hosts when one fails, and that walk depends on two
-/// behaviours of the thing in its tree:
-///
-///  * **A failure has to be reported as one.** If a bad host resolved to a blank
-///    image instead of an error, `errorBuilder` would never run and the walk
-///    would stop at the first dead node. So a non-2xx throws, exactly as
-///    [NetworkImage] does, and with the same exception type.
-///  * **Equality has to be stable across rebuilds.** `evict()` finds the entry to
-///    remove by key, so a provider that compared unequal to the identical one
-///    built a frame earlier would leave the failed entry in [ImageCache] for ever
-///    -- and cycling back to that host would be answered out of it with the old
-///    failure.
+///  * **A failure is reported as one.** A bad host resolving to a blank image
+///    would never reach `errorBuilder`, and the walk would stop at the first dead
+///    node. So a non-2xx throws, with [NetworkImage]'s own exception type.
+///  * **Equality is stable across rebuilds.** `evict()` finds entries by key, so
+///    an unstable one would strand the failure in [ImageCache] for ever.
 @immutable
 class CachedNetworkImage extends ImageProvider<CachedNetworkImage> {
   const CachedNetworkImage(this.url, {required this.store, required this.fetch});
@@ -83,23 +67,18 @@ class CachedNetworkImage extends ImageProvider<CachedNetworkImage> {
       try {
         return await decode(await ui.ImmutableBuffer.fromUint8List(saved));
       } on Object {
-        // Saved bytes that will not decode: a write cut short by the process
-        // dying, or a file the OS truncated. Dropping it is what makes that
-        // self-healing -- otherwise this cover is broken until the entry ages
-        // out, and re-fetching it would never be tried.
+        // A truncated write. Dropping it is what makes this self-healing.
         await store.delete(url);
       }
     }
 
     final bytes = await fetch(Uri.parse(url));
-    // Awaited rather than left running. It delays the first paint by one file
-    // write on a cover that has just cost a network round trip, and in exchange
-    // every test of this is deterministic instead of racing a background save.
+    // Awaited: one file write against a round trip already paid, in exchange for
+    // tests that do not race a background save.
     try {
       await store.write(url, bytes);
     } on Object {
-      // A cache that cannot be written to is a cache. It is not a reason to fail
-      // an image we are holding.
+      // Not a reason to fail an image we are holding.
     }
     return decode(await ui.ImmutableBuffer.fromUint8List(bytes));
   }
@@ -118,21 +97,15 @@ class CachedNetworkImage extends ImageProvider<CachedNetworkImage> {
   String toString() => 'CachedNetworkImage("$url")';
 }
 
-/// The default [ImageBytesFetch].
+/// The default [ImageBytesFetch]. Refusals throw [NetworkImageLoadException],
+/// the same type [NetworkImage] raises.
 ///
-/// Throws [NetworkImageLoadException] on a refusal -- Flutter's own type for
-/// this, and the same one [NetworkImage] raises, so nothing downstream has to
-/// learn a second way of hearing that a cover did not arrive.
-/// [client] exists so this can be tested at all: it is the one piece of the
-/// caching path that talks to a real network, and without a seam the tests would
-/// cover everything around it and leave the part that actually runs in
-/// production unexercised. (Which is precisely what happened -- a sabotage that
-/// deleted the status check below broke nothing.)
+/// [client] is a seam purely so this can be tested: it is the only part of the
+/// caching path that talks to a real network, and it was unexercised until it
+/// had one.
 Future<Uint8List> fetchOverHttp(Uri url, {http.Client? client}) async {
-  // A ceiling on the whole request, matching ApiClient's. The widget gives up on
-  // a stalled cover after six seconds and moves to the next host, so this is not
-  // what makes the UI responsive -- it is what stops the abandoned request from
-  // holding a connection open indefinitely behind it.
+  // The widget already gives up after six seconds; this just stops the abandoned
+  // request from holding a connection open behind it.
   final get = client?.get(url) ?? http.get(url);
   final response = await get.timeout(const Duration(seconds: 10));
 
@@ -140,8 +113,8 @@ Future<Uint8List> fetchOverHttp(Uri url, {http.Client? client}) async {
     throw NetworkImageLoadException(statusCode: response.statusCode, uri: url);
   }
   if (response.bodyBytes.isEmpty) {
-    // A 200 with nothing in it. Treated as a refusal rather than passed to the
-    // decoder, whose complaint would name a codec instead of a host.
+    // A 200 with no body: a refusal. The decoder's complaint would name a codec
+    // instead of a host.
     throw NetworkImageLoadException(statusCode: response.statusCode, uri: url);
   }
   return response.bodyBytes;

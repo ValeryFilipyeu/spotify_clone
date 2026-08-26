@@ -18,8 +18,7 @@ class CatalogCard extends StatelessWidget {
   /// Minimum legal tap target: 48dp on Android, 44pt on iOS.
   static const double _heartTarget = 48;
 
-  /// The visible disc behind the heart, kept smaller than [_heartTarget] on
-  /// purpose -- see the note in [build].
+  /// Smaller than [_heartTarget] on purpose -- see [build].
   static const double _heartScrim = 34;
 
   @override
@@ -30,15 +29,11 @@ class CatalogCard extends StatelessWidget {
       width: _width,
       child: Stack(
         children: [
-          // The card is one button with one name. MergeSemantics folds the cover,
-          // title and subtitle into the InkWell's own node -- without it the tap
-          // target is an *unnamed* button with the title sitting beside it as a
-          // separate node, so a screen reader lands on the card and says nothing
-          // at all. (labeledTapTargetGuideline catches exactly this.)
+          // One button with one name: without the merge the tap target is an
+          // *unnamed* button and a screen reader lands on it saying nothing.
           //
-          // The heart is deliberately a sibling of this subtree rather than
-          // inside it: merged in, it would lose its own name and its own tap
-          // action, and the card would offer no way to like anything.
+          // The heart is a sibling rather than inside: merged in it would lose
+          // its own name and action.
           MergeSemantics(
             child: InkWell(
               onTap: onTap,
@@ -68,16 +63,13 @@ class CatalogCard extends StatelessWidget {
               ),
             ),
           ),
-          // A translucent disc so the heart stays legible on any cover. It sits
-          // *behind* the button rather than wrapping it, so the two can be sized
-          // independently: the button needs a full 48x48 hit box, while a 48px
-          // disc would be a heavy grey blot over the artwork.
+          // The disc sits *behind* the button rather than wrapping it, so the
+          // two size independently: the button needs 48x48 of hit box, while a
+          // 48px disc is a grey blot over the artwork.
           //
-          // Both are centred in one box instead of being positioned separately,
-          // so they stay concentric whatever size the button reports. They used
-          // to be two Positioneds pinned to the same corner, which silently drew
-          // the heart 4px up and 4px right of its disc anywhere IconButton was
-          // not exactly 48x48 -- as it is not under a desktop visual density.
+          // Centred in one box rather than positioned separately, so they stay
+          // concentric whatever size the button reports. Pinned to a corner they
+          // drifted apart wherever IconButton was not exactly 48x48.
           Positioned(
             right: 0,
             top: _width - _heartTarget,

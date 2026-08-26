@@ -14,8 +14,8 @@ enum PlayerRepeatMode {
   one,
 }
 
-/// A single evolving state class (same choice as AuthState/HomeState). The
-/// queue + index model which track is current and enable next/previous.
+/// One evolving state class, as AuthState and HomeState. Queue plus index give
+/// the current track and drive next/previous.
 class PlayerState extends Equatable {
   const PlayerState({
     this.queue = const [],
@@ -34,14 +34,11 @@ class PlayerState extends Equatable {
   /// The longest crossfade the settings UI offers.
   static const Duration maxCrossfadeDuration = Duration(seconds: 12);
 
-  /// The queue in PLAY order -- what "Up next" lists and what [currentIndex]
-  /// points into. Shuffling, drag-reordering and queue edits all rewrite it.
+  /// Play order: what "Up next" lists and what [currentIndex] points into.
   final List<Track> queue;
 
-  /// The queue in the order it was originally started from (an album's
-  /// tracklist, say). Kept untouched so turning shuffle back off can restore
-  /// that order; see PlayerBloc's restore logic for how queue additions, which
-  /// this list never saw, are folded back in.
+  /// The order it was started from, kept so shuffle can be turned back off. See
+  /// PlayerBloc for how later additions, which this never saw, are folded in.
   final List<Track> sourceQueue;
 
   final int currentIndex;
@@ -58,8 +55,7 @@ class PlayerState extends Equatable {
   /// Output volume, 0.0..1.0.
   final double volume;
 
-  /// How long the outgoing and incoming tracks overlap on a track change.
-  /// [Duration.zero] (the default, as in Spotify) means no crossfade.
+  /// Overlap on a track change; [Duration.zero] (the default) means none.
   final Duration crossfadeDuration;
 
   bool get isCrossfadeEnabled => crossfadeDuration > Duration.zero;
@@ -69,8 +65,8 @@ class PlayerState extends Equatable {
 
   bool get hasTrack => currentTrack != null;
 
-  /// True when [PlayerNextRequested] would go somewhere -- either a later track
-  /// exists, or [PlayerRepeatMode.all] lets us wrap around to the front.
+  /// Whether [PlayerNextRequested] would go anywhere -- a later track, or
+  /// [PlayerRepeatMode.all] wrapping to the front.
   bool get hasNext =>
       currentIndex < queue.length - 1 || (repeatMode == PlayerRepeatMode.all && queue.length > 1);
 

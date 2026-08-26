@@ -15,14 +15,12 @@ import '../sign_up/view/sign_up_page.dart';
 import 'app_routes.dart';
 import 'go_router_refresh_stream.dart';
 
-/// All auth-driven navigation happens through redirect -- no screen ever
-/// calls context.go(Routes.home) after a successful sign-up/log-in, and
-/// Home's log-out button never calls context.go(Routes.landing) either.
-/// Screens only call context.go for lateral moves a redirect cannot know
-/// about (Landing -> Sign Up, the Sign Up <-> Log In footer links).
+/// All auth-driven navigation goes through redirect: no screen calls
+/// context.go after a sign-in or a log-out. Screens only navigate for lateral
+/// moves a redirect cannot know about, like the Sign Up / Log In links.
 GoRouter createRouter(AuthBloc authBloc) {
-  // Local (not a top-level global) so hot reload -- or a second createRouter --
-  // never reuses a GlobalKey still attached to the previous Navigator.
+  // Local, so hot reload never reuses a GlobalKey still attached to the
+  // previous Navigator.
   final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
   return GoRouter(
@@ -47,11 +45,8 @@ GoRouter createRouter(AuthBloc authBloc) {
       GoRoute(path: Routes.signUp, builder: (context, state) => const SignUpPage()),
       GoRoute(path: Routes.logIn, builder: (context, state) => const LogInPage()),
 
-      // The authenticated app: three tabs, each an independent Navigator (its
-      // own back-stack + preserved state), wrapped in shared chrome (tab bar +
-      // mini-player, see ScaffoldWithNavBar). Detail is a CHILD of each branch
-      // so opening a playlist stacks INSIDE the active tab rather than covering
-      // the tab bar.
+      // Three tabs, each an independent Navigator, in shared chrome. Detail is a
+      // child of each branch, so a playlist stacks inside the active tab.
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             ScaffoldWithNavBar(navigationShell: navigationShell),
@@ -86,8 +81,7 @@ GoRouter createRouter(AuthBloc authBloc) {
         ],
       ),
 
-      // Full-screen "Now Playing": pinned to the root navigator so it covers
-      // the whole shell (tab bar + mini-player included).
+      // On the root navigator, so it covers the whole shell.
       GoRoute(
         path: Routes.player,
         parentNavigatorKey: rootNavigatorKey,
@@ -97,9 +91,8 @@ GoRouter createRouter(AuthBloc authBloc) {
   );
 }
 
-/// The detail sub-route, reused under each tab branch. A fresh instance per
-/// call (a GoRoute config isn't meant to be shared across parents). Its path is
-/// relative (`detail/:id`), so the full location becomes e.g. `/home/detail/dm1`.
+/// The detail sub-route, built fresh per branch -- a GoRoute config is not meant
+/// to be shared across parents. Relative, so the location is `/home/detail/dm1`.
 GoRoute _detailRoute() => GoRoute(
   path: Routes.detailChild,
   builder: (context, state) => DetailPage(itemId: state.pathParameters['id']!),

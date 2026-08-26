@@ -7,18 +7,13 @@ import '../../theme/spotify_colors.dart';
 import '../images/cover_image_provider.dart';
 import '../images/cover_image_scope.dart';
 
-/// Square artwork for a catalog item or a track: the real cover image when there
-/// is one, over a tinted gradient that stands in for it.
+/// Square artwork: the real cover over a tinted gradient standing in for it.
 ///
-/// The gradient is painted *underneath* the image rather than swapped out for
-/// it, which is what keeps this widget stateless: there is no
-/// loading/loaded/failed machine to run, because the placeholder is simply never
-/// removed. A cover still downloading, one that 404s, and an item with no
-/// artwork at all are all the same case -- the gradient shows through.
+/// The gradient is painted *underneath* rather than swapped out, which is what
+/// keeps this stateless -- still downloading, 404, and no artwork at all are one
+/// case, and the placeholder simply shows through.
 ///
-/// Sizes itself to its parent (every caller already wraps its cover in a
-/// SizedBox or an AspectRatio) and decodes the bitmap at the size it will
-/// actually be painted at.
+/// Sizes itself to its parent and decodes at the size it will be painted.
 class CoverArt extends StatelessWidget {
   const CoverArt({
     super.key,
@@ -29,27 +24,21 @@ class CoverArt extends StatelessWidget {
   });
 
   /// Interchangeable sources for the same image, best first, or empty for
-  /// something with no artwork.
-  ///
-  /// More than one because a catalog served from a network of independent nodes
-  /// hands out several hosts for the same bytes, and individual nodes go down --
-  /// see [CatalogItem.coverUrls]. A caller with a single url passes a
-  /// one-element list and gets the old behaviour exactly.
+  /// something with no artwork. Several because Audius' nodes go down
+  /// individually -- see [CatalogItem.coverUrls].
   final List<String> urls;
 
-  /// ARGB tint for the placeholder gradient. Null gets a neutral dark one --
-  /// what the player screens use, since a track carries no colour of its own.
+  /// ARGB tint for the placeholder gradient; null gets a neutral dark one.
   final int? color;
 
   final double borderRadius;
 
-  /// Size of the music-note glyph on the placeholder, scaled to the cover.
+  /// Size of the placeholder's music-note glyph.
   final double iconSize;
 
   @override
   Widget build(BuildContext context) {
-    // Blanks dropped here rather than guarded against downstream, so the state
-    // below can treat the list as "things worth fetching" and index it freely.
+    // Dropped here so the state below can index the list freely.
     final sources = [
       for (final url in urls)
         if (url.isNotEmpty) url,
@@ -57,8 +46,7 @@ class CoverArt extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: Stack(
-        // Hands our own constraints to both children, so the image and the
-        // gradient behind it are always exactly the same square.
+        // Both children get our constraints, so they are the same square.
         fit: StackFit.passthrough,
         children: [
           _Placeholder(color: color, iconSize: iconSize),
@@ -103,56 +91,41 @@ class _Cover extends StatefulWidget {
   State<_Cover> createState() => _CoverState();
 }
 
-/// Fetches [_Cover.urls] in order, moving to the next one the moment the current
-/// one fails or stalls, and once they are exhausted going round again on a
-/// growing delay.
+/// Walks [_Cover.urls] in order, moving on the moment one fails or stalls, then
+/// cycles again on a growing delay.
 ///
-/// The order matters more than it looks. Waiting *before* asking again only
-/// makes sense when the plan is to ask the same host, and the two reasons a
-/// cover fails want opposite treatment:
-///
-///  * The host is down. Measured on Audius, this is per-node and sticky -- a
-///    dead node answered 502 five times running, for its own content and for
-///    content it had never seen. No delay will fix that; another host will, at
-///    once. So the first pass through the list waits for nothing.
-///  * The network is down, or every host refused a burst at the same time
-///    (Home asks for a dozen covers in one go, which is what a rate limiter is
-///    built to refuse). Here a different host is no better, and spacing the
-///    attempts out is the whole remedy. So once the list is spent, the delays
-///    start.
+/// The order matters: a delay only helps if the plan is to ask the same host, and
+/// the two failure modes want opposite treatment. A dead node is sticky (measured:
+/// 502 five times running, even for content it had never seen) so the first pass
+/// waits for nothing. A dead network or a rate limiter refusing Home's dozen
+/// covers at once needs spacing, so the delays start once the list is spent.
 class _CoverState extends State<_Cover> {
-  /// How long to wait before each retry *after* every host has had a turn.
-  /// The length of this list is the extra budget beyond that first pass.
+  /// Delays for the retries after every host has had a turn. Its length is the
+  /// extra budget beyond that first pass.
   static const List<Duration> _backoff = [
     Duration(milliseconds: 300),
     Duration(seconds: 1),
     Duration(seconds: 3),
   ];
 
-  /// How long an attempt may go without producing a frame before it is treated
-  /// as lost. This is not belt-and-braces on top of [errorBuilder]: on the web
-  /// it is the ONLY thing that fires. A network image that fails there never
-  /// reports an error at all -- measured with a raw Image.network against a url
-  /// answering 403, under every WebHtmlElementStrategy: all three sit in
-  /// loadingBuilder for ever and errorBuilder is never called. So the widget
-  /// cannot wait to be told a cover failed; it has to notice.
+  /// How long an attempt may go without a frame before it counts as lost.
+  ///
+  /// Not belt-and-braces on top of `errorBuilder`: on the web it is the only
+  /// thing that fires. Measured against a url answering 403 under every
+  /// WebHtmlElementStrategy, all three sit in `loadingBuilder` for ever.
   static const Duration _stall = Duration(seconds: 6);
 
-  /// Which attempt is in the tree. It is also the [Image]'s key: a *new* key is
-  /// what makes Flutter build a fresh image state, and only a fresh state
-  /// re-resolves the provider. Calling setState alone would change nothing,
-  /// because the provider compares equal to the one that just failed.
+  /// Which attempt is in the tree, and the [Image]'s key: only a fresh state
+  /// re-resolves the provider, and setState alone would not give one, since the
+  /// provider compares equal to the one that just failed.
   int _attempt = 0;
 
-  /// The host this attempt is aimed at. Cycles, so the delayed retries after the
-  /// first pass start again from the best source rather than sticking on the
-  /// last one, which is only where the walk happened to stop.
+  /// The host this attempt is aimed at. Cycles, so delayed retries start again
+  /// from the best source rather than wherever the walk stopped.
   String get _url => widget.urls[_attempt % widget.urls.length];
 
-  /// How long to wait before attempt [n], or null when the budget is spent.
-  ///
-  /// Zero while sources remain untried: nothing has been learned about a host
-  /// that has not been asked, so there is nothing to back off from.
+  /// How long to wait before attempt [n], or null when the budget is spent. Zero
+  /// while sources remain untried -- there is nothing yet to back off from.
   Duration? _delayBefore(int n) {
     if (n < widget.urls.length) return Duration.zero;
     final index = n - widget.urls.length;
@@ -162,11 +135,9 @@ class _CoverState extends State<_Cover> {
   Timer? _scheduled;
   Timer? _watchdog;
 
-  /// The provider currently in the tree, kept so a retry can evict it.
-  /// Rebuilding with the same url alone would change nothing: ImageCache is
-  /// keyed by provider, so a re-resolve JOINS the in-flight load rather than
-  /// starting a new one -- which for a request that hangs means waiting on the
-  /// very thing that already failed to arrive.
+  /// Kept so a retry can evict it. ImageCache is keyed by provider, so without
+  /// the eviction a re-resolve joins the in-flight load -- which for a hung
+  /// request means waiting on the very thing that failed to arrive.
   ImageProvider? _provider;
 
   @override
@@ -175,8 +146,7 @@ class _CoverState extends State<_Cover> {
     _armWatchdog();
   }
 
-  /// Starts the clock on the attempt now in the tree. Cancelled by the first
-  /// frame -- see frameBuilder.
+  /// Cancelled by the first frame; see frameBuilder.
   void _armWatchdog() {
     _watchdog?.cancel();
     _watchdog = Timer(_stall, () {
@@ -187,12 +157,9 @@ class _CoverState extends State<_Cover> {
   @override
   void didUpdateWidget(_Cover oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // By value, not by identity: the parent filters blanks out of its `urls` on
-    // every build, so the list arriving here is a fresh object each time even
-    // when it holds the same strings. Comparing with != would see a different
-    // cover on every rebuild and restart the walk for ever.
+    // By value: the parent rebuilds this list every time, so identity would see
+    // a new cover on every build and restart the walk for ever.
     if (!listEquals(widget.urls, oldWidget.urls)) {
-      // A different cover entirely -- the old one's budget does not apply.
       _scheduled?.cancel();
       _scheduled = null;
       _attempt = 0;
@@ -207,17 +174,16 @@ class _CoverState extends State<_Cover> {
     super.dispose();
   }
 
-  /// Queues the next attempt, unless the budget is spent or one is already
-  /// queued (errorBuilder runs on every rebuild, not just the failure).
+  /// Queues the next attempt. Guarded against double-queueing, since
+  /// errorBuilder runs on every rebuild rather than only on the failure.
   void _scheduleRetry() {
     if (_scheduled != null) return;
     final delay = _delayBefore(_attempt + 1);
     if (delay == null) return;
     _scheduled = Timer(delay, () async {
       if (!mounted) return;
-      // Even when the next attempt is a different host, and so a different
-      // provider: this one has to go, or cycling back round to it later would
-      // be answered out of the image cache with the failure it is holding.
+      // Even for a different host: cycling back later would otherwise be
+      // answered out of the image cache with this failure.
       await _provider?.evict();
       if (!mounted) return;
       setState(() {
@@ -230,10 +196,9 @@ class _CoverState extends State<_Cover> {
 
   @override
   Widget build(BuildContext context) {
-    // LayoutBuilder rather than a size parameter: the widget then decodes
-    // correctly wherever it is put, including the full player's cover, which has
-    // no fixed size at all. Without cacheWidth a 600px cover in a 48px list tile
-    // would hold well over a hundred times the pixels it can possibly show.
+    // LayoutBuilder rather than a size parameter, so this decodes correctly
+    // wherever it is put. Undecoded, a 600px cover in a 48px tile holds a hundred
+    // times the pixels it can show.
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -241,15 +206,8 @@ class _CoverState extends State<_Cover> {
             ? (width * MediaQuery.devicePixelRatioOf(context)).round()
             : null;
 
-        // Spelled out rather than Image.network, which builds exactly this and
-        // then keeps it to itself -- and a retry has to be able to evict it.
-        //
-        // The provider itself is chosen by coverImageProvider: a disk-backed one
-        // where there is a cache to back it, and the same plain NetworkImage as
-        // before where there is not. Both preserve the two things the walk below
-        // depends on -- a refusal arrives as an error, and equality is stable
-        // across rebuilds -- and the decode width is applied identically on top
-        // of either, since ResizeImage wraps whatever it is given.
+        // Spelled out rather than Image.network, which keeps its provider to
+        // itself -- and a retry has to be able to evict it.
         _provider = ResizeImage.resizeIfNeeded(
           decodeWidth,
           null,
@@ -258,24 +216,19 @@ class _CoverState extends State<_Cover> {
 
         return Image(
           image: _provider!,
-          // Not decoration: a new key is what builds a fresh image state, and
-          // only a fresh state re-resolves after the eviction above.
+          // A new key is what builds the fresh state that re-resolves.
           key: ValueKey(_attempt),
           fit: BoxFit.cover,
-          // Squeezing a 600px photo into a 48px tile aliases visibly at the
-          // default (low) quality.
+          // A 600px photo in a 48px tile aliases visibly at the default quality.
           filterQuality: FilterQuality.medium,
-          // Every cover has its title and artist rendered right beside it, so
-          // announcing the artwork too would only repeat them.
+          // Title and artist are already beside it.
           excludeFromSemantics: true,
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
             if (frame != null || wasSynchronouslyLoaded) {
-              // It arrived: stop watching for a stall.
               _watchdog?.cancel();
               _watchdog = null;
             }
-            // Already in the image cache (scrolling back to a row, reopening the
-            // player): show it at once, or it would flicker through the fade.
+            // Already cached: show at once rather than flickering through a fade.
             if (wasSynchronouslyLoaded) return child;
             return AnimatedOpacity(
               opacity: frame == null ? 0 : 1,
@@ -284,12 +237,8 @@ class _CoverState extends State<_Cover> {
               child: child,
             );
           },
-          // Draw nothing and let the placeholder stand -- deliberately silent,
-          // a missing cover is not worth an error icon -- but queue the next
-          // attempt. Without this a single refused request (a dead content node,
-          // a rate limit, a lost packet on mobile, a captive portal) blanks that
-          // cover for the rest of the session, because nothing else ever
-          // re-resolves it.
+          // Silent -- the placeholder stands -- but queues the next attempt:
+          // nothing else would ever re-resolve this cover.
           errorBuilder: (context, error, stackTrace) {
             _scheduleRetry();
             return const SizedBox.shrink();

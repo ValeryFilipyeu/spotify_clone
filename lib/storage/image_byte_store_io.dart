@@ -12,50 +12,28 @@ Future<ImageByteStore?> openImageByteStore() => FileImageByteStore.open();
 
 /// Covers as files in a directory, under a budget in megabytes.
 ///
-/// ## Where they go, and why it matters
+/// Lives in `getApplicationCacheDirectory()`, which settles three things without
+/// code: the OS may reclaim it, it is not backed up, and uninstalling takes it.
+/// A cache the system can delete needs no settings screen. The obligation that
+/// comes with it is that any read may find the file gone -- which is just a miss.
 ///
-/// `getApplicationCacheDirectory()`, which is the OS's designated
-/// throw-this-away-if-you-need-the-space location (`Library/Caches` on Apple
-/// platforms, `cacheDir` on Android). That is the right home for exactly this,
-/// and choosing it settles three things at once that would otherwise each need
-/// code: the OS may reclaim the lot under storage pressure, none of it is backed
-/// up to iCloud or Google Drive, and uninstalling takes it with it. A cache the
-/// system is allowed to delete is a cache nobody has to write a settings screen
-/// for.
-///
-/// The one obligation that comes with it: every read has to cope with the file
-/// having vanished between one launch and the next. It does -- a miss is just a
-/// miss.
-///
-/// ## The budget
-///
-/// Measured on live Audius artwork, a 480x480 cover averages 38 KB and the
-/// largest of twelve sampled was 77 KB. [defaultMaxBytes] is 32 MB, so roughly
-/// 840 covers at the average and 430 at the worst -- against a heavy session that
-/// might touch 300 (a home screen is 40, and an album page can hold one per
-/// track, since Audius artwork is per-upload rather than per-album).
-///
-/// Bytes rather than a file count, which is what [CatalogCacheStore] uses. There
-/// the entries are the app's own JSON and predictable; here they are whatever a
-/// stranger's server sends, so counting them would be measuring the wrong thing.
+/// Budget in bytes rather than files, because these are whatever a stranger's
+/// server sends. Measured on live artwork a 480x480 cover averages 38 KB (worst
+/// of twelve: 77 KB), so 32 MB holds roughly 840 against a heavy session of 300.
 class FileImageByteStore implements ImageByteStore {
   FileImageByteStore(this.directory, {this.maxBytes = defaultMaxBytes});
 
   /// See the class doc: 32 MB, from measured cover sizes.
   static const int defaultMaxBytes = 32 * 1024 * 1024;
 
-  /// How far under [maxBytes] an eviction sweeps.
-  ///
-  /// Without the gap, a full cache would sweep the directory on every single
-  /// write for the sake of deleting one file. Clearing a fifth of it instead
-  /// makes that rare.
+  /// How far under [maxBytes] a sweep goes. Without the gap a full cache would
+  /// list the whole directory on every write to delete one file.
   static const double _sweepTo = 0.8;
 
   final Directory directory;
   final int maxBytes;
 
-  /// Kept in memory so a write does not have to stat the directory to find out
-  /// whether it is over budget. Seeded by the one listing [open] does.
+  /// In memory so a write need not stat the directory. Seeded by [open].
   int _bytesHeld = 0;
 
   int get bytesHeld => _bytesHeld;
@@ -70,8 +48,7 @@ class FileImageByteStore implements ImageByteStore {
     return store;
   }
 
-  /// Counts what is already on disk. One directory listing per launch, so that
-  /// nothing after it has to.
+  /// One directory listing per launch, so nothing after it needs one.
   Future<void> measure() async {
     var total = 0;
     await for (final entry in directory.list()) {
@@ -87,17 +64,14 @@ class FileImageByteStore implements ImageByteStore {
       if (!await file.exists()) return null;
       return await file.readAsBytes();
     } on FileSystemException {
-      // The OS may have swept the directory out from under us at any moment --
-      // see the class doc. A vanished file is a miss, not a failure.
+      // The OS may sweep the directory at any moment; a vanished file is a miss.
       return null;
     }
   }
 
   @override
   Future<void> write(String url, Uint8List bytes) async {
-    // Nothing that cannot possibly fit: a single file larger than the whole
-    // budget would be written and then immediately swept, which is a lot of I/O
-    // to accomplish nothing.
+    // Larger than the whole budget would be written and swept straight back out.
     if (bytes.length > maxBytes) return;
 
     final file = fileFor(url);
@@ -116,19 +90,15 @@ class FileImageByteStore implements ImageByteStore {
       _bytesHeld -= await file.length();
       await file.delete();
     } on FileSystemException {
-      // Already gone. Nothing to do, and _bytesHeld is corrected by the next
-      // measure() at the latest.
+      // Already gone; the next measure() corrects _bytesHeld.
     }
   }
 
   /// Deletes oldest-first until comfortably under budget.
   ///
-  /// Oldest by *written*, not by last read. Reading a file to find out it is
-  /// popular and then writing its timestamp back would mean a disk write every
-  /// time a cover is shown from cache -- a strange price for having avoided a
-  /// download. What it costs is that a cover you look at daily is evicted on the
-  /// same schedule as one you saw once, and for artwork, where write order
-  /// roughly follows browse order anyway, that is a fair trade.
+  /// Oldest by *written*, not read: touching a timestamp on every cache hit is a
+  /// disk write for having avoided a download. The cost is that a daily cover
+  /// ages out like a one-off, which for artwork is a fair trade.
   Future<void> _sweep() async {
     final files = <({File file, DateTime modified, int length})>[];
     await for (final entry in directory.list()) {
@@ -154,18 +124,12 @@ class FileImageByteStore implements ImageByteStore {
     }
   }
 
-  /// A url as a filename.
+  /// A url as a filename. Hashed because urls contain separators and outrun the
+  /// 255-byte limit on a path component; SHA-1 only because it is already in the
+  /// binary, and nothing here is a security decision.
   ///
-  /// Hashed because urls are longer than filesystems allow (Audius covers run to
-  /// 110 characters and every path component is capped at 255 bytes) and contain
-  /// separators. SHA-1 from `package:crypto`, which is already compiled into this
-  /// app -- just_audio and google_fonts both depend on it -- so declaring it
-  /// directly adds a line to the pubspec and nothing to the binary. Not a
-  /// security decision: this is a filename, and what is wanted from it is that
-  /// two different urls do not collide.
-  /// Exposed to tests because the mapping is part of what this class promises --
-  /// that any url, of any length, lands on exactly one file -- and asserting it
-  /// from outside otherwise means guessing at filenames.
+  /// Visible to tests: "any url lands on exactly one file" is part of the
+  /// promise, and asserting it otherwise means guessing at filenames.
   @visibleForTesting
   File fileFor(String url) => File('${directory.path}/${sha1.convert(utf8.encode(url))}');
 }

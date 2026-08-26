@@ -4,23 +4,17 @@ import 'package:audio_session/audio_session.dart' as platform;
 
 import 'playback_audio_session.dart';
 
-/// The real OS audio session, backed by audio_session. The only file that
-/// imports it -- same containment rule as just_audio and audio_service.
+/// The real OS audio session, and the only file that imports audio_session.
 class PlatformAudioSession implements PlaybackAudioSession {
   PlatformAudioSession._(this._session, this.interruptions);
 
   static Future<PlatformAudioSession> create() async {
     final session = await platform.AudioSession.instance;
 
-    // Nothing else in the stack does this. Verified: audio_service's iOS plugin
-    // only touches [AVAudioSession sharedInstance], and just_audio's native code
-    // never calls setCategory/setActive at all. Without it iOS leaves us on the
-    // default category, which mixes with other apps -- so another app's audio
-    // plays over ours and no interruption is ever delivered.
-    //
-    // music() is the documented preset for a music player: category .playback on
-    // iOS (also what background audio requires), and media/music attributes with
-    // a full audio-focus gain on Android.
+    // Nothing else in the stack does this (verified in both plugins' native
+    // code), and without it iOS leaves us on a category that mixes with other
+    // apps and delivers no interruptions. music() is the documented preset:
+    // .playback on iOS, media attributes and full focus gain on Android.
     await session.configure(const platform.AudioSessionConfiguration.music());
 
     final controller = StreamController<AudioInterruption>.broadcast();
@@ -47,9 +41,9 @@ class PlatformAudioSession implements PlaybackAudioSession {
   @override
   final Stream<AudioInterruption> interruptions;
 
-  // On Android this is also what requests audio focus, and audio_session only
-  // reports focus changes for a request it made -- so without activate() there
-  // are no Android interruptions at all, not merely a wrong category.
+  // Also the Android audio-focus request, and audio_session reports focus
+  // changes only for a request it made -- so without this there are no Android
+  // interruptions at all.
   @override
   Future<void> activate() => _session.setActive(true);
 
@@ -60,9 +54,8 @@ class PlatformAudioSession implements PlaybackAudioSession {
     if (event.begin) {
       return AudioInterruptionBegan(duck: event.type == platform.AudioInterruptionType.duck);
     }
-    // `pause` means a definite interruption that has now finished (a call
-    // ending), so picking playback back up is expected. `unknown` means the
-    // platform will not vouch for that, and `duck` never stopped us at all.
+    // `pause` is a finished interruption, so resuming is expected. `unknown`
+    // means the platform will not vouch for that, and `duck` never stopped us.
     return AudioInterruptionEnded(shouldResume: event.type == platform.AudioInterruptionType.pause);
   }
 }

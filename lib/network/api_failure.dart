@@ -1,25 +1,16 @@
 /// Everything that can go wrong between calling an endpoint and holding a
 /// decoded response.
 ///
-/// Sealed rather than a bag of loose Exception subclasses, and that is the whole
-/// point of the type: a `switch` over an [ApiFailure] with no default branch is
-/// checked for exhaustiveness by the compiler, so the day a fifth failure mode
-/// is added, every place that turns a failure into a user-facing message stops
-/// compiling until it says what to do about it. An untyped `catch (_)` -- which
-/// is what the app did while every repository was a fake that only ever threw on
-/// purpose -- cannot tell "you are offline" from "the server is broken" from
-/// "we cannot read what the server sent", so it has to show one vague message
-/// for all three.
+/// Sealed so a `switch` with no default is checked for exhaustiveness: adding a
+/// fifth failure mode breaks the build wherever failures become messages, rather
+/// than silently joining the other four under one vague string.
 ///
-/// Deliberately says nothing about how any of this should be *worded*: these are
-/// facts about a request, and the copy shown to a user is a presentation
-/// concern.
+/// Says nothing about wording. These are facts about a request.
 sealed class ApiFailure implements Exception {
   const ApiFailure(this.uri);
 
-  /// The request that failed. Carried for logs -- the query string is usually
-  /// the difference between "search is broken" and "search is broken for
-  /// apostrophes".
+  /// Carried for logs: the query string is usually the difference between
+  /// "search is broken" and "search is broken for apostrophes".
   final Uri uri;
 
   /// A developer-facing explanation. Not for the UI.
@@ -30,10 +21,9 @@ sealed class ApiFailure implements Exception {
 }
 
 /// The request never reached the server, or its answer never came back: no
-/// route to the host, DNS failure, a dropped connection, a captive portal, or
-/// -- on the web only -- a cross-origin request the browser refused to hand
-/// over. The browser reports that last case as an opaque network error on
-/// purpose, so this is as specific as it can be.
+/// route, DNS, a dropped connection, a captive portal, or a CORS refusal on the
+/// web. The browser reports that last one opaquely, so this is as specific as it
+/// can be.
 final class NetworkUnreachable extends ApiFailure {
   const NetworkUnreachable(super.uri, this.cause);
 
@@ -44,10 +34,8 @@ final class NetworkUnreachable extends ApiFailure {
   String get message => 'could not reach the server ($cause)';
 }
 
-/// The connection opened but nothing completed inside the budget. Kept apart
-/// from [NetworkUnreachable] because it means something different to a caller:
-/// unreachable is worth retrying immediately, a timeout means the far end is
-/// struggling and deserves a pause first.
+/// The connection opened but nothing completed in time. Distinct from
+/// [NetworkUnreachable]: that is worth retrying at once, this deserves a pause.
 final class RequestTimeout extends ApiFailure {
   const RequestTimeout(super.uri, this.limit);
 
@@ -67,23 +55,19 @@ final class HttpErrorStatus extends ApiFailure {
   /// Audius answers a bad id with `{"code":400,"error":"invalid playlistId"}`.
   final String? serverMessage;
 
-  /// Worth retrying: the request was fine and the far end was momentarily not.
-  /// A 4xx means the request itself was wrong, so repeating it verbatim will
-  /// fail identically -- 429 excepted, which is explicitly "later, not never".
+  /// The far end was momentarily unable, rather than the request being wrong.
+  /// 429 counts: it is explicitly "later", not "never".
   bool get isTransient => statusCode >= 500 || statusCode == 429;
 
   @override
   String get message => 'HTTP $statusCode${serverMessage == null ? '' : ': $serverMessage'}';
 }
 
-/// The server answered with something that is not the shape we can read: not
-/// JSON at all (an HTML error page from a proxy is the classic), not a JSON
-/// object at the root, or an object missing a field the caller cannot do
-/// without.
+/// The server answered with a shape we cannot read: not JSON (a proxy's HTML
+/// error page is the classic), not an object, or missing a required field.
 ///
-/// Its own case rather than being folded into [HttpErrorStatus] because the
-/// status was fine -- a 200 whose body we cannot parse is a bug somewhere, and
-/// one that retrying will not fix.
+/// Its own case because the status was fine: a 200 we cannot parse is a bug, and
+/// retrying will not fix it.
 final class MalformedResponse extends ApiFailure {
   const MalformedResponse(super.uri, this.detail);
 

@@ -1,17 +1,10 @@
-/// Picks the tint painted *beneath* a cover image, for catalog data that does
-/// not carry one.
+/// The tint painted *beneath* a cover, for catalog data that carries none.
 ///
-/// The hardcoded catalog assigned each item a colour by hand. A real API has no
-/// opinion about it, so the colour has to be derived -- and derived from the
-/// item's id rather than chosen at random, because the gradient must be the same
-/// every time that item is drawn. A colour that changed between two visits to
-/// the same playlist would read as a rendering bug.
-///
-/// The palette is exactly the set the hardcoded catalog used, so real data keeps
-/// the look the app already had.
+/// Derived from the item's id rather than picked at random: a gradient that
+/// changed between two visits to the same playlist would read as a bug. The
+/// palette is the set the hardcoded catalog used.
 abstract final class CoverPalette {
-  /// Deep, saturated tints in the style of Spotify's own category tiles. Dark
-  /// enough that white text over the gradient stays legible.
+  /// Dark enough that white text over the gradient stays legible.
   static const List<int> colors = [
     0xFF1DB954, // green
     0xFFE13300, // vermilion
@@ -30,12 +23,9 @@ abstract final class CoverPalette {
   /// The tint for [seed], stable across runs, platforms and releases.
   static int forSeed(String seed) => colors[_hash(seed) % colors.length];
 
-  /// A small deliberate hash rather than `seed.hashCode`.
-  ///
-  /// `String.hashCode` is only promised to be consistent within a single
-  /// program run: it is free to differ between Dart releases and between the VM
-  /// and the web compilers, which would mean a playlist rendering green on
-  /// Android and magenta in the browser.
+  /// Not `seed.hashCode`, which is only promised to be stable within one run --
+  /// it may differ between the VM and the web compilers, so a playlist would be
+  /// green on Android and magenta in the browser.
   ///
   /// The mask keeps every intermediate value well under 2^53, which is the real
   /// constraint here: on the web Dart's `int` is a JavaScript double, so

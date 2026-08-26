@@ -90,9 +90,8 @@ class _DetailContent extends StatelessWidget {
           flexibleSpace: FlexibleSpaceBar(
             title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
             centerTitle: true,
-            // The cover floats on the item's colour rather than filling the
-            // header: a full-bleed photo would fight the pinned title text as
-            // the bar collapses over it.
+            // Not full-bleed: a photo behind the pinned title fights it as the
+            // bar collapses.
             background: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -106,8 +105,8 @@ class _DetailContent extends StatelessWidget {
                   width: 170,
                   height: 170,
                   child: DecoratedBox(
-                    // Matches CoverArt's own default radius, or the shadow shows
-                    // square corners behind the rounded cover.
+                    // Matches CoverArt's radius, or the shadow shows square
+                    // corners behind a rounded cover.
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: const [
@@ -155,14 +154,12 @@ class _DetailContent extends StatelessWidget {
   static String _formatTotal(Duration duration) => '${duration.inMinutes} min';
 }
 
-/// One tracklist row. Extracted into its own widget so `context.select` is
-/// legal here -- provider forbids `select` directly inside a SliverList's
-/// itemBuilder (it would rebuild the whole list instead of one row).
+/// One tracklist row, its own widget so `context.select` is legal: provider
+/// forbids `select` inside an itemBuilder, where it would rebuild the list.
 class _TrackRow extends StatelessWidget {
   const _TrackRow({required this.itemId, required this.tracks, required this.index});
 
-  /// The album/playlist these tracks came from -- what gets recorded as
-  /// recently played when one of them is started.
+  /// Recorded as recently played when one of these tracks is started.
   final String itemId;
 
   final List<Track> tracks;
@@ -171,8 +168,7 @@ class _TrackRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final track = tracks[index];
-    // select (not watch) so this row rebuilds only when the current track id
-    // changes -- not on every position tick.
+    // select, not watch: rebuild on a track change, not on every tick.
     final currentId = context.select<PlayerBloc, String?>((bloc) => bloc.state.currentTrack?.id);
     return TrackTile(
       position: index + 1,

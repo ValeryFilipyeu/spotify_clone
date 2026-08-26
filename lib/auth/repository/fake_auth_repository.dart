@@ -6,10 +6,8 @@ import '../models/auth_failure.dart';
 import 'auth_repository.dart';
 import 'session_storage.dart';
 
-/// An in-memory stand-in for a real backend. Every method's success/failure
-/// behavior is fully deterministic, which is what lets it double as its own
-/// test double (see test/auth/repository/fake_auth_repository_test.dart and
-/// test/auth/bloc/auth_bloc_test.dart) with no mocking package required.
+/// An in-memory stand-in for a real backend, deterministic enough to double as
+/// its own test double with no mocking package.
 class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({required SessionStorage sessionStorage})
     // ignore: prefer_initializing_formals -- keeps the public param name.
@@ -34,9 +32,8 @@ class FakeAuthRepository implements AuthRepository {
     yield* _controller.stream;
   }
 
-  /// Rehydrates any persisted accounts/session. Not part of [AuthRepository]
-  /// -- it is a bootstrap detail specific to this fake implementation, called
-  /// once from main() before runApp.
+  /// Rehydrates persisted accounts. Not part of [AuthRepository]: a bootstrap
+  /// detail of this implementation, called once from main().
   Future<void> restoreSession() async {
     final accountsJson = await _sessionStorage.read(_accountsKey);
     if (accountsJson != null) {
@@ -90,8 +87,7 @@ class FakeAuthRepository implements AuthRepository {
 
   String _normalize(String email) => email.trim().toLowerCase();
 
-  /// Not part of [AuthRepository] -- only used to tear the fake down between
-  /// tests, never in production, since the repository is a process-lifetime
-  /// singleton there.
+  /// For tearing the fake down between tests. In production this repository
+  /// lives for the whole process.
   Future<void> close() => _controller.close();
 }

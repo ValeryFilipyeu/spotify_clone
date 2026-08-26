@@ -5,11 +5,9 @@ import '../../player/widgets/mini_player.dart';
 import '../../router/app_routes.dart';
 import '../widgets/offline_banner.dart';
 
-/// The persistent chrome wrapping the three tabs. [StatefulNavigationShell]
-/// (built by go_router's StatefulShellRoute) hosts one Navigator per branch in
-/// an IndexedStack, so every tab keeps its own back-stack and scroll position
-/// across switches. The mini-player sits directly above the tab bar so it
-/// persists across tab switches; it renders nothing until a track is loaded.
+/// The persistent chrome around the three tabs. [StatefulNavigationShell] keeps
+/// one Navigator per branch in an IndexedStack, so each tab holds its own
+/// back-stack and scroll position. The mini-player sits above the tab bar.
 class ScaffoldWithNavBar extends StatelessWidget {
   const ScaffoldWithNavBar({super.key, required this.navigationShell});
 
@@ -22,19 +20,16 @@ class ScaffoldWithNavBar extends StatelessWidget {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Above the player rather than below it, so the strip sits against the
-          // content it is describing: everything above this line is what may be
-          // out of date. Renders nothing while the catalog is reachable.
+          // Above the player, so the strip sits against the content it
+          // describes: everything above this line may be out of date.
           const OfflineBanner(),
-          // Opens the full "Now Playing" screen. /player is a root route, so
-          // this pushes onto the root navigator and covers the whole shell.
+          // /player is a root route, so this covers the whole shell.
           MiniPlayer(onTap: () => context.push(Routes.player)),
           NavigationBar(
             selectedIndex: navigationShell.currentIndex,
             onDestinationSelected: (index) => navigationShell.goBranch(
               index,
-              // Re-tapping the active tab resets it to its root (Spotify /
-              // go_router example behaviour).
+              // Re-tapping the active tab resets it to its root.
               initialLocation: index == navigationShell.currentIndex,
             ),
             destinations: const [

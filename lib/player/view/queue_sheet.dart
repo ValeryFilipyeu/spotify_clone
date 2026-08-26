@@ -8,15 +8,13 @@ import '../bloc/player_bloc.dart';
 import '../bloc/player_event.dart';
 import '../bloc/player_state.dart';
 
-/// The "Up next" queue, shown as a modal bottom sheet from the full player.
-/// Mirrors Spotify's queue: the playing track sits in its own non-editable
-/// "Now playing" section, and everything after it can be reordered by dragging,
-/// removed, or jumped to by tapping.
+/// The "Up next" queue, as a modal sheet. The playing track sits in its own
+/// non-editable section; everything after it can be reordered, removed or
+/// jumped to.
 class QueueSheet extends StatelessWidget {
   const QueueSheet({super.key});
 
-  /// PlayerBloc is provided above MaterialApp, so the modal route (pushed on the
-  /// Navigator *inside* it) can still read it.
+  /// PlayerBloc lives above MaterialApp, so the modal route can still read it.
   static Future<void> show(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
@@ -33,8 +31,7 @@ class QueueSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: ConstrainedBox(
-        // Cap the sheet so a long queue scrolls instead of covering the screen;
-        // a short one still shrink-wraps (see Flexible + shrinkWrap below).
+        // A long queue scrolls; a short one still shrink-wraps.
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.75),
         child: BlocBuilder<PlayerBloc, PlayerState>(
           builder: (context, state) {
@@ -67,17 +64,13 @@ class QueueSheet extends StatelessWidget {
                     child: ReorderableListView.builder(
                       shrinkWrap: true,
                       padding: const EdgeInsets.only(bottom: 16),
-                      // Explicit handles (below) instead of the platform
-                      // defaults, which only appear on desktop -- this way drag
-                      // works the same on mobile, web and macOS.
+                      // Explicit handles: the platform defaults are desktop-only.
                       buildDefaultDragHandles: false,
                       itemCount: upNext.length,
-                      // onReorderItem (not the deprecated onReorder) already
-                      // accounts for the dragged row being lifted out, so
-                      // newIndex is the final slot -- no off-by-one to undo.
+                      // onReorderItem already accounts for the lifted row, so
+                      // newIndex is the final slot.
                       onReorderItem: (oldIndex, newIndex) {
-                        // These indices are into the "Next up" sublist; shift
-                        // them into full-queue space for the bloc.
+                        // Sublist indices; shift into full-queue space.
                         final offset = state.currentIndex + 1;
                         context.read<PlayerBloc>().add(
                           PlayerQueueReordered(
@@ -90,9 +83,8 @@ class QueueSheet extends StatelessWidget {
                         final absolute = state.currentIndex + 1 + index;
                         final track = upNext[index];
                         return _QueueRow(
-                          // Index-qualified: the same track can legitimately
-                          // appear twice via "Add to queue", and duplicate keys
-                          // would break the reorderable list.
+                          // Index-qualified: "Add to queue" permits duplicates,
+                          // and duplicate keys break a reorderable list.
                           key: ValueKey('$absolute-${track.id}'),
                           track: track,
                           dragIndex: index,
@@ -155,10 +147,9 @@ class _SectionLabel extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        // header lets a screen reader jump between "Now playing" and "Next up"
-        // instead of walking every row. Labelled from the original casing --
-        // the uppercase is a visual treatment, and screen readers may spell out
-        // or shout all-caps text.
+        // header, so a screen reader can jump between sections rather than
+        // walking every row. Labelled from the original casing: the uppercase is
+        // a visual treatment, and all-caps may be spelled out or shouted.
         child: Semantics(
           header: true,
           label: text,
@@ -210,8 +201,7 @@ class _QueueRow extends StatelessWidget {
         height: 40,
         child: DecoratedBox(
           decoration: const BoxDecoration(color: SpotifyColors.surfaceBright),
-          // Decorative: the speaker glyph repeats what the "Now playing" section
-          // header and the selected state already say.
+          // Decorative: the header and the selected state already say this.
           child: Icon(
             isCurrent ? Icons.volume_up : Icons.music_note,
             color: isCurrent ? SpotifyColors.green : Colors.white70,
@@ -247,18 +237,15 @@ class _QueueRow extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.remove_circle_outline, color: SpotifyColors.textSecondary),
               iconSize: 20,
-              // compact density dropped for the same reason as LikeButton's: it
-              // took the hit box to 40x40, below both platform minimums.
+              // No compact density: it takes the hit box to 40x40, under both
+              // platform minimums.
               tooltip: 'Remove ${track.title} from queue',
               onPressed: onRemove,
             ),
           if (dragIndex != null)
-            // Hidden from the semantics tree rather than labelled. A drag is not
-            // an interaction anyone can perform without sight, so a focusable
-            // "reorder" element here would be a stop in the swipe order that
-            // does nothing. Reordering stays available the way it should be:
-            // SliverReorderableList attaches localized "Move up/down/to the
-            // start/to the end" custom actions to each row (see the test).
+            // Hidden rather than labelled: a drag is not performable without
+            // sight, so this would be a swipe stop that does nothing. Reordering
+            // stays available through the list's own "Move up/down" actions.
             ExcludeSemantics(
               child: ReorderableDragStartListener(
                 index: dragIndex!,

@@ -13,14 +13,12 @@ import '../session/media_session.dart';
 import 'player_event.dart';
 import 'player_state.dart';
 
-/// App-wide, one instance for the whole app lifetime (like AuthBloc). Owns the
-/// playback queue and mirrors the [AudioController]'s streams into state so the
-/// mini-player and full player can both react. It never navigates.
+/// Owns the playback queue and mirrors the [AudioController]'s streams into
+/// state. App-wide and long-lived; it never navigates.
 ///
-/// [settingsRepository] and [userIdChanges] are optional: supply both (as the
-/// app does) and volume is persisted per account; omit them and the player
-/// behaves identically with an in-memory volume. [mediaSession] is likewise
-/// optional -- without it the player simply has no lock-screen presence.
+/// Every collaborator except [audioController] is optional: without them the
+/// player works the same but forgets preferences and has no lock-screen
+/// presence.
 class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   PlayerBloc({
     required AudioController audioController,
@@ -65,9 +63,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     on<PlayerInterruptionEnded>(_onInterruptionEnded);
     on<PlayerOutputDisconnected>(_onOutputDisconnected);
 
-    // Losing the speaker to a call, Siri or a nav prompt is not a user gesture,
-    // so it gets its own events -- the bloc has to remember whether *it* was the
-    // one that stopped playback before it may resume anything.
+    // Its own events, not a synthetic pause: resuming afterwards is only allowed
+    // if the interruption is what stopped us. See [_pausedByInterruption].
     _interruptionSub = _audioSession.interruptions.listen((event) {
       add(switch (event) {
         AudioInterruptionBegan(:final duck) => PlayerInterruptionBegan(duck: duck),
@@ -78,13 +75,12 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       });
     });
 
-    // Volume is stored per account, so the player has to know who is signed in.
-    // The stream replays the current user on subscribe, so a restored session
-    // applies its saved level at boot without any extra call.
+    // Replays the current user on subscribe, so a restored session applies its
+    // saved preferences at boot without an extra call.
     _userSub = userIdChanges?.listen((userId) => add(PlayerUserChanged(userId)));
 
-    // The OS is just another remote control: its buttons become ordinary events,
-    // so a lock-screen tap and an in-app tap go down exactly the same path.
+    // The OS is just another remote control: a lock-screen tap and an in-app tap
+    // take the same path.
     _sessionSub = _mediaSession.commands.listen((command) {
       add(switch (command) {
         MediaSessionPlayRequested() => const PlayerResumeRequested(),
@@ -96,16 +92,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       });
     });
 
-    // We drive `position` from our own wall-clock ticker (see _onPlayingChanged
-    // / _onPositionTicked), NOT from audioController.positionStream. just_audio
-    // has no usable position source that works on every platform: on iOS it
-    // clamps position to the engine duration (which iOS reports as 0, pinning
-    // it to 0:00), and on web its position getter interpolates off the wall
-    // clock while the audio-element `timeupdate` handler is a no-op -- so its
-    // stream either freezes or drifts. The ticker is smooth and consistent.
+    // Position comes from our own ticker, not positionStream: on iOS just_audio
+    // clamps it to the engine duration (reported as 0, so it pins to 0:00) and
+    // on web it drifts off the wall clock.
     _durationSub = _audioController.durationStream.listen((d) {
-      // Ignore null and 0 -- iOS reports duration as Duration.zero, which
-      // would clobber the seeded track duration.
+      // iOS reports 0, which would clobber the duration seeded from the track.
       if (d != null && d > Duration.zero) add(PlayerDurationChanged(d));
     });
     _playingSub = _audioController.playingStream.listen((playing) {
@@ -121,16 +112,13 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   static const _tick = Duration(milliseconds: 250);
 
-  /// The volume every account starts at until it saves its own.
   static const double _defaultVolume = 1;
 
-  /// The preference sliders fire on every drag frame; this collapses a whole
-  /// gesture into a single write (the same debounce idea as SearchCubit).
+  /// Collapses a whole slider drag into one write.
   static const _settingsSaveDelay = Duration(milliseconds: 400);
 
-  /// How far ahead of the fade window the next track starts buffering. Long
-  /// enough for a slow mobile load to finish first, short enough that a second
-  /// network stream is only ever open near the end of a track.
+  /// Head start for buffering the next track, so the load lands before the fade
+  /// window opens rather than inside it.
   static const _preloadLead = Duration(seconds: 8);
 
   final AudioController _audioController;
@@ -151,71 +139,49 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   StreamSubscription<AudioInterruption>? _interruptionSub;
   Timer? _ticker;
 
-  /// How far down ducking takes the volume. Quiet enough that a navigation
-  /// prompt is clearly audible over the music, loud enough that the music has
-  /// obviously not stopped.
   static const double _duckFactor = 0.3;
 
-  /// True only when the *interruption* is what paused us. Without this the OS
-  /// telling us "you can resume now" would start playing music the user had
-  /// deliberately paused before the call came in.
+  /// True only when the *interruption* paused us -- so "you can resume now" from
+  /// the OS never restarts music the user paused themselves.
   bool _pausedByInterruption = false;
 
-  /// True while volume is being held down for a transient interruption. The
-  /// user's own volume ([PlayerState.volume]) is never touched, so nothing gets
-  /// persisted and the slider does not jump.
+  /// Ducking is applied straight to the engine, leaving [PlayerState.volume] (the
+  /// user's setting) alone so nothing is persisted and the slider stays put.
   bool _duckedByInterruption = false;
 
-  /// [NowPlaying.signature] of the last snapshot handed to the OS, so a position
-  /// tick four times a second does not become four platform-channel round trips.
+  /// Last snapshot handed to the OS, so four ticks a second are not four
+  /// platform-channel round trips.
   String? _publishedSignature;
 
   /// The account whose volume is loaded, or null when signed out.
   String? _userId;
 
-  /// True when the state describes a queue the audio engine has never been told
-  /// about.
-  ///
-  /// Only one thing produces that: a session restored from disk at launch. The
-  /// mini-player is drawn, the lock screen is populated and the scrubber sits
-  /// where it was left -- but no source is loaded, deliberately, because loading
-  /// one costs a network round trip for audio nobody has asked to hear yet. The
-  /// engine finds out the first time someone presses play. See [_resumeOrLoad].
+  /// A queue restored from disk that the engine has not been given yet. Loading
+  /// it costs a round trip for audio nobody has asked to hear, so it waits for
+  /// the first press of play. See [_resumeOrLoad].
   bool _needsLoad = false;
 
-  /// Suppresses the save that restoring would otherwise trigger, since every
-  /// emit passes through [onChange]. Writing the session straight back out at
-  /// launch would be harmless and pointless.
+  /// Suppresses the save that restoring would otherwise trigger via [onChange].
   bool _restoring = false;
 
-  /// Position ticks since it was last written down. See [_saveEveryTicks].
   int _ticksSinceSave = 0;
 
-  /// How often the position is persisted, in ticks -- 20 of them, so five
-  /// seconds.
-  ///
-  /// The tracklist is written when it changes, which is rare. The position moves
-  /// four times a second, and writing it that often would rewrite the whole
-  /// preferences file two hundred and forty times a minute. Five seconds is the
-  /// most anybody loses by force-quitting, which is less than they lose by
-  /// force-quitting.
+  /// Five seconds between position writes. At tick rate it would rewrite the
+  /// whole preferences file 240 times a minute.
   static const int _saveEveryTicks = 20;
 
-  /// True from the moment a crossfade is requested until the incoming track has
-  /// loaded -- the window in which state has already advanced but the outgoing
+  /// Set while a crossfade is in flight: state has advanced but the outgoing
   /// track is still sounding.
   bool _isCrossfading = false;
 
   Timer? _settingsSaveTimer;
 
-  /// Not-yet-written preference saves, keyed by setting so one slider's pending
-  /// write never cancels another's. Each closure captures the account it belongs
-  /// to, so a mid-gesture account switch still persists to the right one.
+  /// Pending saves keyed by setting, so one slider's write never cancels
+  /// another's. Each closure captures its own account id.
   final Map<String, Future<void> Function()> _pendingSaves = {};
 
-  /// Mirrors state onto the OS media session. Hooked into [onChange] rather than
-  /// called from each handler, so no handler can forget it: every state change
-  /// the bloc makes passes through here on its way out.
+  /// In [onChange] rather than in each handler, so none of the twenty-odd
+  /// handlers can forget to publish or persist.
   @override
   void onChange(Change<PlayerState> change) {
     super.onChange(change);
@@ -227,8 +193,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final next = change.nextState;
     final track = next.currentTrack;
     if (track == null) {
-      // Nothing queued: the notification/lock screen must not linger on a dead
-      // session. Guarded so repeated empty states don't re-clear.
+      // Guarded so repeated empty states don't re-clear.
       if (_publishedSignature == null) return;
       _publishedSignature = null;
       unawaited(_mediaSession.clear().catchError((_) {}));
@@ -236,9 +201,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     }
 
     final nowPlaying = NowPlaying.from(next, track);
-    // A normal tick moves position by exactly one tick. Anything larger -- or
-    // backwards -- is a seek or a track change, and the OS has to hear about it
-    // or its extrapolated scrubber drifts away from the one in the app.
+    // More than a tick, or backwards, means a seek or a track change -- which the
+    // OS needs, or its extrapolated scrubber drifts away from ours.
     final jumped = (next.position - change.currentState.position).abs() > _tick * 2;
     if (nowPlaying.signature == _publishedSignature && !jumped) return;
     _publishedSignature = nowPlaying.signature;
@@ -257,13 +221,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     await _resumeOrLoad(emit);
   }
 
-  /// Presses play, loading the track first if the engine has never been given
-  /// one.
-  ///
-  /// The restored-session path. Everywhere else a track is loaded by whatever
-  /// selected it, so [_resume] is enough; after a restore there is a queue on
-  /// screen and silence behind it, and calling play() on an engine holding no
-  /// source does nothing at all -- a play button that visibly does not work.
+  /// Presses play, loading first if the engine holds no source -- the restored
+  /// session case, where play() alone would silently do nothing.
   Future<void> _resumeOrLoad(Emitter<PlayerState> emit) async {
     if (!_needsLoad || !state.hasTrack) {
       _resume();
@@ -271,37 +230,26 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     }
     _pausedByInterruption = false;
     emit(state.copyWith(isLoading: true));
-    // Picks up where the last session left off rather than at the top of the
-    // track, which is the whole reason the position was saved.
     await _playCurrent(emit, startAt: state.position);
   }
 
-  // Fire-and-forget: play()/pause() are not awaited. just_audio's play() future
-  // completes when the track ENDS, so awaiting it would block the handler for
-  // the whole track -- which on web interleaves badly with the
-  // position/buffering event stream. play() resumes from the paused position on
-  // its own. isPlaying is not set here either: it follows the engine's
-  // playingStream, so the UI and the lock screen only ever show what is real.
-
-  // Both clear _pausedByInterruption: reaching either of these means somebody
-  // made a deliberate transport decision, which supersedes anything the OS
-  // interrupted. _onInterruptionBegan re-arms the flag straight after calling
-  // _pause() for exactly that reason.
+  // play()/pause() are never awaited: just_audio's play() future completes when
+  // the track ENDS. isPlaying follows the engine's playingStream instead, so the
+  // UI only ever shows what is real.
+  //
+  // Both transport methods clear _pausedByInterruption -- a deliberate press
+  // supersedes anything the OS interrupted.
 
   void _resume() {
     _pausedByInterruption = false;
     if (!state.hasTrack) return;
-    // Take the audio device back before sounding anything -- resuming after an
-    // interruption means somebody else currently owns it.
     unawaited(_claimSessionThen(_audioController.play));
   }
 
-  /// Claims the audio session, then does [play]. Ordered, because playing into a
-  /// session we do not own is how you end up mixed under another app instead of
-  /// interrupting it.
+  /// Claims the audio session before playing. Ordered: playing into a session we
+  /// do not own mixes us under another app instead of interrupting it.
   Future<void> _claimSessionThen(Future<void> Function() play) async {
     await _audioSession.activate().catchError((_) {});
-    // Not awaited by callers: just_audio's play() completes at the track's END.
     await play().catchError((_) {});
   }
 
@@ -311,32 +259,20 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     unawaited(_audioController.pause().catchError((_) {}));
   }
 
-  /// Makes the engine agree with a state that says "not playing", for the paths
-  /// where playback ends without anybody pressing pause: a queue running out, or
-  /// a load that failed.
+  /// Makes the engine agree with a state that says "not playing", where playback
+  /// ended without anybody pressing pause (queue exhausted, load failed).
   ///
-  /// The engine never stops itself. `playing` is play *intent* (see
-  /// [AudioController.playingStream]): it stays true when a source reaches its
-  /// end, leaving the engine parked at the end of a track it still considers
-  /// current. Emitting `isPlaying: false` over that lies twice over:
-  ///
-  ///  * play() is documented to return immediately while `playing` is already
-  ///    true, so the play button does nothing at all; and
-  ///  * because nothing actually changed, playingStream stays silent -- so the
-  ///    next source that *does* load starts sounding with isPlaying still false,
-  ///    which shows up as a transport frozen at 0:00 over audible music.
-  ///
-  /// Unlike [_pause] this is awaited, since callers emit straight afterwards and
-  /// the engine's own `playing: false` has to be on its way first.
+  /// `playing` is play *intent* and stays true when a source ends, so emitting
+  /// `isPlaying: false` over it leaves the play button dead and the next track
+  /// sounding under a transport frozen at 0:00. Awaited, unlike [_pause],
+  /// because callers emit immediately afterwards.
   Future<void> _haltPlayback() => _audioController.pause().catchError((_) {});
 
   void _onInterruptionBegan(PlayerInterruptionBegan event, Emitter<PlayerState> emit) {
     if (!state.hasTrack) return;
 
     if (event.duck) {
-      // Keep playing, just get out of the way. Applied straight to the engine so
-      // state.volume -- the user's setting, which is persisted per account --
-      // stays exactly where they left it.
+      // Keep playing, just get out of the way.
       if (_duckedByInterruption) return;
       _duckedByInterruption = true;
       unawaited(_audioController.setVolume(state.volume * _duckFactor).catchError((_) {}));
@@ -364,8 +300,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   }
 
   void _onOutputDisconnected(PlayerOutputDisconnected event, Emitter<PlayerState> emit) {
-    // _pause() clears _pausedByInterruption, which is the point: unplugging
-    // headphones must never lead to music resuming later out of the speaker.
+    // _pause() clears _pausedByInterruption: unplugged headphones must never
+    // lead to music resuming out of the speaker.
     _pause();
   }
 
@@ -374,8 +310,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     if (state.currentIndex < state.queue.length - 1) {
       await _goTo(state.currentIndex + 1, emit);
     } else if (state.repeatMode == PlayerRepeatMode.all && state.queue.length > 1) {
-      // Wrap to the front. (Repeat-one deliberately does NOT trap the Next
-      // button -- pressing Next always moves on, as in Spotify.)
+      // Repeat-one deliberately does not trap Next; it always moves on.
       await _goTo(0, emit);
     }
   }
@@ -393,46 +328,36 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   }
 
   Future<void> _onSeekRequested(PlayerSeekRequested event, Emitter<PlayerState> emit) async {
-    // Reflect the target position IMMEDIATELY, before the (async) engine seek.
-    // On release the scrubber drops its local drag value and falls back to
-    // state.position; if we emitted only after the await, the thumb would snap
-    // back to the pre-seek position for a frame and then jump to the target --
-    // a visible flicker. Emitting first makes the thumb stay put.
+    // Before the async seek, not after: on release the scrubber falls back to
+    // state.position, so emitting late makes the thumb snap back for a frame.
     emit(state.copyWith(position: event.position));
-    // Nothing is loaded yet (a restored session nobody has pressed play on), so
-    // there is nothing to seek. Moving the scrubber is the whole response; the
-    // load, when it comes, starts from wherever it was left.
+    // Nothing loaded to seek; the eventual load starts from here instead.
     if (_needsLoad) return;
     await _audioController.seek(event.position);
   }
 
   Future<void> _onStopped(PlayerStopped event, Emitter<PlayerState> emit) async {
     await _audioController.stop();
-    // Hand the audio device back: we are done with it, so anything we
-    // interrupted (a podcast in another app) is free to carry on.
+    // Hand the device back so whatever we interrupted can carry on.
     await _audioSession.deactivate().catchError((_) {});
     emit(_clearedState());
   }
 
   Future<void> _onPositionTicked(PlayerPositionTicked event, Emitter<PlayerState> emit) async {
-    // Don't advance while a (new) track is still buffering -- on auto-advance
-    // just_audio keeps `playing` true across the track boundary, so without
-    // this guard the scrubber would move before the next track's audio has
-    // actually started.
+    // `playing` stays true across a track boundary, so without the isLoading
+    // guard the scrubber moves before the next track is audible.
     if (!state.isPlaying || state.isLoading) return;
     final next = state.position + _tick;
-    // Cap at the (known) duration so the thumb never runs past the end.
     final capped = state.duration > Duration.zero && next > state.duration ? state.duration : next;
     emit(state.copyWith(position: capped));
 
-    // Five seconds' worth of ticks between writes. See [_saveEveryTicks].
     if (++_ticksSinceSave >= _saveEveryTicks) {
       _ticksSinceSave = 0;
       _savePosition(state);
     }
 
-    // The ticker doubles as the crossfade trigger: it is the one place that
-    // knows, every 250ms, how close the current track is to its end.
+    // The ticker doubles as the crossfade trigger: it is the only thing that
+    // knows how close the track is to its end.
     _maybePreloadNext(capped);
     if (!_shouldStartCrossfade(capped)) return;
     final upcoming = _nextIndexOnCompletion();
@@ -440,14 +365,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     await _crossfadeTo(upcoming, emit);
   }
 
-  /// Gets the next track buffered *before* the fade window opens.
+  /// Buffers the next track *before* the fade window opens. A load inside the
+  /// fade eats the overlap, which looks exactly like crossfade not working.
   ///
-  /// Without this the load lands inside the fade: the outgoing track keeps
-  /// playing alone until it finishes, so a 3s crossfade over a 2s load gives
-  /// only 1s of overlap, and a load slower than the fade gives none at all --
-  /// which is indistinguishable from crossfade not working. The conditions
-  /// mirror [_shouldStartCrossfade], so we only ever pre-buffer a track that is
-  /// actually going to be faded in.
+  /// Conditions mirror [_shouldStartCrossfade], so nothing is buffered that is
+  /// not going to be faded in.
   void _maybePreloadNext(Duration position) {
     if (_isCrossfading) return;
     final fade = state.crossfadeDuration;
@@ -459,13 +381,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
     final upcoming = _nextIndexOnCompletion();
     if (upcoming == null) return; // nothing follows; nothing to buffer
-    // Called on every tick inside the window -- the controller dedupes by url,
-    // so this stays a no-op after the first one lands (or fails).
+    // Runs every tick in the window; the controller dedupes by url.
     unawaited(_audioController.preload(state.queue[upcoming].audioUrl).catchError((_) {}));
   }
 
-  /// Whether we are inside the window where the next track should start fading
-  /// in underneath this one.
+  /// Whether the next track should now be fading in underneath this one.
   bool _shouldStartCrossfade(Duration position) {
     if (_isCrossfading) return false; // one already in flight
     final fade = state.crossfadeDuration;
@@ -473,21 +393,18 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     if (!_audioController.supportsCrossfade) return false;
 
     final duration = state.duration;
-    // A track that isn't comfortably longer than the fade gets a plain cut.
-    // This is also what stops a runaway: without it, a freshly-started short
-    // track would already be inside its own fade window and skip on every tick.
+    // A track not comfortably longer than the fade gets a plain cut -- and this
+    // is what stops a short track skipping on every tick.
     if (duration <= fade * 2) return false;
 
-    // Having to be at least `fade` in gives every crossfade a cooldown, since
-    // starting one resets position to zero.
+    // A cooldown, since starting a crossfade resets position to zero.
     if (position < fade) return false;
 
     return position >= duration - fade;
   }
 
-  /// Where playback goes when the current track finishes, honouring repeat, or
-  /// null if it should stop. Shared by natural completion and the crossfade
-  /// trigger so the two can never disagree.
+  /// Where playback goes when the track finishes, or null if it should stop.
+  /// Shared by completion and the crossfade trigger so they cannot disagree.
   int? _nextIndexOnCompletion() {
     final isLast = state.currentIndex >= state.queue.length - 1;
     return switch (state.repeatMode) {
@@ -497,24 +414,20 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     };
   }
 
-  /// Moves to [index] by overlapping it with the outgoing track. Deliberately
-  /// does NOT set isLoading: the point of a crossfade is that nothing visibly
-  /// stalls, and the new audio is already audible while it loads.
+  /// Moves to [index] overlapping the outgoing track. No isLoading: the point of
+  /// a crossfade is that nothing visibly stalls.
   Future<void> _crossfadeTo(int index, Emitter<PlayerState> emit) async {
     final track = state.queue[index];
     emit(state.copyWith(currentIndex: index, position: Duration.zero, duration: track.duration));
-    // Loading the incoming track is a network round-trip; until it lands we have
-    // already advanced, so nothing else may advance again (see _onCompleted).
+    // State has advanced but the load has not landed: nothing else may advance.
     _isCrossfading = true;
     try {
       final duration = await _audioController.crossfadeTo(
         track.audioUrl,
         fade: state.crossfadeDuration,
       );
-      // Only trust this for the track we actually asked for. Pressing Next
-      // during the load supersedes us, and applying a stale duration would put
-      // the fade window somewhere unreachable -- which looks exactly like
-      // crossfade having silently stopped working.
+      // Next during the load supersedes us; a stale duration would put the fade
+      // window somewhere unreachable.
       if (state.currentTrack?.id != track.id) return;
       if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
     } catch (_) {
@@ -530,12 +443,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   }
 
   void _onPlayingChanged(PlayerPlayingChanged event, Emitter<PlayerState> emit) {
-    // isLoading is driven by bufferingStream, NOT by this -- just_audio's
-    // `playing` stays true across a track boundary, so it can't tell us when
-    // the next track has finished loading.
+    // isLoading comes from bufferingStream, not from here: `playing` stays true
+    // across a track boundary.
     emit(state.copyWith(isPlaying: event.isPlaying));
-    // Drive the wall-clock position ticker off play/pause. (See the note in the
-    // constructor for why we use a ticker instead of the engine's position.)
     if (event.isPlaying) {
       _ticker ??= Timer.periodic(_tick, (_) => add(const PlayerPositionTicked()));
     } else {
@@ -549,32 +459,27 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   }
 
   Future<void> _onCompleted(PlayerCompleted event, Emitter<PlayerState> emit) async {
-    // A crossfade has already advanced us; the outgoing track reaching its end
-    // is old news. Without this, the track we just faded into would be skipped.
+    // A crossfade already advanced us; the outgoing track ending is old news.
     if (_isCrossfading) return;
 
     final upcoming = _nextIndexOnCompletion();
     if (upcoming == null) {
       await _haltPlayback();
-      // Rewind so the engine is where the state below says it is: at the start,
-      // ready to play the track again. Strictly AFTER the pause -- seeking while
-      // the engine still holds play intent just carries on playing from the new
-      // position.
+      // After the pause, strictly: seeking while the engine still holds play
+      // intent just carries on from the new position.
       await _audioController.seek(Duration.zero).catchError((_) {});
       emit(state.copyWith(isPlaying: false, position: Duration.zero));
       return;
     }
-    // Reload even when repeating one track rather than seek(0)+play(): every
-    // track-change path here goes through _playCurrent, and a fresh load is the
-    // one behaviour we've verified on all four platforms.
+    // A fresh load even for repeat-one: one code path, verified on all four
+    // platforms.
     await _goTo(upcoming, emit);
   }
 
   // --- Shuffle / repeat / volume ---
 
   void _onShuffleToggled(PlayerShuffleToggled event, Emitter<PlayerState> emit) {
-    // Only the queue ORDER changes here -- never the audio. The track that is
-    // playing keeps playing; we just move it to its new index.
+    // Order only, never the audio: the playing track just moves index.
     if (!state.hasTrack) {
       emit(state.copyWith(isShuffled: !state.isShuffled));
       return;
@@ -640,15 +545,13 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   Future<void> _onUserChanged(PlayerUserChanged event, Emitter<PlayerState> emit) async {
     if (event.userId == _userId) return;
 
-    // Any half-dragged preference still belongs to the OUTGOING account -- write
-    // it before switching, since each pending save captured that account's id.
+    // A half-dragged preference belongs to the outgoing account.
     await _flushSaves();
     _userId = event.userId;
 
     final userId = event.userId;
     final repository = _settingsRepository;
-    // Signed out: forget this account's preferences rather than leaking them to
-    // whoever signs in next.
+    // Signed out: don't leak preferences to whoever signs in next.
     final volume = userId == null
         ? _defaultVolume
         : await repository?.fetchVolume(userId) ?? _defaultVolume;
@@ -669,9 +572,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
               sourceQueue: restored.effectiveSourceQueue,
               currentIndex: restored.currentIndex,
               position: restored.position,
-              // Seeded from the track, as _startQueue does: the engine has not
-              // been asked for a duration and will not be until someone presses
-              // play, so without this the scrubber has no scale to sit on.
+              // The engine has no duration until play, so the scrubber needs
+              // this to have a scale at all.
               duration: restored.queue[restored.currentIndex].duration,
               isShuffled: restored.isShuffled,
               isPlaying: false,
@@ -685,27 +587,21 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     await _audioController.setVolume(volume).catchError((_) {});
   }
 
-  /// Writes the session down when it changes.
-  ///
-  /// Hooked into [onChange] for the same reason [_publishNowPlaying] is: it is
-  /// the one place every state change passes through, so no handler can forget
-  /// to call it. The queue is edited from six of them, and "we forgot to persist
-  /// after reorder" is exactly the bug that would go unnoticed for months.
+  /// Writes the session down when it changes. In [onChange] because the queue is
+  /// edited from six handlers and any of them could forget.
   void _rememberSession(Change<PlayerState> change) {
     if (_restoring) return;
     final previous = change.currentState;
     final next = change.nextState;
 
     if (next.queue.isEmpty) {
-      // Stopped, or signed out. A dismissed queue must not come back at the next
-      // launch -- that is the difference between leaving an app and quitting it.
+      // A dismissed queue must not come back at the next launch.
       if (previous.queue.isNotEmpty) _clearSession();
       return;
     }
 
-    // By identity, not by contents. A copyWith that does not mention the queue
-    // passes the same list along, so this is exact, and comparing a hundred
-    // tracks four times a second to learn nothing would not be.
+    // By identity: copyWith passes the same list along when the queue is
+    // untouched, so this is exact and costs nothing at tick rate.
     if (!identical(previous.queue, next.queue) || previous.isShuffled != next.isShuffled) {
       _saveQueue(next);
     } else if (previous.currentIndex != next.currentIndex) {
@@ -755,8 +651,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     _settingsSaveTimer = Timer(_settingsSaveDelay, () => unawaited(_flushSaves()));
   }
 
-  /// Writes any pending preferences immediately. Called when the debounce
-  /// elapses, on account switch, and on close -- so a save is never lost.
+  /// Flushes pending saves: on debounce, on account switch, and on close.
   Future<void> _flushSaves() async {
     _settingsSaveTimer?.cancel();
     _settingsSaveTimer = null;
@@ -792,9 +687,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final queue = [...state.queue];
     queue.insert(event.newIndex, queue.removeAt(event.oldIndex));
 
-    // Keep the SAME track current by tracking where it ends up: the moved item
-    // lands on newIndex, otherwise the removal shifts it left and the insertion
-    // shifts it right.
+    // Follow the current track to its new index rather than keeping the number.
     var index = state.currentIndex;
     if (event.oldIndex == index) {
       index = event.newIndex;
@@ -822,8 +715,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     } else if (event.index > state.currentIndex) {
       emit(state.copyWith(queue: queue));
     } else {
-      // The playing track was removed: whatever shifted into its slot takes
-      // over (or the new last track, if we removed the tail).
+      // The playing track went: whatever shifted into its slot takes over.
       final next = event.index > queue.length - 1 ? queue.length - 1 : event.index;
       emit(state.copyWith(queue: queue, currentIndex: next));
       await _goTo(next, emit);
@@ -849,9 +741,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   // --- Helpers ---
 
-  /// Loads [source] as a new queue and starts playing [startIndex]. When
-  /// shuffle is already on, the picked track plays first and the rest are
-  /// randomised behind it (matching what Spotify does).
+  /// Loads [source] and plays [startIndex]. With shuffle already on, the picked
+  /// track plays first and the rest are randomised behind it.
   Future<void> _startQueue(List<Track> source, int startIndex, Emitter<PlayerState> emit) async {
     if (source.isEmpty) return;
     final start = startIndex.clamp(0, source.length - 1);
@@ -866,10 +757,8 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
         currentIndex: index,
         isLoading: true,
         position: Duration.zero,
-        // Seed from the track's known duration so the scrubber has a scale
-        // immediately. On iOS the audio engine reports duration as 0 (never the
-        // real value), so this seed is what the timeline relies on there; on
-        // Android/web the engine's real duration overrides it (see below).
+        // iOS never reports a real duration, so on that platform this seed is
+        // the only scale the timeline ever gets.
         duration: queue[index].duration,
       ),
     );
@@ -889,18 +778,16 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     await _playCurrent(emit);
   }
 
-  /// [source] with the track at [keepFirst] moved to the front and everything
-  /// else randomised. Removing by index (not by id) keeps duplicate entries --
-  /// legal, via "Add to queue" -- intact.
+  /// [source] with [keepFirst] moved to the front, the rest randomised. By
+  /// index, not by id, so duplicates from "Add to queue" survive.
   List<Track> _shuffledFrom(List<Track> source, int keepFirst) {
     final rest = [...source]..removeAt(keepFirst);
     rest.shuffle(_random);
     return [source[keepFirst], ...rest];
   }
 
-  /// The queue back in [PlayerState.sourceQueue]'s order. Tracks added to the
-  /// queue since it started (which sourceQueue never saw) keep their current
-  /// relative order at the end, so un-shuffling never drops them.
+  /// The queue back in [PlayerState.sourceQueue]'s order, with anything added
+  /// since appended in its current order so un-shuffling never drops it.
   List<Track> _restoredOrder() {
     final rank = <String, int>{};
     for (var i = 0; i < state.sourceQueue.length; i++) {
@@ -915,8 +802,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     return [...fromSource, ...added];
   }
 
-  /// An empty player that keeps the user's playback preferences. Clearing the
-  /// queue (dismissing the player, or removing its last entry) is a session
+  /// An empty player that keeps preferences: dismissing the queue is a session
   /// reset, not a preferences reset.
   PlayerState _clearedState() => PlayerState(
     isShuffled: state.isShuffled,
@@ -928,48 +814,35 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   Future<void> _playCurrent(Emitter<PlayerState> emit, {Duration? startAt}) async {
     final track = state.currentTrack;
     if (track == null) return;
-    // Whatever happens below, the engine is being told about this queue now.
     _needsLoad = false;
-    // Claim the audio device before loading, so we take it from whatever else is
-    // playing rather than quietly mixing underneath it.
+    // Claim the device before loading, so we take it from whatever else is
+    // playing rather than mixing underneath it.
     await _audioSession.activate().catchError((_) {});
     try {
-      // setUrl returns the duration when the engine knows it at load time.
       final duration = await _audioController.setUrl(track.audioUrl);
-      // A newer track change overtook this load: its own _playCurrent owns the
-      // player now, so applying our duration (or starting playback below) would
-      // fight it.
+      // A newer track change overtook this load and now owns the player.
       if (state.currentTrack?.id != track.id) return;
-      // Only override the seeded duration with a real engine value (iOS
-      // returns 0 here).
+      // Never let iOS's 0 replace the seeded duration.
       if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
-      // Re-assert volume: on web the source switch above tears down and rebuilds
-      // the underlying player (see JustAudioController.setUrl), which would
-      // otherwise silently reset it to full.
+      // Web rebuilds the underlying player on a source switch, resetting volume.
       if (state.volume != 1) await _audioController.setVolume(state.volume).catchError((_) {});
-      // Before play() rather than after, so the restored track does not sound a
-      // fraction of a second from the top before jumping.
+      // Before play(), so a restored track does not sound from the top first.
       if (startAt != null && startAt > Duration.zero) {
         await _audioController.seek(startAt).catchError((_) {});
       }
     } catch (_) {
-      // The load failed, so nothing is going to sound -- but the engine may
-      // still be holding play intent from the previous track. See _haltPlayback.
+      // Nothing will sound, but the engine may still hold play intent.
       await _haltPlayback();
       emit(state.copyWith(isLoading: false, isPlaying: false));
       return;
     }
-    // Fire-and-forget (see _onPlayPauseToggled): play() completes on track
-    // END, so it must not be awaited here. Completion is handled via
-    // completedStream; playing/loading via the playing/buffering streams.
     unawaited(_audioController.play().catchError((_) {}));
   }
 
   @override
   Future<void> close() async {
     _ticker?.cancel();
-    // Don't lose a preference change made within the debounce window.
-    await _flushSaves();
+    await _flushSaves(); // don't lose a change inside the debounce window
     await _sessionSub?.cancel();
     await _interruptionSub?.cancel();
     await _userSub?.cancel();

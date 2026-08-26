@@ -5,9 +5,8 @@ import '../../catalog/models/catalog_section.dart';
 
 enum HomeStatus { initial, loading, success, failure }
 
-/// One evolving state class with a status enum -- the same choice made for
-/// AuthState, and for the same reason: loading/success/failure share one
-/// shape and differ only by status, so a sealed hierarchy would buy nothing.
+/// One evolving state class with a status enum, as AuthState: the three states
+/// share a shape, so a sealed hierarchy would buy nothing.
 class HomeState extends Equatable {
   const HomeState({
     this.status = HomeStatus.initial,
@@ -21,34 +20,25 @@ class HomeState extends Equatable {
   /// The catalog's own sections, identical for every account.
   final List<CatalogSection> sections;
 
-  /// Every browsable item, by id. Loaded alongside [sections] so the personal
-  /// rows -- which the catalog only knows as lists of ids -- can be resolved
-  /// without a second round trip per id.
+  /// Every browsable item by id, loaded alongside [sections] so the personal
+  /// rows resolve without a round trip each.
   final Map<String, CatalogItem> itemsById;
 
   final String? errorMessage;
 
-  /// Every row Home should draw for a user whose play history is [recentIds]
-  /// (most recent first): their own row, then the catalog's.
-  ///
-  /// The whole of Home's personalisation, as a pure function -- so it can be
-  /// tested for ordering and for the empty case without standing up a widget.
+  /// Every row Home draws for a history of [recentIds]: their own row, then the
+  /// catalog's. The whole of Home's personalisation as a pure function.
   List<CatalogSection> sectionsFor(Iterable<String> recentIds) {
     final recent = resolve(recentIds);
     return [
-      // Above the catalog's own rows: it is the one row the user put there
-      // themselves. Omitted entirely until they have played something, rather
-      // than shown as an empty row.
+      // Above the catalog's rows, and omitted entirely until it has content.
       if (recent.isNotEmpty) CatalogSection(title: 'Recently played', items: recent),
       ...sections,
     ];
   }
 
-  /// Resolves [ids] to catalog items, in the order given.
-  ///
-  /// Ids with nothing behind them are dropped rather than rendered as blanks: a
-  /// history entry outlives the catalog it points into, so a playlist that has
-  /// since been removed simply stops appearing.
+  /// Resolves [ids] in order, dropping any with nothing behind them: history
+  /// outlives the catalog, so a removed playlist just stops appearing.
   List<CatalogItem> resolve(Iterable<String> ids) =>
       [for (final id in ids) itemsById[id]].nonNulls.toList();
 

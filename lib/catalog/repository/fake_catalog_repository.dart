@@ -6,16 +6,14 @@ import '../models/search_results.dart';
 import '../models/track.dart';
 import 'catalog_repository.dart';
 
-/// An in-memory catalog with hardcoded, deterministic data. Simulates network
-/// latency with a delay so loading states are real and visible, exactly like
-/// [FakeAuthRepository] does for auth.
+/// An in-memory catalog with deterministic data, behind a simulated delay so
+/// loading states are real and visible.
 class FakeCatalogRepository implements CatalogRepository {
   const FakeCatalogRepository();
 
   @override
   void invalidate() {
-    // Nothing is remembered here, so there is nothing to discard. Caching lives
-    // in CachingCatalogRepository, which wraps this one.
+    // Nothing is remembered here; caching lives in the decorator above.
   }
 
   @override
@@ -30,8 +28,7 @@ class FakeCatalogRepository implements CatalogRepository {
     await Future<void>.delayed(const Duration(milliseconds: 400));
 
     final wanted = ids.toSet();
-    // Filtered from the catalog rather than looked up per id, so the result
-    // keeps the catalog's own order and an id appearing twice yields one item.
+    // Filtered, not looked up per id, so order is kept and duplicates collapse.
     return [
       for (final item in _allItems)
         if (wanted.contains(item.id)) item,
@@ -53,8 +50,8 @@ class FakeCatalogRepository implements CatalogRepository {
 
   @override
   Future<SearchResults> search(String query) async {
-    // A real network round-trip's worth of latency, so a per-keystroke search
-    // would visibly thrash -- this is what debouncing in SearchCubit avoids.
+    // Enough latency that a per-keystroke search visibly thrashes, which is what
+    // SearchCubit's debounce is for.
     await Future<void>.delayed(const Duration(milliseconds: 400));
     final needle = query.trim().toLowerCase();
     if (needle.isEmpty) return const SearchResults();
@@ -67,8 +64,7 @@ class FakeCatalogRepository implements CatalogRepository {
           item,
     ];
 
-    // Songs: scan every catalog's tracklist, matching on title or artist, and
-    // carry each hit's containing album along for context.
+    // Songs: scan every tracklist, carrying each hit's album for context.
     final tracks = [
       for (final item in _allItems)
         for (final track in _tracksByItemId[item.id] ?? const <Track>[])
@@ -83,8 +79,7 @@ class FakeCatalogRepository implements CatalogRepository {
   @override
   Future<CatalogDetail> fetchDetail(String itemId) async {
     await Future<void>.delayed(const Duration(milliseconds: 500));
-    // Find the header item by scanning the same sections the home screen uses,
-    // so the detail header is always consistent with the card that opened it.
+    // The same sections Home uses, so the header matches the card that opened it.
     for (final section in _sections) {
       for (final item in section.items) {
         if (item.id == itemId) {
@@ -95,15 +90,10 @@ class FakeCatalogRepository implements CatalogRepository {
     throw CatalogItemNotFound(itemId);
   }
 
-  // ---------------------------------------------------------------------------
-  // Fake data. `static const` so it is shared by both methods and allocated
-  // once, not rebuilt per call.
-  // ---------------------------------------------------------------------------
+  // --- Fake data. `static const`, so it is allocated once. ---
 
-  /// Every section's items flattened and de-duplicated by id (first occurrence
-  /// wins), computed once. Backs [fetchItemsByIds], [fetchTracksByIds] and
-  /// [search] -- the whole catalog exists here so a lookup by id has something
-  /// to scan, which is a luxury of being hardcoded.
+  /// Every section's items, flattened and de-duplicated by id. Having the whole
+  /// catalog to scan is a luxury of being hardcoded.
   static final List<CatalogItem> _allItems = _buildAllItems();
 
   static List<CatalogItem> _buildAllItems() {
@@ -115,25 +105,15 @@ class FakeCatalogRepository implements CatalogRepository {
     ];
   }
 
-  /// Deterministic demo artwork. Lorem Picsum returns the same photograph for
-  /// the same seed forever, so an item's cover never changes between runs (and
-  /// nothing in a test depends on which photo comes back). Verified to answer a
-  /// plain GET with 200 + image/jpeg and to send `Access-Control-Allow-Origin:
-  /// *`, which Flutter web needs to decode an image at all.
+  /// Deterministic demo artwork: Picsum returns the same photograph per seed for
+  /// ever, and sends the CORS header Flutter web needs to decode an image.
   ///
-  /// One size for every use. A real backend would offer several (Spotify's API
-  /// returns 640/300/64 per album) and each surface would pick the nearest;
-  /// 600px is chosen to satisfy the largest consumer, the full player's cover,
-  /// and [CoverArt] decodes it down to whatever it is painted at.
-  /// One source, in the list the domain expects. The hardcoded catalog has no
-  /// mirrors to offer: picsum is a single host, and inventing alternates that do
-  /// not exist would make the fake less like the thing it stands in for, not
-  /// more. Failing over is exercised where it lives, in `cover_art_test.dart`.
+  /// 600px, sized for the largest consumer (the full player); [CoverArt] decodes
+  /// down. One url, because Picsum is one host and inventing mirrors that do not
+  /// exist would make the fake less like the real thing.
   static List<String> _cover(String id) => ['https://picsum.photos/seed/$id/600/600'];
 
-  // `final`, not `const`: the cover urls are computed from each item's id, which
-  // beats writing twelve nearly-identical string literals by hand. Still built
-  // exactly once, on first access.
+  // `final`, not `const`: cover urls are computed from each id. Still built once.
   static final List<CatalogSection> _sections = [
     CatalogSection(
       title: 'Made for you',
@@ -168,11 +148,9 @@ class FakeCatalogRepository implements CatalogRepository {
         ),
       ],
     ),
-    // This used to be called "Recently played" and was the same four playlists
-    // for everybody. The real thing is built per account from play history now
-    // (see HomeView), so these keep their place in the catalog under an honest
-    // title -- deleting the section would take the four playlists out of Search,
-    // Library and detail along with it, since every list derives from here.
+    // "Recently played" is built per account from history now (see HomeView).
+    // These keep their place under an honest title: deleting the section would
+    // take the four playlists out of Search, Library and detail as well.
     CatalogSection(
       title: 'Popular playlists',
       items: [
@@ -241,20 +219,13 @@ class FakeCatalogRepository implements CatalogRepository {
     ),
   ];
 
-  // Royalty-free demo audio, paired with each file's REAL duration (probed
-  // with afinfo, floored to whole seconds to match how the UI renders m:ss).
-  // Using the real length means the tracklist, the Now Playing screen, and
-  // actual playback all show the same time.
+  // Royalty-free demo audio with each file's real duration (probed with afinfo,
+  // floored to whole seconds), so the tracklist, the player and playback agree.
   //
-  // Ten GENUINELY DIFFERENT recordings. Every host is verified to:
-  //   * return HTTP 200 + audio on a normal GET (no hotlink blocking), AND
-  //   * return HTTP 206 to a Range request (Accept-Ranges: bytes).
-  // The range requirement is NOT optional: on web the browser can only SEEK a
-  // media element (and therefore resume after a pause, or move the scrubber)
-  // if the server honours Range. Hosts that answer 200 to a Range request
-  // (e.g. filesamples.com, samplelib.com) force the browser to refetch from
-  // byte 0, so every seek/resume restarts the track from 0:00. Do not add a
-  // URL here without confirming `curl -I -H 'Range: bytes=0-1' <url>` is 206.
+  // Every host must answer a Range request with 206, not just a GET with 200: on
+  // web a media element can only seek -- and therefore resume -- if the server
+  // honours Range, and a host that answers 200 restarts the track from 0:00.
+  // Check `curl -I -H 'Range: bytes=0-1' <url>` before adding one.
   static const List<(String url, Duration duration)> _audioPool = [
     ('https://storage.googleapis.com/exoplayer-test-media-0/play.mp3', Duration(seconds: 59)),
     ('https://www.kozco.com/tech/LRMonoPhase4.mp3', Duration(seconds: 38)),
@@ -282,12 +253,9 @@ class FakeCatalogRepository implements CatalogRepository {
 
   static final Map<String, List<Track>> _tracksByItemId = _withCovers(_buildTracks());
 
-  /// Stamps every track with its owning item's cover, so the player can show
-  /// artwork from a queue of bare [Track]s (see [Track.coverUrl]).
-  ///
-  /// Applied over the finished map rather than threaded through [_playlist],
-  /// which keeps the tracklists below what they are: pure metadata, with the id
-  /// written once as the map key instead of again on every line.
+  /// Stamps each track with its item's cover, so a queue of bare [Track]s can
+  /// show artwork. Applied over the finished map, which keeps the tracklists
+  /// below as pure metadata.
   static Map<String, List<Track>> _withCovers(Map<String, List<Track>> byItemId) {
     return {
       for (final entry in byItemId.entries)
@@ -305,10 +273,8 @@ class FakeCatalogRepository implements CatalogRepository {
     };
   }
 
-  /// Builds the tracklists once. Each playlist starts at a different offset
-  /// into [_audioPool] (via [_playlist]'s `offset`), so different playlists
-  /// use different audio rather than all sharing the same few files. Every
-  /// track's [Track.duration] is the real length of its assigned audio.
+  /// Builds the tracklists once. Each playlist starts at a different offset into
+  /// [_audioPool], so they do not all share the same few files.
   static Map<String, List<Track>> _buildTracks() {
     return {
       // --- Albums: real tracklists, single album artist ---
@@ -400,9 +366,8 @@ class FakeCatalogRepository implements CatalogRepository {
     };
   }
 
-  /// Maps a playlist's (id, title, artist) metadata to [Track]s, assigning
-  /// audio starting at [offset] in [_audioPool] and taking each track's
-  /// duration from its assigned audio file.
+  /// Maps (id, title, artist) metadata to [Track]s, assigning audio from
+  /// [offset] in [_audioPool] and taking each duration from its file.
   static List<Track> _playlist(int offset, List<(String, String, String)> metas) {
     final tracks = <Track>[];
     for (var i = 0; i < metas.length; i++) {

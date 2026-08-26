@@ -26,10 +26,9 @@ class PlayerPlayPauseToggled extends PlayerEvent {
   const PlayerPlayPauseToggled();
 }
 
-/// Resume / pause as *explicit* intents rather than a toggle. The OS media
-/// session sends one or the other (lock screen, headset button, Siri), and
-/// folding those onto [PlayerPlayPauseToggled] would do the opposite of what was
-/// asked whenever the two sides briefly disagreed about who is playing.
+/// Explicit intents rather than a toggle: the OS sends one or the other, and
+/// folding them onto [PlayerPlayPauseToggled] would invert whenever the two
+/// sides briefly disagreed.
 class PlayerResumeRequested extends PlayerEvent {
   const PlayerResumeRequested();
 }
@@ -55,14 +54,14 @@ class PlayerSeekRequested extends PlayerEvent {
   List<Object?> get props => [position];
 }
 
-/// Clears the queue and stops audio (e.g. on logout). Playback *preferences*
-/// (volume, shuffle, repeat) survive -- only the listening session is cleared.
+/// Clears the queue and stops audio. Preferences survive; only the session
+/// is cleared.
 class PlayerStopped extends PlayerEvent {
   const PlayerStopped();
 }
 
-/// Turns shuffle on (current track first, the rest randomised) or off
-/// (restoring the original order). The current track keeps playing either way.
+/// On: current track first, the rest randomised. Off: original order. The
+/// current track keeps playing either way.
 class PlayerShuffleToggled extends PlayerEvent {
   const PlayerShuffleToggled();
 }

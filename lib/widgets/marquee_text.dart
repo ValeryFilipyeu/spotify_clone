@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// A single line of text that scrolls horizontally back and forth ONLY when it
-/// is too wide to fit its box, so long titles/artist names can be read in full;
-/// when it fits it is shown statically (left-aligned) with no animation.
+/// One line of text that scrolls back and forth only when it does not fit,
+/// and is a plain static [Text] when it does.
 ///
-/// Hand-rolled (no marquee package). It measures the text with a [TextPainter]
-/// against the box width, and when it overflows drives a [Transform.translate]
-/// from a repeating [AnimationController] through four phases: hold at start,
-/// scroll to end, hold at end, scroll back. Being ticker-based (not timer-
-/// based), it disposes cleanly and never leaves a pending timer in tests.
+/// Measures with a [TextPainter], then drives a [Transform.translate] from a
+/// repeating controller through four phases: hold, scroll out, hold, scroll back.
+/// Ticker-based rather than timer-based, so it leaves no pending timer in tests.
 class MarqueeText extends StatefulWidget {
   const MarqueeText(
     this.text, {
@@ -21,8 +18,8 @@ class MarqueeText extends StatefulWidget {
   final String text;
   final TextStyle? style;
 
-  /// Scroll speed in logical px/s. A distance-proportional duration keeps long
-  /// and short overflows moving at the same visual pace.
+  /// px/s. A distance-proportional duration keeps long and short overflows
+  /// moving at the same visual pace.
   final double velocity;
 
   /// How long to hold still at each end before reversing.
@@ -35,16 +32,15 @@ class MarqueeText extends StatefulWidget {
 class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
-  /// The overflow distance the controller is currently animating, or null when
-  /// stopped (text fits). Guards against restarting on every rebuild.
+  /// The distance being animated, or null when stopped. Guards against
+  /// restarting on every rebuild.
   double? _activeOverflow;
 
   @override
   void initState() {
     super.initState();
-    // Created eagerly (not lazily) so the ticker is set up while the element is
-    // active; a lazy `late` field could otherwise initialize inside dispose()
-    // for text that never overflowed, which crashes the ticker lookup.
+    // Eagerly, so the ticker is set up while the element is active: a lazy field
+    // could initialize inside dispose() and crash the ticker lookup.
     _controller = AnimationController(vsync: this);
   }
 
@@ -54,8 +50,8 @@ class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStat
     super.dispose();
   }
 
-  /// Starts/stops/reconfigures the animation for [overflow]. Must run after the
-  /// frame (it mutates the controller), and is a no-op when nothing changed.
+  /// Reconfigures the animation for [overflow]. Must run after the frame, and is
+  /// a no-op when nothing changed.
   void _sync(double overflow) {
     if (overflow > 0.5) {
       if (_activeOverflow != null && (_activeOverflow! - overflow).abs() < 1.0) return;
@@ -77,8 +73,7 @@ class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStat
     return Duration(milliseconds: (2 * widget.pause.inMilliseconds + 2 * scrollMs).round());
   }
 
-  /// Maps the controller's 0..1 progress to a scroll offset across the four
-  /// phases (hold start / scroll out / hold end / scroll back).
+  /// Maps 0..1 progress to a scroll offset across the four phases.
   double _offsetFor(double overflow) {
     final scrollMs = overflow / widget.velocity * 1000;
     final pauseMs = widget.pause.inMilliseconds.toDouble();
@@ -119,8 +114,7 @@ class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStat
         )..layout();
         final overflow = painter.width - constraints.maxWidth;
 
-        // Reconcile the animation to the measured overflow after this frame
-        // (can't touch the controller during build).
+        // After this frame: the controller cannot be touched during build.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _sync(overflow);
         });

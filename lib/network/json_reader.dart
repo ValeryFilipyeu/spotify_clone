@@ -1,15 +1,13 @@
-/// Raised when a decoded payload is not the shape the caller needs: a missing
-/// field, a null where a value is required, or a value of the wrong type.
+/// A decoded payload is not the shape the caller needs.
 ///
-/// Deliberately not an [ApiFailure]: the code that reads a field knows *what*
-/// was wrong but not *which request* produced it, and a failure with no url is
-/// a bad log line. The repository that made the call catches this and re-throws
-/// it as a `MalformedResponse` carrying its uri.
+/// Not an [ApiFailure]: whoever reads a field knows *what* was wrong but not
+/// which request produced it. The repository re-throws this as a
+/// `MalformedResponse` carrying the uri.
 class JsonFormatError implements Exception {
   const JsonFormatError(this.path, this.reason);
 
-  /// Where in the payload, e.g. `data[2].user.name`. Worth the small effort of
-  /// threading through: "expected a string" on its own is not a bug report.
+  /// Where in the payload, e.g. `data[2].user.name` -- "expected a string" on
+  /// its own is not a bug report.
   final String path;
 
   final String reason;
@@ -20,11 +18,8 @@ class JsonFormatError implements Exception {
 
 /// Typed reads over a decoded JSON object.
 ///
-/// The alternative -- casting inline at every field, `json['user']['name'] as
-/// String` -- fails with a `TypeError` naming only the types involved, so a
-/// backend that renames one field produces "String is not a subtype of Null"
-/// and no clue which field. These raise [JsonFormatError] naming the path
-/// instead, and cost one method call to do it.
+/// Casting inline fails with "String is not a subtype of Null" and no clue which
+/// field. These raise [JsonFormatError] naming the path.
 extension JsonReader on Map<String, Object?> {
   /// A required nested object.
   Map<String, Object?> object(String key, {String at = ''}) {
@@ -35,16 +30,14 @@ extension JsonReader on Map<String, Object?> {
     return value;
   }
 
-  /// A nested object that is allowed to be absent or null -- `artwork` on a
-  /// track with none, for instance.
+  /// A nested object allowed to be absent or null, like `artwork`.
   Map<String, Object?>? objectOrNull(String key) {
     final value = this[key];
     return value is Map<String, Object?> ? value : null;
   }
 
-  /// A required list of objects. Anything in the list that is not an object is
-  /// an error rather than being skipped: a half-readable list is a backend
-  /// change worth hearing about, not something to paper over.
+  /// A required list of objects. A non-object element is an error, not a skip:
+  /// half a list is a backend change worth hearing about.
   List<Map<String, Object?>> objectList(String key, {String at = ''}) {
     final value = this[key];
     if (value is! List) {
@@ -62,8 +55,7 @@ extension JsonReader on Map<String, Object?> {
     ];
   }
 
-  /// A required, non-empty string. Empty counts as missing: a track whose title
-  /// is `""` is no more displayable than one with no title field.
+  /// A required, non-empty string -- `""` is no more displayable than absent.
   String string(String key, {String at = ''}) {
     final value = this[key];
     if (value is! String || value.isEmpty) {
@@ -78,13 +70,8 @@ extension JsonReader on Map<String, Object?> {
     return value is String && value.isNotEmpty ? value : null;
   }
 
-  /// A list of strings, treating absent or null as empty -- for a field that
-  /// only appears when it has something in it, like a track's list of artwork
-  /// hosts.
-  ///
-  /// An element that is not a string is an error rather than being skipped, for
-  /// the reason given on [objectList]: half a list is a shape change worth
-  /// hearing about, not something to quietly work around.
+  /// A list of strings, absent or null being empty -- for fields that appear
+  /// only when populated. A non-string element is an error, as in [objectList].
   List<String> stringList(String key, {String at = ''}) {
     final value = this[key];
     if (value == null) return const [];
@@ -103,8 +90,7 @@ extension JsonReader on Map<String, Object?> {
     ];
   }
 
-  /// A required integer. Reads through `num` because a JSON number may decode
-  /// as a double even when the API only ever sends whole ones.
+  /// Read through `num`: JSON may decode a whole number as a double.
   int integer(String key, {String at = ''}) {
     final value = this[key];
     if (value is! num) {
@@ -113,8 +99,7 @@ extension JsonReader on Map<String, Object?> {
     return value.toInt();
   }
 
-  /// A boolean, falling back to [orElse] when absent or null -- for the flags a
-  /// payload only includes when they are interesting.
+  /// A boolean, [orElse] when absent or null.
   bool boolean(String key, {bool orElse = false}) {
     final value = this[key];
     return value is bool ? value : orElse;

@@ -8,20 +8,13 @@ import 'package:spotify_clone/player/widgets/equalizer_bars.dart';
 
 import 'golden_harness.dart';
 
-/// A [CustomPainter] is the one place a golden is not merely convenient but
-/// close to the only option.
+/// A [CustomPainter] has no widget tree to assert against: the alternatives to a
+/// picture are a recorded call list, which pins the implementation, or testing
+/// `equalizerLevels` alone, which says nothing about how numbers become
+/// rectangles.
 ///
-/// Everywhere else the widget tree is the specification: a test can find a
-/// `Padding` and read its inset. A painter has no tree. Its whole output is a
-/// sequence of canvas calls, and the alternatives to a picture are asserting on
-/// a recorded call list -- which pins the implementation rather than the result
-/// -- or testing `equalizerLevels` alone, which is already done and says nothing
-/// about how those numbers become rectangles.
-///
-/// Drawn far larger than the 18x11 it ships at. At shipping size the bars are a
-/// couple of pixels wide and a one-pixel change is both invisible to a reviewer
-/// and a large fraction of the image; scaled up, the geometry is legible and the
-/// same proportions are under test.
+/// Drawn far larger than the 18x11 it ships at: at shipping size a one-pixel
+/// change is invisible to a reviewer and a large fraction of the image.
 void main() {
   setUpAll(setUpGoldens);
 

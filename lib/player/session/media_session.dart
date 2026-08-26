@@ -1,28 +1,20 @@
 import '../../catalog/models/track.dart';
 import '../bloc/player_state.dart';
 
-/// The seam over the OS media session -- the lock screen, the Android
-/// notification, the iOS Control Center / CarPlay panel, headset buttons.
+/// The lock screen, Android notification, Control Center and headset buttons.
 ///
-/// Same idea as [AudioController] over just_audio: [PlayerBloc] never imports
-/// audio_service, so it stays unit-testable with no platform channels. Traffic
-/// runs both ways here, which is what makes it worth its own abstraction:
-///   * OUT -- [update] tells the OS what to draw and whether we are playing.
-///   * IN  -- [commands] carries taps the user made *outside* the app.
-///
-/// The bloc stays the single source of truth for the queue; the OS is just
-/// another remote control pointed at it.
+/// Traffic runs both ways, which is what makes it worth its own seam: [update]
+/// tells the OS what to draw, [commands] carries taps made outside the app. The
+/// bloc stays the source of truth; the OS is another remote control.
 abstract class MediaSession {
-  /// Commands originating outside the app. Broadcast: the bloc is the only
-  /// listener today, but a stream that drops events when nobody is attached
-  /// yet would silently lose the very first lock-screen tap.
+  /// Commands from outside the app. Broadcast, so the first lock-screen tap is
+  /// not lost before anything has subscribed.
   Stream<MediaSessionCommand> get commands;
 
   /// Publishes what should be shown and how playback is behaving.
   Future<void> update(NowPlaying nowPlaying);
 
-  /// Tears the session down -- nothing is playing any more, so the notification
-  /// and lock-screen controls must go away rather than linger on a dead queue.
+  /// Tears the session down, so the controls do not linger on a dead queue.
   Future<void> clear();
 }
 
@@ -32,9 +24,9 @@ sealed class MediaSessionCommand {
   const MediaSessionCommand();
 }
 
-/// Distinct from [MediaSessionPause] on purpose. The OS sends an explicit
-/// intent, so mapping both onto a single "toggle" would invert the state
-/// whenever the two sides briefly disagreed (a stale lock-screen button, say).
+/// Distinct from [MediaSessionPauseRequested]: the OS sends an explicit intent,
+/// and a single "toggle" would invert the state whenever the two sides briefly
+/// disagreed.
 class MediaSessionPlayRequested extends MediaSessionCommand {
   const MediaSessionPlayRequested();
 }
@@ -63,9 +55,8 @@ class MediaSessionSeekRequested extends MediaSessionCommand {
   final Duration position;
 }
 
-/// An immutable snapshot of what the OS should display. A plain value object
-/// rather than [PlayerState] itself, so the session layer depends on a handful
-/// of fields instead of the player's whole shape.
+/// What the OS should display. A value object rather than [PlayerState] itself,
+/// so the session layer depends on a handful of fields.
 class NowPlaying {
   const NowPlaying({
     required this.id,
@@ -80,9 +71,8 @@ class NowPlaying {
     this.artUrl,
   });
 
-  /// Built from the state the bloc already holds. [hasNext]/[hasPrevious] come
-  /// from the state's own getters, so repeat mode opening up the queue edges is
-  /// reflected in which buttons the OS offers.
+  /// [hasNext]/[hasPrevious] come from the state's own getters, so repeat mode
+  /// opening up the queue edges reaches the OS's buttons.
   factory NowPlaying.from(PlayerState state, Track track) => NowPlaying(
     id: track.id,
     title: track.title,
@@ -106,24 +96,19 @@ class NowPlaying {
   final bool hasNext;
   final bool hasPrevious;
 
-  /// Cover art for the lock screen / notification, or null for a track with no
-  /// artwork. Left out of [signature] on purpose: artwork only ever changes when
-  /// the track does, and [id] already covers that.
+  /// Left out of [signature]: artwork changes only when the track does, and
+  /// [id] already covers that.
   final String? artUrl;
 
-  /// Everything except [position]. Position advances four times a second, and
-  /// the OS extrapolates it from the last value it was given -- so a change in
-  /// position alone is not a reason to cross a platform channel. See
-  /// PlayerBloc's publishing logic, which compares this and treats a *jump* in
-  /// position (a seek, a track change) separately from ordinary drift.
+  /// Everything except [position], which the OS extrapolates on its own -- so
+  /// ordinary drift is not a reason to cross a platform channel. PlayerBloc
+  /// handles a *jump* separately.
   String get signature =>
       '$id|$title|$artist|${duration.inMilliseconds}|'
       '$isPlaying|$isLoading|$hasNext|$hasPrevious';
 }
 
-/// Used when there is no OS session to talk to: unit tests, and platforms where
-/// a media session is meaningless. Every call is a no-op and [commands] never
-/// emits, so PlayerBloc behaves exactly as it did before this feature existed.
+/// For unit tests and platforms with no media session. Every call is a no-op.
 class NoopMediaSession implements MediaSession {
   const NoopMediaSession();
 

@@ -25,19 +25,16 @@ import 'storage/key_value_store.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Registers the app with the OS media session: this is what keeps audio alive
-  // once the app is backgrounded and what draws the lock-screen / notification
-  // controls. Must happen before runApp -- on Android it binds a foreground
-  // service, and audio_service owns the FlutterEngine the service attaches to.
+  // Keeps audio alive in the background and draws the lock-screen controls.
+  // Before runApp: on Android this binds a foreground service, and audio_service
+  // owns the FlutterEngine it attaches to.
   final mediaSession = await AudioService.init(
     builder: AudioServiceMediaSession.new,
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.valery.spotify_clone.playback',
       androidNotificationChannelName: 'Playback',
-      // Keep the notification while paused, the way real music apps do. It also
-      // sidesteps Android 12's ForegroundServiceStartNotAllowedException: with
-      // `true` the service leaves the foreground on pause and may then be
-      // refused permission to re-enter it when the user hits play again.
+      // Keeps the notification while paused, and sidesteps Android 12's
+      // ForegroundServiceStartNotAllowedException on the next play.
       androidStopForegroundOnPause: false,
       androidNotificationOngoing: false,
     ),
@@ -46,43 +43,25 @@ Future<void> main() async {
   final authRepository = FakeAuthRepository(
     sessionStorage: SecureSessionStorage(
       FlutterSecureStorage(
-        // macOS defaults to the Data Protection Keychain, which needs a
-        // keychain-access-group entitlement tied to a real Apple Developer
-        // Team ID -- this project is signed ad-hoc (no team), so that check
-        // fails with errSecMissingEntitlement (-34018). The legacy Keychain
-        // API below doesn't require it. macOS-only; iOS/Android/web unaffected.
+        // The Data Protection Keychain needs an entitlement tied to a real
+        // Team ID, and this project is signed ad-hoc -- errSecMissingEntitlement
+        // (-34018). macOS only; the legacy API has no such check.
         mOptions: const MacOsOptions(usesDataProtectionKeychain: false),
       ),
     ),
   );
   await authRepository.restoreSession();
 
-  // Non-sensitive local state (likes, playback preferences) lives in
-  // shared_preferences, kept separate from the Keychain-backed auth session
-  // above. The instance is fetched once here and injected, so no call site
-  // awaits a platform channel.
+  // Non-sensitive local state, kept out of the Keychain. Fetched once and
+  // injected, so no call site awaits a platform channel.
   final prefs = await SharedPreferences.getInstance();
   final keyValueStore = SharedPreferencesStore(prefs);
 
-  // The real catalog, assembled here and nowhere else. Three layers, each of
-  // which the one below knows nothing about:
+  // Three layers: offline (disk fallback + status), caching (5 min in memory),
+  // audius (the HTTP API). The order is owned by `chain`, not written here.
   //
-  //   offline  -- keeps answers on the device and serves them when the network
-  //               cannot be reached, and reports which of those is happening
-  //   caching  -- remembers answers for five minutes, so moving around the app
-  //               is free
-  //   audius   -- a plain translation of an HTTP API
-  //
-  // One long-lived ApiClient underneath, so its connection pool and its
-  // in-flight de-duplication are shared: Home builds several rows at once, and
-  // the same url wanted twice is one round trip.
-  //
-  // The order is not incidental and is therefore not written here: `chain` owns
-  // it, so that the reason for it and a test of it live together. See
-  // OfflineCatalogRepository.chain.
-  //
-  // The fake used by tests is deliberately left unwrapped by any of this, so
-  // they see every call.
+  // One long-lived ApiClient underneath, so its pool and its in-flight
+  // de-duplication are shared across all of them.
   final catalogRepository = OfflineCatalogRepository.chain(
     AudiusCatalogRepository(
       client: ApiClient(
@@ -93,38 +72,33 @@ Future<void> main() async {
     store: CatalogCacheStore(keyValueStore),
   );
 
-  // Opened before runApp so the first frame's covers can already be answered from
-  // disk. One directory listing, to seed the running byte total -- everything
-  // after it is a single file read. Null on the web; see openImageByteStore.
+  // Before runApp, so the first frame's covers can come off disk. Null on the
+  // web; see openImageByteStore.
   final coverImageStore = await openImageByteStore();
 
-  // The last few tracks played, kept on the device. Both crossfade players share
-  // one cache: a track finished by one of them is a file the other can open.
+  // Shared by both crossfade players: a track one finished is a file the other
+  // can open.
   final audioCache = await openAudioCache();
 
   runApp(
     MyApp(
       authRepository: authRepository,
       catalogRepository: catalogRepository,
-      // The same object: the layer that discovers it is the layer that falls
-      // back to the saved copy.
+      // The same object: whoever falls back is whoever knows.
       offlineStatus: catalogRepository,
       coverImageStore: coverImageStore,
       likesRepository: LocalLikesRepository(keyValueStore),
       playHistoryRepository: LocalPlayHistoryRepository(keyValueStore),
       playbackSettingsRepository: LocalPlaybackSettingsRepository(keyValueStore),
       playbackQueueRepository: LocalPlaybackQueueRepository(keyValueStore),
-      // Two engines behind one seam, so a track can fade out while the next
-      // fades in. With crossfade off (the default) only one of them is ever
-      // used, so this costs nothing until the setting is turned up.
+      // Two engines behind one seam. With crossfade off (the default) only one
+      // is ever used, so it costs nothing until the setting is turned up.
       audioController: CrossfadeAudioController(
         createPlayer: () => JustAudioController(audioCache: audioCache),
       ),
       mediaSession: mediaSession,
-      // Configures and claims the audio session -- nothing else in the stack
-      // does (see PlatformAudioSession). Created after AudioService.init because
-      // audio_session's docs say to apply your configuration last, once every
-      // other audio plugin has loaded.
+      // After AudioService.init: audio_session's configuration has to be applied
+      // once every other audio plugin has loaded.
       audioSession: await PlatformAudioSession.create(),
     ),
   );

@@ -9,14 +9,12 @@ import '../bloc/player_event.dart';
 import '../bloc/player_state.dart';
 import 'equalizer_bars.dart';
 
-/// The persistent bar shown above every screen while something is loaded.
-/// Renders nothing (zero height) when the queue is empty, so it is invisible
-/// on Landing/Log In and before any track is played.
+/// The persistent bar above every screen while something is loaded. Zero height
+/// when the queue is empty, so it is invisible before anything plays.
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({super.key, required this.onTap});
 
-  /// Opens the full "Now Playing" screen. Passed in from AppView (which owns
-  /// the router) rather than looked up from context.
+  /// Opens the full player. Passed in from AppView, which owns the router.
   final VoidCallback onTap;
 
   @override
@@ -30,9 +28,7 @@ class MiniPlayer extends StatelessWidget {
             ? 0.0
             : (state.position.inMilliseconds / state.duration.inMilliseconds).clamp(0.0, 1.0);
 
-        // No SafeArea here: the mini-player sits directly above the tab bar
-        // (see ScaffoldWithNavBar), and the NavigationBar below it owns the
-        // bottom safe-area inset.
+        // No SafeArea: the NavigationBar below owns the bottom inset.
         return Material(
           color: SpotifyColors.surfaceBright,
           child: InkWell(
@@ -50,11 +46,9 @@ class MiniPlayer extends StatelessWidget {
                         child: Stack(
                           children: [
                             CoverArt(urls: track.coverUrls, borderRadius: 4, iconSize: 22),
-                            // Sits over the artwork rather than beside it: the
-                            // row's width belongs to the title, which already
-                            // has to marquee to fit. The scrim keeps the green
-                            // legible on pale photography -- same reasoning as
-                            // the heart's disc on catalog cards.
+                            // Over the artwork, not beside it: the row's width
+                            // belongs to the title, which already marquees. The
+                            // scrim keeps the green legible on pale photography.
                             Positioned(
                               left: 3,
                               bottom: 3,
@@ -65,11 +59,9 @@ class MiniPlayer extends StatelessWidget {
                                 ),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
-                                  // Shown paused too, resting flat: it marks the
-                                  // artwork as the thing that is loaded, and only
-                                  // moves while sound is actually coming out --
-                                  // including going still for a mid-track buffer
-                                  // stall, which is worth seeing.
+                                  // Shown paused too, resting flat: it moves only
+                                  // while sound is coming out, so a mid-track
+                                  // stall is visible.
                                   child: EqualizerBars(
                                     isActive: state.isPlaying && !state.isLoading,
                                   ),
@@ -81,11 +73,10 @@ class MiniPlayer extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      // One node instead of two, and a live region: a track
-                      // change (auto-advance, a crossfade, a lock-screen skip)
-                      // is otherwise completely silent to a screen reader, since
-                      // nothing about it moves focus. The label only changes when
-                      // the track does, so position ticks don't re-announce.
+                      // One node, and a live region: nothing about an
+                      // auto-advance moves focus, so it would otherwise be silent
+                      // to a screen reader. The label changes only with the
+                      // track, so ticks do not re-announce.
                       child: Semantics(
                         liveRegion: true,
                         label: 'Now playing: ${track.title} by ${track.artist}',
@@ -125,9 +116,7 @@ class MiniPlayer extends StatelessWidget {
                       onPressed: () =>
                           context.read<PlayerBloc>().add(const PlayerPlayPauseToggled()),
                     ),
-                    // Dismiss the player: stop playback and clear the queue.
-                    // PlayerStopped empties the queue, so currentTrack becomes
-                    // null and this whole bar collapses to nothing (above).
+                    // PlayerStopped empties the queue, so this bar collapses.
                     IconButton(
                       icon: const Icon(Icons.close, color: SpotifyColors.textSecondary),
                       tooltip: 'Stop',
@@ -135,9 +124,8 @@ class MiniPlayer extends StatelessWidget {
                     ),
                   ],
                 ),
-                // Decorative: a 2px hairline duplicating what the full player's
-                // scrubber says properly. Announced, it would be a bare
-                // percentage read out on every tick.
+                // Decorative: announced, it would read out a bare percentage on
+                // every tick.
                 ExcludeSemantics(
                   child: LinearProgressIndicator(
                     value: progress,

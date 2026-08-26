@@ -6,12 +6,8 @@ import '../repository/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
-/// App-wide, one instance for the whole app lifetime: the single source of
-/// truth for "am I logged in", which the router and any future app-wide
-/// widget (a persistent mini-player, say) can all react to. It never knows
-/// about form fields -- that is SignUpCubit/LogInCubit's job -- and it never
-/// decides where the user gets navigated to -- that is the router's job,
-/// driven by this bloc's state.
+/// The app-wide source of truth for "am I logged in". Knows nothing about form
+/// fields, and decides no navigation -- the router reacts to this state.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({required AuthRepository authRepository})
     // ignore: prefer_initializing_formals -- keeps the public param name.
@@ -34,9 +30,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogOutRequested(AuthLogOutRequested event, Emitter<AuthState> emit) {
-    // No emit here: logOut() pushes null through authStateChanges, which
-    // _onUserChanged turns into the unauthenticated state. One code path
-    // produces every authenticated/unauthenticated transition.
+    // No emit: logOut() pushes null through authStateChanges, so one code path
+    // produces every auth transition.
     return _authRepository.logOut();
   }
 

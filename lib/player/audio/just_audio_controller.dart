@@ -7,19 +7,11 @@ import 'audio_controller.dart';
 /// The real audio engine, wrapping just_audio's [AudioPlayer]. This is the
 /// only file (besides main.dart's composition point) that imports just_audio.
 class JustAudioController implements AudioController {
-  /// Named `audioCache:` at the call site -- Dart derives the parameter name
-  /// from the private field by stripping the underscore.
   JustAudioController({this._audioCache})
     : _player = AudioPlayer(
-        // Android ExoPlayer keeps NO back-buffer by default
-        // (backBufferDuration: 0), so a backwards seek falls outside the
-        // buffer and forces a re-fetch -- which surfaces as a brief
-        // "buffering" spinner even though the track is already loaded. Keeping
-        // a back-buffer retains already-played audio in memory, so seeking
-        // backwards lands in it and resumes instantly, with nothing to load.
-        // Sized to comfortably cover these short demo tracks (longest ~7 min).
-        // Android-only: iOS/macOS/web ignore it and already retain played
-        // audio, so their behaviour is unchanged.
+        // ExoPlayer keeps no back-buffer by default, so a backwards seek falls
+        // outside it and re-fetches -- a buffering spinner over audio already
+        // loaded. Android-only; everything else already retains played audio.
         audioLoadConfiguration: const AudioLoadConfiguration(
           androidLoadControl: AndroidLoadControl(backBufferDuration: Duration(minutes: 10)),
         ),
@@ -27,9 +19,7 @@ class JustAudioController implements AudioController {
 
   final AudioPlayer _player;
 
-  /// Where played tracks are kept, or null where they are not kept at all -- on
-  /// the web, and in every test. Without it this class streams exactly as it did
-  /// before the cache existed.
+  /// Null on the web and in tests, where this streams as it always did.
   final AudioCache? _audioCache;
 
   @override
@@ -53,38 +43,27 @@ class JustAudioController implements AudioController {
 
   @override
   Future<Duration?> setUrl(String url) async {
-    // WEB-ONLY WORKAROUND. just_audio_web caches the player for the root
-    // playlist by its id -- which just_audio hard-codes to the empty string and
-    // reuses for the app's whole lifetime -- and never rebuilds it. So every
-    // setUrl after the first keeps the ORIGINAL source: it replays the first
-    // track and reports the first track's duration. (Native ExoPlayer/AVPlayer
-    // rebuild the source correctly, so this only bites on web.)
-    //
-    // stop() deactivates the platform; the setUrl below reactivates it, and on
-    // reactivation just_audio disposes the old web player and creates a fresh
-    // one with an empty source cache -- so the new url actually loads. Gated on
-    // kIsWeb so native playback timing is byte-for-byte unchanged.
+    // Web-only workaround. just_audio_web caches the root playlist's player by
+    // an id it hard-codes to the empty string and never rebuilds, so every
+    // setUrl after the first replays the FIRST track. stop() deactivates the
+    // platform; reactivating on the next setUrl builds a fresh player with an
+    // empty source cache. Native engines rebuild correctly, hence the gate.
     if (kIsWeb) {
       await _player.stop();
     }
 
     final cache = _audioCache;
     if (cache == null) return _player.setUrl(url);
-    // setAudioSource rather than setUrl, because what comes back may be a local
-    // file, a caching stream, or a plain stream -- the cache decides, and this
-    // does not need to know which it got.
+    // setAudioSource, because the cache decides what kind of source comes back.
     return _player.setAudioSource(await cache.sourceFor(url));
   }
 
-  // A single AudioPlayer can only sound one source at a time, so crossfading is
-  // composed on top of this class rather than built into it: see
+  // One AudioPlayer sounds one source, so crossfade is composed on top: see
   // CrossfadeAudioController, which drives two of these.
   @override
   bool get supportsCrossfade => false;
 
-  // Nothing to pre-buffer into: this player's only source is the one that is
-  // currently sounding. CrossfadeAudioController does the preloading, using its
-  // spare instance of this class.
+  // Nothing to pre-buffer into: the only source is the one sounding.
   @override
   Future<void> preload(String url) async {}
 

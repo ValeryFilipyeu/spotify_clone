@@ -5,16 +5,10 @@ import '../../catalog/models/search_results.dart';
 
 enum LibraryStatus { initial, loading, success, failure }
 
-/// The catalog data behind the "Your Library" tab: the items and tracks the
-/// user has liked, resolved from their ids.
+/// The items and tracks behind "Your Library", resolved from the liked ids.
 ///
-/// This used to hold the *entire* catalog, which the view then intersected with
-/// the liked set. That only worked because the catalog was a hardcoded list --
-/// a real one cannot be downloaded to find a dozen rows in it.
-///
-/// The view still intersects what is here with the live [LikesCubit] set, and
-/// that is deliberate rather than redundant: unliking something has to remove it
-/// from the list instantly, without waiting for a refetch to come back.
+/// The view still intersects these with the live [LikesCubit] set, which is not
+/// redundant: unliking has to drop a row at once, without waiting for a refetch.
 class LibraryState extends Equatable {
   const LibraryState({
     this.status = LibraryStatus.initial,

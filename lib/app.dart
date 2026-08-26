@@ -42,65 +42,49 @@ class MyApp extends StatelessWidget {
 
   final AuthRepository authRepository;
 
-  /// Injected like [authRepository] so tests can supply an in-memory store
-  /// instead of touching shared_preferences' platform channel.
+  /// Injected so tests can supply an in-memory store.
   final LikesRepository likesRepository;
 
-  /// Backs Home's "Recently played" row. Injected for the same reason as
-  /// [likesRepository].
+  /// Backs Home's "Recently played" row.
   final PlayHistoryRepository playHistoryRepository;
 
-  /// Backs per-account playback preferences (volume). Injected for the same
-  /// reason as [likesRepository].
+  /// Per-account playback preferences.
   final PlaybackSettingsRepository playbackSettingsRepository;
 
-  /// Where the playback queue is left between launches. Optional: without it the
-  /// player behaves exactly as it did before, forgetting everything when the app
-  /// closes -- which is what every widget test written before this wants.
+  /// Where the queue is left between launches. Without it the player forgets
+  /// everything on close, which is what widget tests want.
   final PlaybackQueueRepository? playbackQueueRepository;
 
-  /// Injected (not created here) so widget tests can pass a fake and never
-  /// touch just_audio's platform channels -- same reason authRepository is
-  /// injected.
+  /// Injected so widget tests never touch just_audio's platform channels.
   final AudioController audioController;
 
-  /// Where the catalog comes from. main() supplies the live API-backed one;
-  /// left null it falls back to the hardcoded [FakeCatalogRepository], which is
-  /// what every widget test wants -- deterministic data and no network.
+  /// main() supplies the live one; null falls back to [FakeCatalogRepository],
+  /// which is what widget tests want.
   final CatalogRepository? catalogRepository;
 
-  /// Whether that catalog is currently answering from the network or from what it
-  /// saved. Comes from the same object as [catalogRepository] in main(), because
-  /// the layer that discovers it is the layer that falls back.
+  /// Whether the catalog is answering from the network or from disk. The same
+  /// object as [catalogRepository] in main(): the layer that discovers it is the
+  /// layer that falls back.
   ///
-  /// Defaulted rather than nullable: a catalog that cannot go offline has an
-  /// honest answer to this question, and [AlwaysOnline] is it. Every widget test
-  /// gets that for free, and nothing downstream has to handle an absent status.
+  /// Defaulted rather than nullable -- [AlwaysOnline] is an honest answer, so
+  /// nothing downstream handles an absent status.
   final OfflineStatus offlineStatus;
 
-  /// Where downloaded cover images are kept. Null on the web, where the browser
-  /// already caches them properly, and in widget tests, which have no filesystem
-  /// worth touching -- both cases fall back to fetching every time, which is what
-  /// this app did before the cache existed.
+  /// Where covers are kept. Null on the web (the browser caches them already)
+  /// and in widget tests; both then fetch every time.
   final ImageByteStore? coverImageStore;
 
-  /// The OS media session (lock screen, notification, headset buttons). Null in
-  /// widget tests, which have no OS session to talk to; the player then simply
-  /// has no presence outside the app.
+  /// Lock screen, notification, headset buttons. Null in widget tests.
   final MediaSession? mediaSession;
 
-  /// Calls, Siri and navigation prompts taking the speaker, plus headphones
-  /// being unplugged. Null in widget tests, for the same reason.
+  /// Calls and nav prompts taking the speaker, and headphones unplugged.
   final PlaybackAudioSession? audioSession;
 
   @override
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        // Auth is provided by value: it was built and async-restored in
-        // main() before runApp. The catalog either arrives the same way or
-        // falls back to the fake -- either way this stays the single
-        // composition point that names a concrete implementation.
+        // The single composition point that names a concrete implementation.
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<LikesRepository>.value(value: likesRepository),
         RepositoryProvider<PlayHistoryRepository>.value(value: playHistoryRepository),
@@ -122,8 +106,7 @@ class MyApp extends StatelessWidget {
               audioController: audioController,
               settingsRepository: context.read<PlaybackSettingsRepository>(),
               queueRepository: playbackQueueRepository,
-              // Mapped to a bare id: the player needs to know *which* account
-              // it is playing for, not anything else about the user.
+              // The player needs which account, not anything else about them.
               userIdChanges: context.read<AuthRepository>().authStateChanges.map(
                 (user) => user?.email,
               ),
@@ -131,22 +114,16 @@ class MyApp extends StatelessWidget {
               audioSession: audioSession,
             ),
           ),
-          // App-wide so a heart tapped on any screen is reflected everywhere.
-          // Follows the auth stream: loads the signed-in account's likes and
-          // clears them on logout (likes are per-account).
+          // App-wide so a heart tapped anywhere is reflected everywhere.
           BlocProvider<LikesCubit>(
             create: (context) => LikesCubit(
               repository: context.read<LikesRepository>(),
               authStateChanges: context.read<AuthRepository>().authStateChanges,
-              // Not for reading -- for writing: liking something asks the
-              // catalog about it so the offline layer keeps a copy. See
-              // LikesCubit._keepForOffline.
+              // For writing, not reading: see LikesCubit._keepForOffline.
               catalogRepository: context.read<CatalogRepository>(),
             ),
           ),
-          // App-wide for the same reasons: playback is started from several
-          // screens and Home has to see it from all of them, and the history is
-          // per-account, so it follows the auth stream too.
+          // App-wide: playback starts from several screens and Home sees all.
           BlocProvider<PlayHistoryCubit>(
             create: (context) => PlayHistoryCubit(
               repository: context.read<PlayHistoryRepository>(),
@@ -154,17 +131,15 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ],
-        // Above the router, so every screen's covers share one cache. Inside the
-        // repository providers only for tidiness -- it depends on none of them.
+        // Above the router, so every screen's covers share one cache.
         child: CoverImageScope(store: coverImageStore, child: const AppView()),
       ),
     );
   }
 }
 
-/// Owns the GoRouter instance so the whole Navigator/route stack is never
-/// torn down just because auth state changed -- only redirect re-runs,
-/// driven by refreshListenable.
+/// Owns the GoRouter instance, so an auth change re-runs redirect rather than
+/// tearing down the whole Navigator stack.
 class AppView extends StatefulWidget {
   const AppView({super.key});
 
@@ -193,11 +168,8 @@ class _AppViewState extends State<AppView> {
       // Stop playback and clear the queue when the user logs out.
       listenWhen: (previous, current) => current.status == AuthStatus.unauthenticated,
       listener: (context, state) => context.read<PlayerBloc>().add(const PlayerStopped()),
-      // The mini-player is no longer injected here: it's part of the tab
-      // shell's chrome now (see ScaffoldWithNavBar), sitting above the bottom
-      // navigation bar. That keeps it inside the authenticated shell and out of
-      // the auth screens, and it's automatically hidden under the full-screen
-      // "Now Playing" route (which covers the shell).
+      // The mini-player lives in the tab shell's chrome (ScaffoldWithNavBar),
+      // which keeps it out of the auth screens and under the Now Playing route.
       child: MaterialApp.router(
         title: 'Spotify Clone',
         theme: SpotifyTheme.dark(),

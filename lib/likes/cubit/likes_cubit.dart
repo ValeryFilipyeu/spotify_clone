@@ -8,18 +8,12 @@ import '../models/liked_id.dart';
 import '../repository/likes_repository.dart';
 import 'likes_state.dart';
 
-/// Holds the liked set for the whole app (provided once at the root, above
-/// the tab shell) so a heart tapped on any screen is reflected everywhere --
-/// the detail tracklist, the home cards, the Now Playing screen and the Library
-/// tab all read the same state.
+/// The liked set for the whole app, provided once above the tab shell so every
+/// heart reads the same state.
 ///
-/// Likes are per-account: the cubit follows the auth stream, loading the
-/// signed-in user's set on login and clearing it on logout, so switching
-/// accounts never shows the previous user's library.
+/// Per-account: follows the auth stream, so switching users never shows the
+/// previous one's library.
 class LikesCubit extends Cubit<LikesState> {
-  // Callers still pass `repository:`: Dart derives the public argument name from
-  // the private field, which is what the `// ignore: prefer_initializing_formals`
-  // that used to sit here was working around.
   LikesCubit({
     required this._repository,
     required Stream<AppUser?> authStateChanges,
@@ -30,8 +24,7 @@ class LikesCubit extends Cubit<LikesState> {
 
   final LikesRepository _repository;
 
-  /// Used for one thing only: making sure a newly liked thing can still be shown
-  /// when there is no network. Optional, and nothing here fails without it.
+  /// Only for keeping a new like reachable offline. Optional.
   final CatalogRepository? _catalogRepository;
 
   late final StreamSubscription<AppUser?> _authSub;
@@ -60,10 +53,8 @@ class LikesCubit extends Cubit<LikesState> {
     emit(LikesState(status: LikesStatus.ready, likedIds: ids));
   }
 
-  /// Flips [likedId]'s state for the signed-in user. Updates the UI
-  /// optimistically (a heart must feel instant), then persists; if persistence
-  /// throws, reverts to the previous set so the heart never lies about what's
-  /// saved.
+  /// Flips [likedId] for the signed-in user, optimistically -- a heart must feel
+  /// instant -- and reverts if the write fails, so it never lies.
   Future<void> toggle(LikedId likedId) async {
     final userId = _userId;
     if (userId == null) return; // no signed-in user -> nothing to like
@@ -86,8 +77,7 @@ class LikesCubit extends Cubit<LikesState> {
         await _repository.unlike(userId, likedId);
       }
     } catch (_) {
-      // Only revert if we're still on the same account (a mid-flight logout/
-      // switch would already have replaced the set).
+      // Only on the same account; a mid-flight switch already replaced the set.
       if (_userId == userId) emit(state.copyWith(likedIds: previous));
     }
   }
@@ -95,21 +85,14 @@ class LikesCubit extends Cubit<LikesState> {
   /// Asks the catalog for the thing just liked, purely so the offline layer
   /// writes it down.
   ///
-  /// Without this, "your library works offline" is true only by luck. Nothing
-  /// puts a liked entry on disk except a successful Library load, so liking an
-  /// album on Home and boarding a plane leaves it missing from the one screen
-  /// that promised to have it -- and the app has no way to fetch it by then.
-  /// Liking is the last moment the network is known to have been there a second
-  /// ago, so it is the moment to spend a request.
+  /// Otherwise "your library works offline" is true only by luck: nothing puts a
+  /// liked entry on disk except a Library load, so liking on Home and boarding a
+  /// plane loses it. Liking is the last moment the network is known to be there.
   ///
-  /// Almost always free: the thing was on screen when its heart was pressed, so
-  /// the answer is still in the memory cache a layer down. That is not a
-  /// wasted round trip but the point -- the offline layer writes memory-cache
-  /// hits to disk too, because from out there a hit and a fetch look the same.
+  /// Almost always free -- the thing was on screen, so a layer down this is a
+  /// memory-cache hit, which the offline layer still writes to disk.
   ///
-  /// Failure is ignored on purpose. The like itself is already saved; all that
-  /// is lost is being able to see it without a network, and the next Library
-  /// visit fixes that.
+  /// Failure is ignored: the like is saved either way.
   Future<void> _keepForOffline(LikedId likedId) async {
     final catalog = _catalogRepository;
     if (catalog == null) return;

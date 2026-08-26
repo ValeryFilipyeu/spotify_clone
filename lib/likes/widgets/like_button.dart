@@ -16,10 +16,8 @@ class LikeButton extends StatelessWidget {
 
   final LikedId likedId;
 
-  /// What is being liked, folded into the button's label. Worth threading
-  /// through: without it every heart on a screen announces identically, so a
-  /// screen-reader user hears "Save to Your Library" five times over with no way
-  /// to tell which row they are on.
+  /// Folded into the button's label: without it every heart on a screen
+  /// announces identically.
   final String? itemName;
 
   final double size;

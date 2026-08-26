@@ -1,11 +1,7 @@
-/// Per-account playback preferences that outlive a listening session.
+/// Playback preferences that outlive a session. Per account, not per device.
 ///
-/// These belong to the account, not the device, so signing in restores the
-/// settings that account last used. Shuffle and repeat could join them here
-/// later without changing any caller.
-///
-/// Every getter returns null when the account has never set that preference, so
-/// the caller keeps its own default rather than being handed a fake one.
+/// Every getter is null when the account never set that preference, so callers
+/// keep their own default rather than being handed a fake one.
 abstract class PlaybackSettingsRepository {
   /// The stored volume (0.0..1.0) for [userId].
   Future<double?> fetchVolume(String userId);

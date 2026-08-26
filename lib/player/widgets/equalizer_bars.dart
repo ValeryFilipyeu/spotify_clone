@@ -4,20 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../../theme/spotify_colors.dart';
 
-/// A row of bars bouncing to imply audio, drawn straight onto a [Canvas].
+/// A row of bars bouncing to imply audio, painted onto a [Canvas].
 ///
-/// There is no real audio analysis behind this: just_audio exposes no FFT or
-/// waveform data, and nothing on the platform side hands us amplitude for a
-/// remote stream. So the motion is synthesized -- see [equalizerLevels], which
-/// is the entire behaviour of this widget as one pure function.
+/// The motion is synthesized -- just_audio exposes no FFT or amplitude for a
+/// remote stream. [equalizerLevels] is the whole behaviour, as a pure function.
 ///
-/// Sizes itself from [width]/[height] rather than filling its parent, so it can
-/// be dropped into a [Stack] or a [Row] without a wrapping [SizedBox].
-///
-/// Decorative, and deliberately invisible to semantics: [CustomPaint] adds no
-/// semantics node unless given a `semanticsBuilder`, and the mini-player already
-/// announces what is playing through its live region. A screen reader has no use
-/// for four bouncing rectangles.
+/// Sizes itself from [width]/[height], and is invisible to semantics: the
+/// mini-player already announces what is playing.
 class EqualizerBars extends StatefulWidget {
   const EqualizerBars({
     super.key,
@@ -31,9 +24,8 @@ class EqualizerBars extends StatefulWidget {
     this.settle = const Duration(milliseconds: 400),
   });
 
-  /// Whether audio is actually sounding. False settles the bars down to a
-  /// resting line over [settle] and then stops the ticker entirely -- a paused
-  /// player should not cost 60 repaints a second.
+  /// False settles the bars to a resting line over [settle], then stops the
+  /// ticker -- a paused player should not cost 60 repaints a second.
   final bool isActive;
 
   final double width;
@@ -45,9 +37,8 @@ class EqualizerBars extends StatefulWidget {
 
   final Color color;
 
-  /// How long the wave takes to come back around to where it started. Every
-  /// bar's motion is built from whole-number harmonics of this period, so the
-  /// loop is seamless (see [equalizerLevels]).
+  /// The master period. Every bar is a whole-number harmonic of it, so the loop
+  /// is seamless -- see [equalizerLevels].
   final Duration cycle;
 
   /// How long the bars take to rise on start and fall back on pause.
@@ -58,19 +49,16 @@ class EqualizerBars extends StatefulWidget {
 }
 
 class _EqualizerBarsState extends State<EqualizerBars> with TickerProviderStateMixin {
-  /// The master clock: repeats 0 -> 1 over [EqualizerBars.cycle] forever, and is
-  /// the only input to the wave. Not an `Animation` of anything visible; it is
-  /// just "where in the cycle are we".
+  /// Repeats 0 -> 1 over [EqualizerBars.cycle], and is the only input to the
+  /// wave. Not an animation of anything visible.
   late final AnimationController _phase;
 
-  /// How switched-on the bars are, 0 (resting) to 1 (full swing). Separate from
-  /// [_phase] so pausing damps the wave instead of freezing it mid-air.
+  /// 0 (resting) to 1 (full swing). Separate from [_phase] so pausing damps the
+  /// wave rather than freezing it mid-air.
   late final AnimationController _energy;
 
-  /// What the painter listens to. Held here rather than merged inside `build`
-  /// so the painter can be handed a stable object: the mini-player rebuilds
-  /// several times a second from position ticks, and each rebuild would
-  /// otherwise re-subscribe the render object to a brand-new listenable.
+  /// Held here, not merged in `build`: the mini-player rebuilds on every
+  /// position tick, and each one would re-subscribe the render object.
   late final Listenable _repaint;
 
   @override
@@ -107,13 +95,11 @@ class _EqualizerBarsState extends State<EqualizerBars> with TickerProviderStateM
       _energy.forward();
       return;
     }
-    // Fade the bars down first and stop the clock only once they have landed.
-    // Stopping it up front would freeze the wave mid-swing, and the settle would
-    // read as a straight-line collapse rather than the sound dying away.
+    // Stopping the clock first would freeze the wave mid-swing, and the settle
+    // would read as a collapse rather than the sound dying away.
     _energy.reverse().then((_) {
-      // TickerFuture completes on cancellation too, so this can fire because
-      // playback resumed a moment later -- in which case the clock must keep
-      // running.
+      // TickerFuture completes on cancellation too, so playback may have
+      // resumed -- in which case the clock must keep running.
       if (mounted && !widget.isActive) _phase.stop();
     });
   }
@@ -134,20 +120,17 @@ class _EqualizerBarsState extends State<EqualizerBars> with TickerProviderStateM
   }
 }
 
-/// The resting height of a bar, as a fraction of the box. Not zero: bars that
-/// collapse to nothing look like a rendering failure, whereas a low flat line
-/// reads as "loaded, not playing".
+/// The resting height of a bar. Not zero: a collapsed bar reads as a rendering
+/// failure, a low flat line as "loaded, not playing".
 const double kEqualizerRestingFraction = 0.16;
 
 /// One bar's motion: two whole-number harmonics of the master cycle, and a
 /// phase offset that sets this bar apart from its neighbours.
 typedef _Wave = ({int fast, int slow, double offset});
 
-/// Whole numbers on purpose. A harmonic of 5.5 would be mid-swing when the
-/// clock wraps from 1.0 back to 0.0, and the bars would visibly jump once per
-/// cycle; whole numbers land exactly where they started. The pairs are coprime
-/// so the two waves only line up again at the end of a full cycle, which is what
-/// keeps a 3-second loop from reading as a 3-second loop.
+/// Whole numbers, or the bars jump when the clock wraps. Coprime pairs, so the
+/// two waves only realign at the end of a cycle -- which is what keeps a
+/// 3-second loop from reading as one.
 const List<_Wave> _waves = [
   (fast: 5, slow: 3, offset: 0.00),
   (fast: 7, slow: 4, offset: 0.35),
@@ -155,14 +138,12 @@ const List<_Wave> _waves = [
   (fast: 6, slow: 5, offset: 0.15),
 ];
 
-/// The height of each of [barCount] bars, as a fraction of the box, at [phase]
-/// (0..1 through the master cycle) with [energy] (0 resting, 1 full swing).
+/// The height of each of [barCount] bars as a fraction of the box, at [phase]
+/// (0..1) with [energy] (0 resting, 1 full swing).
 ///
-/// Pure, deterministic, and the whole of what this widget does -- which means
-/// the interesting half can be asserted on directly, with no canvas and no
-/// pumped frames. Guaranteed to land within
-/// `[kEqualizerRestingFraction, 1.0]`, so the caller never has to clamp
-/// geometry.
+/// Pure and deterministic, so the interesting half of this widget is assertable
+/// with no canvas. Always within `[kEqualizerRestingFraction, 1.0]`, so callers
+/// never clamp.
 List<double> equalizerLevels({
   required int barCount,
   required double phase,
@@ -180,8 +161,8 @@ double _swingAt(int index, double phase) {
   final wave = _waves[index % _waves.length];
   final fast = math.sin(2 * math.pi * (wave.fast * phase + wave.offset));
   final slow = math.sin(2 * math.pi * (wave.slow * phase + wave.offset * 2));
-  // Two waves rather than one: a lone sine reads as a mechanical pulse. The
-  // weights sum to 0.5, so the result spans exactly 0..1 and needs no clamp.
+  // Two waves: a lone sine reads as a mechanical pulse. The weights sum to 0.5,
+  // so this spans exactly 0..1 and needs no clamp.
   return 0.5 + 0.35 * fast + 0.15 * slow;
 }
 
@@ -196,10 +177,9 @@ class _EqualizerPainter extends CustomPainter {
   }) : _fill = Paint()..color = color,
        super(repaint: repaint);
 
-  /// Held as animations, not as the doubles they currently read, so [paint] can
-  /// sample them live. That is the point of `super(repaint:)`: the render object
-  /// subscribes to the ticker and re-runs *only* the paint phase, so the bars
-  /// animate at 60fps without a single widget rebuild or relayout.
+  /// Animations rather than their current values, so [paint] samples them live.
+  /// With `super(repaint:)` the render object re-runs only the paint phase --
+  /// 60fps with no rebuild and no relayout.
   final Animation<double> phase;
   final Animation<double> energy;
 
@@ -216,8 +196,7 @@ class _EqualizerPainter extends CustomPainter {
     final barWidth = (size.width - spacing * (barCount - 1)) / barCount;
     if (barWidth <= 0) return;
 
-    // Fully rounded ends. Where a bar is shorter than it is wide, RRect scales
-    // the radii down for us rather than drawing something self-intersecting.
+    // RRect scales the radii down itself when a bar is shorter than it is wide.
     final radius = Radius.circular(barWidth / 2);
     final levels = equalizerLevels(barCount: barCount, phase: phase.value, energy: energy.value);
 
@@ -231,9 +210,8 @@ class _EqualizerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_EqualizerPainter oldDelegate) {
-    // Configuration only. The animations are deliberately not compared: this is
-    // asked only when the widget rebuilds, and by then the ticker has already
-    // been repainting every frame on its own.
+    // Configuration only: the animations repaint on their own, and this is asked
+    // only on rebuild.
     return oldDelegate.color != color ||
         oldDelegate.barCount != barCount ||
         oldDelegate.spacing != spacing;

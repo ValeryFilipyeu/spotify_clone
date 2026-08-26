@@ -16,21 +16,16 @@ class CatalogItem extends Equatable {
   /// e.g. an artist name for an album, or a short description for a playlist.
   final String subtitle;
 
-  /// ARGB tint for the gradient shown *beneath* the cover -- the placeholder
-  /// while the image downloads, and what stays visible if it never arrives. Kept
-  /// alongside the image rather than replaced by it, so a cover is never a hole.
+  /// ARGB tint for the gradient *beneath* the cover: the placeholder while it
+  /// downloads, and what stays if it never arrives.
   final int coverColor;
 
-  /// Interchangeable sources for one square cover image, best first, or empty
-  /// for an item with no artwork (a perfectly ordinary state in a real catalog,
-  /// and the only state this app had before). See [CoverArt], which draws either
-  /// case and walks this list when a source does not answer.
+  /// Interchangeable sources for one cover, best first, or empty for an item
+  /// with no artwork. [CoverArt] draws either case and walks the list.
   ///
-  /// A list rather than a url because the catalog this app talks to serves
-  /// artwork from a network of independently operated nodes, any of which can be
-  /// down while the others hold the same bytes -- see [AudiusArtwork]. Modelled
-  /// here rather than left to the repository because "several places to try" is
-  /// a fact about the image, not about one vendor's JSON.
+  /// A list because Audius serves artwork from independent nodes, any of which
+  /// can be down while the rest hold the same bytes. Modelled here rather than in
+  /// the repository: "several places to try" is a fact about the image.
   final List<String> coverUrls;
 
   @override

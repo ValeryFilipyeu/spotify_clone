@@ -11,57 +11,24 @@ import 'tolerant_comparator_stub.dart' if (dart.library.io) 'tolerant_comparator
 /// Shared setup for the golden tests: a fixed surface, a fixed platform, and an
 /// exact comparator that reports how far off it was when it fails.
 ///
-/// ## What a golden here is actually testing
+/// **What these test is layout, not typography.** `flutter test` draws every
+/// glyph as a filled box, so a golden records where blocks sit and where they
+/// wrap -- a title that stops fitting, a control pushed off an edge. What is
+/// *announced* is the semantics tests' job.
 ///
-/// Not typography. `flutter test` renders every glyph as a filled box -- there
-/// is no real font in the test environment, and none is loaded -- so a golden
-/// records where the *blocks* sit, how wide they are, and where they wrap or
-/// overflow. Which is the useful part: a title that stops fitting, a subtitle
-/// that grows a third line, a control pushed off an edge.
+/// **Three things are pinned** so a golden means the same on another machine:
+/// the target platform (`defaultTargetPlatform` is the host, and ThemeData reads
+/// density and tap-target size off it), the surface (the 800x600 default at 3x
+/// bakes a 2400x1800 PNG for one small widget), and the device pixel ratio.
 ///
-/// It also means these say nothing about whether a label reads well. The
-/// semantics tests cover what is announced; these cover where it is.
-///
-/// Worth being precise about, because the obvious inference from it is wrong.
-/// Boxes instead of letterforms does remove *typography* variance -- no hinting,
-/// no subpixel positioning of curves -- but the boxes are still drawn by the
-/// text engine, and their edges are exactly where two machines disagree. In the
-/// Linux/macOS comparison below, the difference in `cover_art_placeholder` was
-/// the outline of the icon glyph and nothing else: the gradient filling the
-/// whole square, and the rounded corners, were byte-identical. The three
-/// equalizer goldens, which contain no text at all, passed on Linux unchanged.
-/// Gradients and shape antialiasing travel; glyph edges do not.
-///
-/// ## Why they can be trusted on a machine that did not write them
-///
-/// Three things are pinned, and each one is a difference that has bitten real
-/// projects:
-///
-///  * **The target platform.** In a test `defaultTargetPlatform` is the HOST --
-///    macOS on the developer's machine, Linux on the CI runner. `ThemeData`
-///    resolves density, tap-target size and transitions from it at construction
-///    time, so the same widget can genuinely differ between the two.
-///    [goldenTheme] pins it.
-///  * **The surface.** The default is 800x600 at 3x, so one small widget bakes
-///    a 2400x1800 PNG. Each golden asks for the size it needs.
-///  * **The device pixel ratio.** Fixed at 1, so a golden is not silently three
-///    times larger in the repository than the layout it describes.
-///
-/// ## Why they are macOS-only
-///
-/// What none of that pinning can fix is how the machine rasterizes an edge.
-/// Diffing the images CI rendered on Linux against these, the same code differs
-/// by 0.46% to 3.95% of pixels -- every glyph and rectangle *outline*, with
-/// channels off by up to 179 of 255 -- while a real regression measures 0.15%.
-/// Drift is larger than signal, so no tolerance can tell them apart and a
-/// golden belongs to the platform that wrote it. These are generated on macOS,
-/// verified on macOS in CI, and excluded from the Linux job by the `golden` tag.
-/// See [useTolerantGoldens] for the numbers.
+/// **They are macOS-only** because none of that fixes how a machine rasterizes
+/// an edge. The same code renders 0.46%-3.95% differently on Linux -- every
+/// glyph and rectangle *outline* -- where a real regression measures 0.15%.
+/// Drift exceeds signal, so no tolerance can separate them; the Linux job skips
+/// them by the `golden` tag. See [useTolerantGoldens].
 
-/// A golden's surface, in logical pixels.
-///
-/// Small on purpose. A golden is read by a human during review, and a diff of
-/// a whole 800x600 screen tells you something changed without telling you what.
+/// A golden's surface, in logical pixels. Small on purpose: a diff of a whole
+/// screen says something changed without saying what.
 class GoldenSize {
   const GoldenSize(this.width, this.height);
 

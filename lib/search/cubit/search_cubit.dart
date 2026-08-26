@@ -6,14 +6,10 @@ import '../../catalog/models/search_results.dart';
 import '../../catalog/repository/catalog_repository.dart';
 import 'search_state.dart';
 
-/// Drives the Search screen. Screen-local (created per visit by SearchPage).
+/// Drives the Search screen. Screen-local, created per visit.
 ///
-/// The one new idea here is *debouncing*: the field calls [queryChanged] on
-/// every keystroke, but we don't want to fire a repository search that often
-/// (each is a real, latency-bearing call). So each keystroke cancels and
-/// restarts a [Timer]; only when the user pauses for [_debounceDuration] does
-/// the search actually run. Typing "radiohead" hits the repository once, not
-/// nine times.
+/// Debounced: each keystroke restarts a timer, and only a pause runs the search,
+/// so "radiohead" is one repository call rather than nine.
 class SearchCubit extends Cubit<SearchState> {
   SearchCubit({required CatalogRepository catalogRepository})
     // ignore: prefer_initializing_formals -- keeps the public param name.
@@ -22,15 +18,13 @@ class SearchCubit extends Cubit<SearchState> {
 
   final CatalogRepository _catalogRepository;
 
-  /// The pending debounce timer, if the user is mid-type. Cancelled and
-  /// replaced on every keystroke, and cancelled on [close].
+  /// Replaced on every keystroke, cancelled on [close].
   Timer? _debounce;
 
   static const Duration _debounceDuration = Duration(milliseconds: 350);
 
-  /// Called on every keystroke. Records the typed text immediately (so the
-  /// field stays responsive) but restarts the debounce timer rather than
-  /// searching right away.
+  /// Records the text immediately so the field stays responsive, and restarts
+  /// the debounce rather than searching.
   void queryChanged(String query) {
     _debounce?.cancel();
 
@@ -56,9 +50,8 @@ class SearchCubit extends Cubit<SearchState> {
     emit(state.copyWith(status: SearchStatus.loading));
     try {
       final results = await _catalogRepository.search(query);
-      // The user may have kept typing while this call was in flight; if the
-      // query has since moved on, drop this now-stale response so a slow
-      // earlier search can't clobber the results for what's now on screen.
+      // Dropped if the query moved on while this was in flight, so a slow
+      // earlier search cannot clobber what is on screen.
       if (query != state.query.trim()) return;
       emit(state.copyWith(status: SearchStatus.success, results: results));
     } catch (_) {

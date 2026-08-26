@@ -11,10 +11,8 @@ import '../../widgets/duration_format.dart';
 import '../models/search_results.dart';
 import 'cover_art.dart';
 
-/// A single song row for a [TrackHit], shared by Search results and the Library
-/// "Songs" section. Tapping it plays the track (as its own one-song queue),
-/// the subtitle attributes it to its album/playlist, and the trailing heart
-/// toggles the like. Highlights green while it is the current track.
+/// A song row for a [TrackHit], shared by Search and Library. Tapping plays it
+/// as a one-song queue; it highlights green while current.
 class TrackHitTile extends StatelessWidget {
   const TrackHitTile({super.key, required this.hit});
 
@@ -27,8 +25,7 @@ class TrackHitTile extends StatelessWidget {
     final isCurrent = hit.track.id == currentId;
 
     return Semantics(
-      // Same reason as TrackTile: "playing right now" is a green title and
-      // nothing else, so it has to be said as well as shown.
+      // "Playing right now" is a colour and nothing else, so it has to be said.
       selected: isCurrent,
       child: _tile(context, textTheme, isCurrent),
     );
@@ -36,8 +33,7 @@ class TrackHitTile extends StatelessWidget {
 
   Widget _tile(BuildContext context, TextTheme textTheme, bool isCurrent) {
     return ListTile(
-      // A song has no cover of its own, so it borrows its album's -- which is
-      // already here for the subtitle.
+      // A song borrows its album's cover, already here for the subtitle.
       leading: SizedBox(
         width: 40,
         height: 40,
@@ -76,8 +72,7 @@ class TrackHitTile extends StatelessWidget {
       ),
       onTap: () {
         context.read<PlayerBloc>().add(PlayerTrackStarted(queue: [hit.track], startIndex: 0));
-        // Credited to the album it came from, not to the one-song queue: what
-        // Home offers to replay is a playlist, not a single track.
+        // Credited to its album: what Home offers to replay is a playlist.
         context.read<PlayHistoryCubit>().record(hit.album.id);
       },
     );

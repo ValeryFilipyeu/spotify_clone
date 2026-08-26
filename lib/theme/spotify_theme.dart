@@ -16,24 +16,13 @@ abstract final class SpotifyTheme {
     return base.copyWith(
       scaffoldBackgroundColor: SpotifyColors.black,
       textTheme: textTheme,
-      // Pinned, and not a stylistic choice. ThemeData otherwise derives this
-      // from the platform: `padded` on Android/iOS, `shrinkWrap` on
-      // macOS/Windows/Linux -- and the web counts as desktop, because a browser
-      // reports the HOST platform. shrinkWrap drops the padding that sizes a
-      // control out to the interactive minimum, which measures as IconButton
-      // going from 48x48 to 40x40, and that
+      // Pinned, not a style choice. Left to the platform this is `shrinkWrap` on
+      // desktop -- and on web, which reports the host platform -- taking
+      // IconButton from 48x48 to 40x40: under both minimum tap targets, and what
+      // pushed the like button out of its scrim disc on Home.
       //
-      //  * is under both the Android (48dp) and iOS (44pt) minimum tap target,
-      //    so the accessibility pass silently did not hold on the three
-      //    platforms its tests never ran on; and
-      //  * breaks any layout that positions something against a control's size
-      //    -- it is what pushed the like button out of its scrim disc on Home.
-      //
-      // Note it is this and NOT visualDensity, even though compact density is
-      // the other thing desktop defaults to: a Material 3 IconButton takes its
-      // size from its own ButtonStyle, so a *widget-level* visualDensity does
-      // shrink it (48 -> 40, which is why LikeButton sets none) while the
-      // theme-level one never reaches it. Measured, not assumed.
+      // Not visualDensity, which at theme level never reaches a Material 3
+      // IconButton's own ButtonStyle. Measured, not assumed.
       materialTapTargetSize: MaterialTapTargetSize.padded,
       colorScheme: base.colorScheme.copyWith(
         surface: SpotifyColors.black,
