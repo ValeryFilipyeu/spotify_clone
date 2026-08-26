@@ -11,12 +11,15 @@ import 'catalog/repository/offline/catalog_cache_store.dart';
 import 'catalog/repository/offline/offline_catalog_repository.dart';
 import 'history/repository/local_play_history_repository.dart';
 import 'likes/repository/local_likes_repository.dart';
+import 'player/audio/audio_cache.dart';
 import 'player/audio/crossfade_audio_controller.dart';
 import 'player/audio/just_audio_controller.dart';
+import 'player/repository/local_playback_queue_repository.dart';
 import 'player/repository/local_playback_settings_repository.dart';
 import 'player/session/audio_service_media_session.dart';
 import 'player/session/platform_audio_session.dart';
 import 'network/api_client.dart';
+import 'storage/image_byte_store.dart';
 import 'storage/key_value_store.dart';
 
 Future<void> main() async {
@@ -90,6 +93,15 @@ Future<void> main() async {
     store: CatalogCacheStore(keyValueStore),
   );
 
+  // Opened before runApp so the first frame's covers can already be answered from
+  // disk. One directory listing, to seed the running byte total -- everything
+  // after it is a single file read. Null on the web; see openImageByteStore.
+  final coverImageStore = await openImageByteStore();
+
+  // The last few tracks played, kept on the device. Both crossfade players share
+  // one cache: a track finished by one of them is a file the other can open.
+  final audioCache = await openAudioCache();
+
   runApp(
     MyApp(
       authRepository: authRepository,
@@ -97,13 +109,17 @@ Future<void> main() async {
       // The same object: the layer that discovers it is the layer that falls
       // back to the saved copy.
       offlineStatus: catalogRepository,
+      coverImageStore: coverImageStore,
       likesRepository: LocalLikesRepository(keyValueStore),
       playHistoryRepository: LocalPlayHistoryRepository(keyValueStore),
       playbackSettingsRepository: LocalPlaybackSettingsRepository(keyValueStore),
+      playbackQueueRepository: LocalPlaybackQueueRepository(keyValueStore),
       // Two engines behind one seam, so a track can fade out while the next
       // fades in. With crossfade off (the default) only one of them is ever
       // used, so this costs nothing until the setting is turned up.
-      audioController: CrossfadeAudioController(createPlayer: JustAudioController.new),
+      audioController: CrossfadeAudioController(
+        createPlayer: () => JustAudioController(audioCache: audioCache),
+      ),
       mediaSession: mediaSession,
       // Configures and claims the audio session -- nothing else in the stack
       // does (see PlatformAudioSession). Created after AudioService.init because

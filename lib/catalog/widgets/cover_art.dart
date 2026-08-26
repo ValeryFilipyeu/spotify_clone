@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/spotify_colors.dart';
+import '../images/cover_image_provider.dart';
+import '../images/cover_image_scope.dart';
 
 /// Square artwork for a catalog item or a track: the real cover image when there
 /// is one, over a tinted gradient that stands in for it.
@@ -241,24 +243,17 @@ class _CoverState extends State<_Cover> {
 
         // Spelled out rather than Image.network, which builds exactly this and
         // then keeps it to itself -- and a retry has to be able to evict it.
+        //
+        // The provider itself is chosen by coverImageProvider: a disk-backed one
+        // where there is a cache to back it, and the same plain NetworkImage as
+        // before where there is not. Both preserve the two things the walk below
+        // depends on -- a refusal arrives as an error, and equality is stable
+        // across rebuilds -- and the decode width is applied identically on top
+        // of either, since ResizeImage wraps whatever it is given.
         _provider = ResizeImage.resizeIfNeeded(
           decodeWidth,
           null,
-          NetworkImage(
-            _url,
-            // Web only. There, Flutter's default is
-            // WebHtmlElementStrategy.never: a NetworkImage is fetched as BYTES
-            // over XHR so the engine can decode it into the canvas, which needs
-            // the host's CORS blessing and dies on any non-2xx. `fallback` keeps
-            // that fast path and adds a second go through a plain <img>, which
-            // the same-origin policy does not gate at all -- the difference
-            // between a cover and a blank square on a CDN that will serve an
-            // image but not bless a cross-origin fetch. It renders as a platform
-            // view, so it costs a little performance and ignores image
-            // filtering: fine for a path only taken when the proper one failed.
-            // Ignored on every non-web platform.
-            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-          ),
+          coverImageProvider(_url, store: CoverImageScope.maybeOf(context)),
         );
 
         return Image(

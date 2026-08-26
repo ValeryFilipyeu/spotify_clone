@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spotify_clone/catalog/catalog.dart';
 import 'package:spotify_clone/catalog/repository/audius/audius_playlist_dto.dart';
 import 'package:spotify_clone/catalog/repository/offline/catalog_cache_store.dart';
-import 'package:spotify_clone/catalog/repository/offline/catalog_json.dart';
+import 'package:spotify_clone/catalog/models/catalog_json.dart';
 import 'package:spotify_clone/catalog/repository/offline/offline_catalog_repository.dart';
 
 import '../../../helpers/fixtures.dart';

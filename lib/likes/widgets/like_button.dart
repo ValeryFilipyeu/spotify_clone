@@ -3,14 +3,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../theme/spotify_colors.dart';
 import '../cubit/likes_cubit.dart';
+import '../models/liked_id.dart';
 
-/// A heart toggle for a single catalog item or track [id]. Reads only the one
-/// bool it cares about from [LikesCubit] via `select`, so liking one row never
-/// rebuilds the others.
+/// A heart toggle for one [likedId]. Reads only the one bool it cares about
+/// from [LikesCubit] via `select`, so liking one row never rebuilds the others.
+///
+/// It takes a [LikedId] and not a bare id because every heart in the app already
+/// knows whether it sits beside an album or a song, and that is the only place
+/// the answer is certain -- see [LikedId].
 class LikeButton extends StatelessWidget {
-  const LikeButton({super.key, required this.id, this.itemName, this.size = 22});
+  const LikeButton({super.key, required this.likedId, this.itemName, this.size = 22});
 
-  final String id;
+  final LikedId likedId;
 
   /// What is being liked, folded into the button's label. Worth threading
   /// through: without it every heart on a screen announces identically, so a
@@ -22,7 +26,7 @@ class LikeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final liked = context.select<LikesCubit, bool>((cubit) => cubit.state.isLiked(id));
+    final liked = context.select<LikesCubit, bool>((cubit) => cubit.state.isLiked(likedId));
     final name = itemName;
 
     return IconButton(
@@ -42,7 +46,7 @@ class LikeButton extends StatelessWidget {
       tooltip: liked
           ? (name == null ? 'Remove from Your Library' : 'Remove $name from Your Library')
           : (name == null ? 'Save to Your Library' : 'Save $name to Your Library'),
-      onPressed: () => context.read<LikesCubit>().toggle(id),
+      onPressed: () => context.read<LikesCubit>().toggle(likedId),
     );
   }
 }

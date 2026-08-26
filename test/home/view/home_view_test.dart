@@ -10,6 +10,7 @@ import 'package:spotify_clone/home/cubit/home_cubit.dart';
 import 'package:spotify_clone/home/view/home_view.dart';
 import 'package:spotify_clone/likes/cubit/likes_cubit.dart';
 import 'package:spotify_clone/likes/repository/likes_repository.dart';
+import 'package:spotify_clone/likes/models/liked_id.dart';
 
 /// In-memory history, seedable so a test can start from an account that has
 /// already played things.
@@ -32,13 +33,13 @@ class _FakeHistoryRepository implements PlayHistoryRepository {
 
 class _NoLikesRepository implements LikesRepository {
   @override
-  Future<Set<String>> fetchLikedIds(String userId) async => {};
+  Future<Set<LikedId>> fetchLikedIds(String userId) async => {};
 
   @override
-  Future<void> like(String userId, String id) async {}
+  Future<void> like(String userId, LikedId id) async {}
 
   @override
-  Future<void> unlike(String userId, String id) async {}
+  Future<void> unlike(String userId, LikedId id) async {}
 }
 
 const _alice = 'alice@spotify.com';

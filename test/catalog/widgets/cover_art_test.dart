@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spotify_clone/catalog/images/cover_image_provider.dart';
+import 'package:spotify_clone/catalog/images/cover_image_scope.dart';
 import 'package:spotify_clone/catalog/widgets/cover_art.dart';
 
+import '../../helpers/fake_image_byte_store.dart';
 import '../../helpers/fake_image_network.dart';
 
 const _url = 'https://example.test/cover.png';
@@ -346,6 +349,65 @@ void main() {
           network.restore();
         }
       });
+    });
+  });
+
+  group('with a cover cache in scope', () {
+    /// The rest of this file deliberately runs without one, which is not an
+    /// omission: no scope means no store, and no store means the plain
+    /// NetworkImage this widget always used. That every test above still passes
+    /// unchanged is the evidence that the cached path is an addition rather than
+    /// a replacement.
+    Widget cached(FakeImageByteStore store, {List<String> urls = const [_url]}) => _sized(
+      CoverImageScope(
+        store: store,
+        child: CoverArt(urls: urls, color: 0xFF1DB954),
+      ),
+    );
+
+    ImageProvider providerInTree(WidgetTester tester) =>
+        (tester.widget<Image>(find.byType(Image)).image as ResizeImage).imageProvider;
+
+    testWidgets('draws a cover it had saved', (tester) async {
+      // No fake network here, deliberately, and it took a failing test to see
+      // why: installFakeImageNetwork hooks NetworkImage's own http client, and
+      // the cached provider does not use it. There is nothing for it to
+      // intercept, so all it would contribute is a debug variable left changed
+      // at the end of the test. That no request is made is asserted where it can
+      // be -- against the injected fetch, in cover_image_provider_test.dart.
+      final store = FakeImageByteStore()..files[_url] = tinyPng;
+
+      await tester.runAsync(() async {
+        await tester.pumpWidget(cached(store));
+        // Real time: the decode finishes on the engine's threads, which the fake
+        // clock never advances.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+
+      expect(opacityOf(tester), 1.0, reason: 'a cover read off disk is a drawn cover');
+      expect(store.reads, [_url]);
+    });
+
+    testWidgets('still walks to the next host when a cover is not saved', (tester) async {
+      // The cache must not quietly disable the failover. It cannot be driven end
+      // to end here -- with a store in scope the fetch goes through package:http
+      // rather than the hook installFakeImageNetwork owns -- so what is pinned is
+      // that the walk's machinery is intact: a fresh provider per attempt, each
+      // one aimed at the next host.
+      final store = FakeImageByteStore();
+      await tester.pumpWidget(cached(store, urls: const [_dead, _live]));
+
+      expect((providerInTree(tester) as CachedNetworkImage).url, _dead);
+    });
+
+    testWidgets('uses the caching provider, and only when there is a cache', (tester) async {
+      await tester.pumpWidget(cached(FakeImageByteStore()));
+      expect(providerInTree(tester), isA<CachedNetworkImage>());
+
+      await tester.pumpWidget(_sized(const CoverArt(urls: [_url], color: 0xFF1DB954)));
+      expect(providerInTree(tester), isA<NetworkImage>());
     });
   });
 }

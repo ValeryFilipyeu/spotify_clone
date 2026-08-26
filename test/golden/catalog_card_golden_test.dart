@@ -10,6 +10,7 @@ import 'package:spotify_clone/catalog/models/catalog_item.dart';
 import 'package:spotify_clone/home/widgets/catalog_card.dart';
 import 'package:spotify_clone/likes/cubit/likes_cubit.dart';
 import 'package:spotify_clone/likes/repository/likes_repository.dart';
+import 'package:spotify_clone/likes/models/liked_id.dart';
 
 import 'golden_harness.dart';
 
@@ -31,13 +32,13 @@ const _overflowing = CatalogItem(
 
 class _NoLikes implements LikesRepository {
   @override
-  Future<Set<String>> fetchLikedIds(String userId) async => const {};
+  Future<Set<LikedId>> fetchLikedIds(String userId) async => const {};
 
   @override
-  Future<void> like(String userId, String id) async {}
+  Future<void> like(String userId, LikedId id) async {}
 
   @override
-  Future<void> unlike(String userId, String id) async {}
+  Future<void> unlike(String userId, LikedId id) async {}
 }
 
 Widget _card(WidgetTester tester, CatalogItem item) {

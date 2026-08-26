@@ -1,4 +1,13 @@
-/// The catalog's domain models as JSON, so the offline cache can keep them.
+/// The catalog's domain models as JSON.
+///
+/// Two things read and write it: the offline catalog cache, and the saved
+/// playback session that survives the app being closed. It lives beside the
+/// models rather than inside either of them for that reason -- the second
+/// consumer is what turned "how the offline cache happens to store a Track" into
+/// "how this app writes a Track down".
+///
+/// The id-keyed collections at the bottom are still the cache's alone; a session
+/// is an ordered list, not a lookup.
 ///
 /// A codec of its own rather than `toJson`/`fromJson` on the models, for the
 /// same reason Audius' payloads are read by DTOs and not by the models: a model
@@ -24,12 +33,12 @@
 ///    no foreign shape, only two directions of the same map.
 library;
 
-import '../../../network/json_reader.dart';
-import '../../models/catalog_detail.dart';
-import '../../models/catalog_item.dart';
-import '../../models/catalog_section.dart';
-import '../../models/search_results.dart';
-import '../../models/track.dart';
+import '../../network/json_reader.dart';
+import 'catalog_detail.dart';
+import 'catalog_item.dart';
+import 'catalog_section.dart';
+import 'search_results.dart';
+import 'track.dart';
 
 /// Identity and the things a row cannot be drawn without are read strictly:
 /// missing or empty means the entry is unusable, and an unusable entry should be

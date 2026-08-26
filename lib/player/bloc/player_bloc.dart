@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../catalog/models/track.dart';
 import '../audio/audio_controller.dart';
+import '../repository/playback_queue_repository.dart';
 import '../repository/playback_settings_repository.dart';
 import '../session/playback_audio_session.dart';
 import '../session/media_session.dart';
@@ -23,6 +25,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   PlayerBloc({
     required AudioController audioController,
     PlaybackSettingsRepository? settingsRepository,
+    PlaybackQueueRepository? queueRepository,
     Stream<String?>? userIdChanges,
     MediaSession? mediaSession,
     PlaybackAudioSession? audioSession,
@@ -30,13 +33,14 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     // ignore_for_file: prefer_initializing_formals -- keeps public param names.
   }) : _audioController = audioController,
        _settingsRepository = settingsRepository,
+       _queueRepository = queueRepository,
        _mediaSession = mediaSession ?? const NoopMediaSession(),
        _audioSession = audioSession ?? const NoopPlaybackAudioSession(),
        _random = random ?? Random(),
        super(const PlayerState()) {
     on<PlayerTrackStarted>(_onTrackStarted);
     on<PlayerPlayPauseToggled>(_onPlayPauseToggled);
-    on<PlayerResumeRequested>((_, _) => _resume());
+    on<PlayerResumeRequested>((_, emit) => _resumeOrLoad(emit));
     on<PlayerPauseRequested>((_, _) => _pause());
     on<PlayerNextRequested>(_onNextRequested);
     on<PlayerPreviousRequested>(_onPreviousRequested);
@@ -131,6 +135,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   final AudioController _audioController;
   final PlaybackSettingsRepository? _settingsRepository;
+  final PlaybackQueueRepository? _queueRepository;
   final MediaSession _mediaSession;
   final PlaybackAudioSession _audioSession;
 
@@ -168,6 +173,34 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   /// The account whose volume is loaded, or null when signed out.
   String? _userId;
 
+  /// True when the state describes a queue the audio engine has never been told
+  /// about.
+  ///
+  /// Only one thing produces that: a session restored from disk at launch. The
+  /// mini-player is drawn, the lock screen is populated and the scrubber sits
+  /// where it was left -- but no source is loaded, deliberately, because loading
+  /// one costs a network round trip for audio nobody has asked to hear yet. The
+  /// engine finds out the first time someone presses play. See [_resumeOrLoad].
+  bool _needsLoad = false;
+
+  /// Suppresses the save that restoring would otherwise trigger, since every
+  /// emit passes through [onChange]. Writing the session straight back out at
+  /// launch would be harmless and pointless.
+  bool _restoring = false;
+
+  /// Position ticks since it was last written down. See [_saveEveryTicks].
+  int _ticksSinceSave = 0;
+
+  /// How often the position is persisted, in ticks -- 20 of them, so five
+  /// seconds.
+  ///
+  /// The tracklist is written when it changes, which is rare. The position moves
+  /// four times a second, and writing it that often would rewrite the whole
+  /// preferences file two hundred and forty times a minute. Five seconds is the
+  /// most anybody loses by force-quitting, which is less than they lose by
+  /// force-quitting.
+  static const int _saveEveryTicks = 20;
+
   /// True from the moment a crossfade is requested until the incoming track has
   /// loaded -- the window in which state has already advanced but the outgoing
   /// track is still sounding.
@@ -187,6 +220,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   void onChange(Change<PlayerState> change) {
     super.onChange(change);
     _publishNowPlaying(change);
+    _rememberSession(change);
   }
 
   void _publishNowPlaying(Change<PlayerState> change) {
@@ -215,12 +249,31 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     await _startQueue(event.queue, event.startIndex, emit);
   }
 
-  void _onPlayPauseToggled(PlayerPlayPauseToggled event, Emitter<PlayerState> emit) {
+  Future<void> _onPlayPauseToggled(PlayerPlayPauseToggled event, Emitter<PlayerState> emit) async {
     if (state.isPlaying) {
       _pause();
-    } else {
-      _resume();
+      return;
     }
+    await _resumeOrLoad(emit);
+  }
+
+  /// Presses play, loading the track first if the engine has never been given
+  /// one.
+  ///
+  /// The restored-session path. Everywhere else a track is loaded by whatever
+  /// selected it, so [_resume] is enough; after a restore there is a queue on
+  /// screen and silence behind it, and calling play() on an engine holding no
+  /// source does nothing at all -- a play button that visibly does not work.
+  Future<void> _resumeOrLoad(Emitter<PlayerState> emit) async {
+    if (!_needsLoad || !state.hasTrack) {
+      _resume();
+      return;
+    }
+    _pausedByInterruption = false;
+    emit(state.copyWith(isLoading: true));
+    // Picks up where the last session left off rather than at the top of the
+    // track, which is the whole reason the position was saved.
+    await _playCurrent(emit, startAt: state.position);
   }
 
   // Fire-and-forget: play()/pause() are not awaited. just_audio's play() future
@@ -346,6 +399,10 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     // back to the pre-seek position for a frame and then jump to the target --
     // a visible flicker. Emitting first makes the thumb stay put.
     emit(state.copyWith(position: event.position));
+    // Nothing is loaded yet (a restored session nobody has pressed play on), so
+    // there is nothing to seek. Moving the scrubber is the whole response; the
+    // load, when it comes, starts from wherever it was left.
+    if (_needsLoad) return;
     await _audioController.seek(event.position);
   }
 
@@ -367,6 +424,12 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     // Cap at the (known) duration so the thumb never runs past the end.
     final capped = state.duration > Duration.zero && next > state.duration ? state.duration : next;
     emit(state.copyWith(position: capped));
+
+    // Five seconds' worth of ticks between writes. See [_saveEveryTicks].
+    if (++_ticksSinceSave >= _saveEveryTicks) {
+      _ticksSinceSave = 0;
+      _savePosition(state);
+    }
 
     // The ticker doubles as the crossfade trigger: it is the one place that
     // knows, every 250ms, how close the current track is to its end.
@@ -593,8 +656,97 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
         ? Duration.zero
         : await repository?.fetchCrossfadeDuration(userId) ?? Duration.zero;
 
-    emit(state.copyWith(volume: volume, crossfadeDuration: crossfade));
+    final restored = userId == null ? null : await _queueRepository?.fetchQueue(userId);
+
+    _restoring = true;
+    emit(
+      restored == null
+          ? state.copyWith(volume: volume, crossfadeDuration: crossfade)
+          : state.copyWith(
+              volume: volume,
+              crossfadeDuration: crossfade,
+              queue: restored.queue,
+              sourceQueue: restored.effectiveSourceQueue,
+              currentIndex: restored.currentIndex,
+              position: restored.position,
+              // Seeded from the track, as _startQueue does: the engine has not
+              // been asked for a duration and will not be until someone presses
+              // play, so without this the scrubber has no scale to sit on.
+              duration: restored.queue[restored.currentIndex].duration,
+              isShuffled: restored.isShuffled,
+              isPlaying: false,
+              isLoading: false,
+            ),
+    );
+    _restoring = false;
+    // Nothing has been handed to the audio engine. See [_needsLoad].
+    _needsLoad = restored != null;
+
     await _audioController.setVolume(volume).catchError((_) {});
+  }
+
+  /// Writes the session down when it changes.
+  ///
+  /// Hooked into [onChange] for the same reason [_publishNowPlaying] is: it is
+  /// the one place every state change passes through, so no handler can forget
+  /// to call it. The queue is edited from six of them, and "we forgot to persist
+  /// after reorder" is exactly the bug that would go unnoticed for months.
+  void _rememberSession(Change<PlayerState> change) {
+    if (_restoring) return;
+    final previous = change.currentState;
+    final next = change.nextState;
+
+    if (next.queue.isEmpty) {
+      // Stopped, or signed out. A dismissed queue must not come back at the next
+      // launch -- that is the difference between leaving an app and quitting it.
+      if (previous.queue.isNotEmpty) _clearSession();
+      return;
+    }
+
+    // By identity, not by contents. A copyWith that does not mention the queue
+    // passes the same list along, so this is exact, and comparing a hundred
+    // tracks four times a second to learn nothing would not be.
+    if (!identical(previous.queue, next.queue) || previous.isShuffled != next.isShuffled) {
+      _saveQueue(next);
+    } else if (previous.currentIndex != next.currentIndex) {
+      _savePosition(next);
+    }
+  }
+
+  void _saveQueue(PlayerState state) {
+    final userId = _userId;
+    final repository = _queueRepository;
+    if (userId == null || repository == null) return;
+
+    final saved = SavedQueue(
+      queue: state.queue,
+      // Only when it is actually a different order -- see [SavedQueue].
+      sourceQueue: listEquals(state.queue, state.sourceQueue) ? null : state.sourceQueue,
+      isShuffled: state.isShuffled,
+    );
+    _scheduleSave('queue', () => repository.saveQueue(userId, saved));
+    _savePosition(state);
+  }
+
+  void _savePosition(PlayerState state) {
+    final userId = _userId;
+    final repository = _queueRepository;
+    if (userId == null || repository == null || !state.hasTrack) return;
+
+    final index = state.currentIndex;
+    final position = state.position;
+    _scheduleSave(
+      'position',
+      () => repository.savePosition(userId, currentIndex: index, position: position),
+    );
+  }
+
+  void _clearSession() {
+    final userId = _userId;
+    final repository = _queueRepository;
+    if (userId == null || repository == null) return;
+    _scheduleSave('queue', () => repository.clear(userId));
+    _pendingSaves.remove('position');
   }
 
   void _scheduleSave(String key, Future<void> Function() save) {
@@ -773,9 +925,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     crossfadeDuration: state.crossfadeDuration,
   );
 
-  Future<void> _playCurrent(Emitter<PlayerState> emit) async {
+  Future<void> _playCurrent(Emitter<PlayerState> emit, {Duration? startAt}) async {
     final track = state.currentTrack;
     if (track == null) return;
+    // Whatever happens below, the engine is being told about this queue now.
+    _needsLoad = false;
     // Claim the audio device before loading, so we take it from whatever else is
     // playing rather than quietly mixing underneath it.
     await _audioSession.activate().catchError((_) {});
@@ -793,6 +947,11 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       // the underlying player (see JustAudioController.setUrl), which would
       // otherwise silently reset it to full.
       if (state.volume != 1) await _audioController.setVolume(state.volume).catchError((_) {});
+      // Before play() rather than after, so the restored track does not sound a
+      // fraction of a second from the top before jumping.
+      if (startAt != null && startAt > Duration.zero) {
+        await _audioController.seek(startAt).catchError((_) {});
+      }
     } catch (_) {
       // The load failed, so nothing is going to sound -- but the engine may
       // still be holding play intent from the previous track. See _haltPlayback.

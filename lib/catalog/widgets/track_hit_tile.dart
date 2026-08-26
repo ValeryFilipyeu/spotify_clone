@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../history/cubit/play_history_cubit.dart';
+import '../../likes/models/liked_id.dart';
 import '../../likes/widgets/like_button.dart';
 import '../../player/bloc/player_bloc.dart';
 import '../../player/bloc/player_event.dart';
@@ -70,7 +71,7 @@ class TrackHitTile extends StatelessWidget {
               style: textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
             ),
           ),
-          LikeButton(id: hit.track.id, itemName: hit.track.title),
+          LikeButton(likedId: LikedId.track(hit.track.id), itemName: hit.track.title),
         ],
       ),
       onTap: () {

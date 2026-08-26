@@ -7,6 +7,7 @@ import 'auth/bloc/auth_state.dart';
 import 'auth/repository/auth_repository.dart';
 import 'catalog/repository/catalog_repository.dart';
 import 'catalog/repository/fake_catalog_repository.dart';
+import 'catalog/images/cover_image_scope.dart';
 import 'catalog/repository/offline/offline_status.dart';
 import 'history/cubit/play_history_cubit.dart';
 import 'history/repository/play_history_repository.dart';
@@ -15,10 +16,12 @@ import 'likes/repository/likes_repository.dart';
 import 'player/audio/audio_controller.dart';
 import 'player/bloc/player_bloc.dart';
 import 'player/bloc/player_event.dart';
+import 'player/repository/playback_queue_repository.dart';
 import 'player/repository/playback_settings_repository.dart';
 import 'player/session/media_session.dart';
 import 'player/session/playback_audio_session.dart';
 import 'router/app_router.dart';
+import 'storage/image_byte_store.dart';
 import 'theme/spotify_theme.dart';
 
 class MyApp extends StatelessWidget {
@@ -28,9 +31,11 @@ class MyApp extends StatelessWidget {
     required this.likesRepository,
     required this.playHistoryRepository,
     required this.playbackSettingsRepository,
+    this.playbackQueueRepository,
     required this.audioController,
     this.catalogRepository,
     this.offlineStatus = const AlwaysOnline(),
+    this.coverImageStore,
     this.mediaSession,
     this.audioSession,
   });
@@ -48,6 +53,11 @@ class MyApp extends StatelessWidget {
   /// Backs per-account playback preferences (volume). Injected for the same
   /// reason as [likesRepository].
   final PlaybackSettingsRepository playbackSettingsRepository;
+
+  /// Where the playback queue is left between launches. Optional: without it the
+  /// player behaves exactly as it did before, forgetting everything when the app
+  /// closes -- which is what every widget test written before this wants.
+  final PlaybackQueueRepository? playbackQueueRepository;
 
   /// Injected (not created here) so widget tests can pass a fake and never
   /// touch just_audio's platform channels -- same reason authRepository is
@@ -67,6 +77,12 @@ class MyApp extends StatelessWidget {
   /// honest answer to this question, and [AlwaysOnline] is it. Every widget test
   /// gets that for free, and nothing downstream has to handle an absent status.
   final OfflineStatus offlineStatus;
+
+  /// Where downloaded cover images are kept. Null on the web, where the browser
+  /// already caches them properly, and in widget tests, which have no filesystem
+  /// worth touching -- both cases fall back to fetching every time, which is what
+  /// this app did before the cache existed.
+  final ImageByteStore? coverImageStore;
 
   /// The OS media session (lock screen, notification, headset buttons). Null in
   /// widget tests, which have no OS session to talk to; the player then simply
@@ -89,6 +105,8 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<LikesRepository>.value(value: likesRepository),
         RepositoryProvider<PlayHistoryRepository>.value(value: playHistoryRepository),
         RepositoryProvider<PlaybackSettingsRepository>.value(value: playbackSettingsRepository),
+        if (playbackQueueRepository case final queue?)
+          RepositoryProvider<PlaybackQueueRepository>.value(value: queue),
         RepositoryProvider<CatalogRepository>(
           create: (_) => catalogRepository ?? const FakeCatalogRepository(),
         ),
@@ -103,6 +121,7 @@ class MyApp extends StatelessWidget {
             create: (context) => PlayerBloc(
               audioController: audioController,
               settingsRepository: context.read<PlaybackSettingsRepository>(),
+              queueRepository: playbackQueueRepository,
               // Mapped to a bare id: the player needs to know *which* account
               // it is playing for, not anything else about the user.
               userIdChanges: context.read<AuthRepository>().authStateChanges.map(
@@ -119,6 +138,10 @@ class MyApp extends StatelessWidget {
             create: (context) => LikesCubit(
               repository: context.read<LikesRepository>(),
               authStateChanges: context.read<AuthRepository>().authStateChanges,
+              // Not for reading -- for writing: liking something asks the
+              // catalog about it so the offline layer keeps a copy. See
+              // LikesCubit._keepForOffline.
+              catalogRepository: context.read<CatalogRepository>(),
             ),
           ),
           // App-wide for the same reasons: playback is started from several
@@ -131,7 +154,9 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ],
-        child: const AppView(),
+        // Above the router, so every screen's covers share one cache. Inside the
+        // repository providers only for tidiness -- it depends on none of them.
+        child: CoverImageScope(store: coverImageStore, child: const AppView()),
       ),
     );
   }

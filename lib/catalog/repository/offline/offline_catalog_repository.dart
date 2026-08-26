@@ -2,13 +2,13 @@ import 'dart:async';
 
 import '../../../network/api_failure.dart';
 import '../../models/catalog_detail.dart';
+import '../../models/catalog_json.dart';
 import '../../models/catalog_item.dart';
 import '../../models/catalog_section.dart';
 import '../../models/search_results.dart';
 import '../caching_catalog_repository.dart';
 import '../catalog_repository.dart';
 import 'catalog_cache_store.dart';
-import 'catalog_json.dart';
 import 'offline_status.dart';
 
 /// Keeps what the catalog answered on the device, and serves it when the catalog

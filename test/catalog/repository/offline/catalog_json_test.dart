@@ -10,7 +10,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spotify_clone/catalog/catalog.dart';
-import 'package:spotify_clone/catalog/repository/offline/catalog_json.dart';
+import 'package:spotify_clone/catalog/models/catalog_json.dart';
 import 'package:spotify_clone/network/json_reader.dart';
 
 const _item = CatalogItem(

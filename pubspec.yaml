@@ -44,6 +44,11 @@ dependencies:
   audio_service: ^0.18.19
   audio_session: ^0.2.4
   http: ^1.6.0
+  # Both were already in the dependency graph -- just_audio and google_fonts pull
+  # them -- so declaring them here adds nothing to the app and stops the cover
+  # cache from depending on somebody else's transitive dependency staying put.
+  path_provider: ^2.1.6
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:

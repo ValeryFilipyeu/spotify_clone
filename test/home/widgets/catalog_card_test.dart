@@ -10,6 +10,7 @@ import 'package:spotify_clone/likes/cubit/likes_cubit.dart';
 import 'package:spotify_clone/likes/repository/likes_repository.dart';
 import 'package:spotify_clone/likes/widgets/like_button.dart';
 import 'package:spotify_clone/theme/spotify_theme.dart';
+import 'package:spotify_clone/likes/models/liked_id.dart';
 
 const _item = CatalogItem(
   id: 'dm1',
@@ -20,13 +21,13 @@ const _item = CatalogItem(
 
 class _NoLikes implements LikesRepository {
   @override
-  Future<Set<String>> fetchLikedIds(String userId) async => const {};
+  Future<Set<LikedId>> fetchLikedIds(String userId) async => const {};
 
   @override
-  Future<void> like(String userId, String id) async {}
+  Future<void> like(String userId, LikedId id) async {}
 
   @override
-  Future<void> unlike(String userId, String id) async {}
+  Future<void> unlike(String userId, LikedId id) async {}
 }
 
 /// Pumps a card under the app's own theme, built as it would be on [platform].

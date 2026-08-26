@@ -5,20 +5,21 @@ import 'package:spotify_clone/auth/models/app_user.dart';
 import 'package:spotify_clone/likes/cubit/likes_cubit.dart';
 import 'package:spotify_clone/likes/repository/likes_repository.dart';
 import 'package:spotify_clone/likes/widgets/like_button.dart';
+import 'package:spotify_clone/likes/models/liked_id.dart';
 
 class _FakeLikesRepository implements LikesRepository {
-  final Map<String, Set<String>> _byUser = {};
+  final Map<String, Set<LikedId>> _byUser = {};
 
-  Set<String> _for(String userId) => _byUser.putIfAbsent(userId, () => <String>{});
-
-  @override
-  Future<Set<String>> fetchLikedIds(String userId) async => {..._for(userId)};
+  Set<LikedId> _for(String userId) => _byUser.putIfAbsent(userId, () => <LikedId>{});
 
   @override
-  Future<void> like(String userId, String id) async => _for(userId).add(id);
+  Future<Set<LikedId>> fetchLikedIds(String userId) async => {..._for(userId)};
 
   @override
-  Future<void> unlike(String userId, String id) async => _for(userId).remove(id);
+  Future<void> like(String userId, LikedId id) async => _for(userId).add(id);
+
+  @override
+  Future<void> unlike(String userId, LikedId id) async => _for(userId).remove(id);
 }
 
 void main() {
@@ -34,7 +35,7 @@ void main() {
         home: Scaffold(
           body: BlocProvider.value(
             value: cubit,
-            child: const LikeButton(id: 'ab1'),
+            child: const LikeButton(likedId: LikedId.item('ab1')),
           ),
         ),
       ),
@@ -50,12 +51,12 @@ void main() {
     await tester.pump();
     expect(find.byIcon(Icons.favorite), findsOneWidget);
     expect(find.byIcon(Icons.favorite_border), findsNothing);
-    expect(cubit.isLiked('ab1'), isTrue);
+    expect(cubit.isLiked(const LikedId.item('ab1')), isTrue);
 
     // Tap again -> back to unliked.
     await tester.tap(find.byType(LikeButton));
     await tester.pump();
     expect(find.byIcon(Icons.favorite_border), findsOneWidget);
-    expect(cubit.isLiked('ab1'), isFalse);
+    expect(cubit.isLiked(const LikedId.item('ab1')), isFalse);
   });
 }

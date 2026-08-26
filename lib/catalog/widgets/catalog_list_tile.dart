@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../likes/models/liked_id.dart';
 import '../../likes/widgets/like_button.dart';
 import '../../theme/spotify_colors.dart';
 import '../models/catalog_item.dart';
@@ -41,7 +42,7 @@ class CatalogListTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: SpotifyColors.textSecondary),
       ),
-      trailing: LikeButton(id: item.id, itemName: item.title),
+      trailing: LikeButton(likedId: LikedId.item(item.id), itemName: item.title),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../catalog/widgets/cover_art.dart';
+import '../../likes/models/liked_id.dart';
 import '../../likes/widgets/like_button.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/duration_format.dart';
@@ -92,7 +93,7 @@ class FullPlayerPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      LikeButton(id: track.id, itemName: track.title, size: 30),
+                      LikeButton(likedId: LikedId.track(track.id), itemName: track.title, size: 30),
                     ],
                   ),
                   const SizedBox(height: 16),

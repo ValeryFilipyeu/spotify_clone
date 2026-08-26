@@ -9,6 +9,7 @@ import 'package:spotify_clone/player/bloc/player_bloc.dart';
 import 'package:spotify_clone/player/bloc/player_event.dart';
 import 'package:spotify_clone/player/bloc/player_state.dart';
 import 'package:spotify_clone/player/view/full_player_page.dart';
+import 'package:spotify_clone/likes/models/liked_id.dart';
 
 import '../fake_audio_controller.dart';
 
@@ -18,16 +19,16 @@ const _queue = [
 
 /// Minimal LikesRepository so the Now Playing heart can build.
 class _FakeLikesRepository implements LikesRepository {
-  final Set<String> _ids = {};
+  final Set<LikedId> _ids = {};
 
   @override
-  Future<Set<String>> fetchLikedIds(String userId) async => {..._ids};
+  Future<Set<LikedId>> fetchLikedIds(String userId) async => {..._ids};
 
   @override
-  Future<void> like(String userId, String id) async => _ids.add(id);
+  Future<void> like(String userId, LikedId id) async => _ids.add(id);
 
   @override
-  Future<void> unlike(String userId, String id) async => _ids.remove(id);
+  Future<void> unlike(String userId, LikedId id) async => _ids.remove(id);
 }
 
 /// Pumps the full player against a bloc already playing the first track.

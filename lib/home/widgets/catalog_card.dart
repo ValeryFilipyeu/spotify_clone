@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../catalog/models/catalog_item.dart';
 import '../../catalog/widgets/cover_art.dart';
+import '../../likes/models/liked_id.dart';
 import '../../likes/widgets/like_button.dart';
 import '../../theme/spotify_colors.dart';
 
@@ -95,7 +96,7 @@ class CatalogCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  LikeButton(id: item.id, itemName: item.title, size: 18),
+                  LikeButton(likedId: LikedId.item(item.id), itemName: item.title, size: 18),
                 ],
               ),
             ),

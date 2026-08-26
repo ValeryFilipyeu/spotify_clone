@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../models/liked_id.dart';
+
 enum LikesStatus { loading, ready }
 
 /// App-wide liked state. [likedIds] is the single source of truth every heart
@@ -10,11 +12,11 @@ class LikesState extends Equatable {
   const LikesState({this.status = LikesStatus.loading, this.likedIds = const {}});
 
   final LikesStatus status;
-  final Set<String> likedIds;
+  final Set<LikedId> likedIds;
 
-  bool isLiked(String id) => likedIds.contains(id);
+  bool isLiked(LikedId likedId) => likedIds.contains(likedId);
 
-  LikesState copyWith({LikesStatus? status, Set<String>? likedIds}) {
+  LikesState copyWith({LikesStatus? status, Set<LikedId>? likedIds}) {
     return LikesState(status: status ?? this.status, likedIds: likedIds ?? this.likedIds);
   }
 

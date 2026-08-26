@@ -7,6 +7,7 @@ import '../../catalog/widgets/sliver_section_header.dart';
 import '../../catalog/widgets/track_hit_tile.dart';
 import '../../likes/cubit/likes_cubit.dart';
 import '../../likes/cubit/likes_state.dart';
+import '../../likes/models/liked_id.dart';
 import '../../router/app_routes.dart';
 import '../../theme/spotify_colors.dart';
 import '../../widgets/error_retry.dart';
@@ -57,9 +58,11 @@ class LibraryView extends StatelessWidget {
                       ),
                     );
                   }
-                  final likedItems = libState.items.where((i) => likes.isLiked(i.id)).toList();
+                  final likedItems = libState.items
+                      .where((i) => likes.isLiked(LikedId.item(i.id)))
+                      .toList();
                   final likedTracks = libState.tracks
-                      .where((h) => likes.isLiked(h.track.id))
+                      .where((h) => likes.isLiked(LikedId.track(h.track.id)))
                       .toList();
 
                   if (likedItems.isEmpty && likedTracks.isEmpty) {

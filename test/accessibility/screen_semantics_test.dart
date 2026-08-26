@@ -17,6 +17,7 @@ import 'package:spotify_clone/player/bloc/player_bloc.dart';
 import 'package:spotify_clone/theme/spotify_theme.dart';
 import 'package:spotify_clone/widgets/spotify_primary_button.dart';
 import 'package:spotify_clone/widgets/spotify_text_field.dart';
+import 'package:spotify_clone/likes/models/liked_id.dart';
 
 import '../player/fake_audio_controller.dart';
 import 'semantics_probe.dart';
@@ -37,16 +38,16 @@ const _item = CatalogItem(
 );
 
 class _NoLikes implements LikesRepository {
-  final Set<String> _ids = {};
+  final Set<LikedId> _ids = {};
 
   @override
-  Future<Set<String>> fetchLikedIds(String userId) async => {..._ids};
+  Future<Set<LikedId>> fetchLikedIds(String userId) async => {..._ids};
 
   @override
-  Future<void> like(String userId, String id) async => _ids.add(id);
+  Future<void> like(String userId, LikedId id) async => _ids.add(id);
 
   @override
-  Future<void> unlike(String userId, String id) async => _ids.remove(id);
+  Future<void> unlike(String userId, LikedId id) async => _ids.remove(id);
 }
 
 class _NoHistory implements PlayHistoryRepository {
