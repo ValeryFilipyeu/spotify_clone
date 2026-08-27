@@ -37,6 +37,11 @@ class FakeAudioController implements AudioController {
     crossfades.add((url: url, fade: fade));
     setUrls.add(url);
     if (loadDelay > Duration.zero) await Future<void>.delayed(loadDelay);
+    // A crossfade is a load, so [failNextLoad] has to reach it too.
+    if (failNextLoad) {
+      failNextLoad = false;
+      throw StateError('load failed: $url');
+    }
     return _durationFor(url);
   }
 

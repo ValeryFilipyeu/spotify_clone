@@ -29,6 +29,7 @@ class PlayerState extends Equatable {
     this.repeatMode = PlayerRepeatMode.off,
     this.volume = 1,
     this.crossfadeDuration = Duration.zero,
+    this.failedTrack,
   });
 
   /// The longest crossfade the settings UI offers.
@@ -57,6 +58,12 @@ class PlayerState extends Equatable {
 
   /// Overlap on a track change; [Duration.zero] (the default) means none.
   final Duration crossfadeDuration;
+
+  /// The track whose load just failed. Set for one state and cleared by the next
+  /// [copyWith], as LibraryState does with its message: it is a thing that
+  /// happened, not a thing that is true. Nothing draws it -- a listener turns it
+  /// into one message, because a dead play button explains nothing.
+  final Track? failedTrack;
 
   bool get isCrossfadeEnabled => crossfadeDuration > Duration.zero;
 
@@ -90,6 +97,7 @@ class PlayerState extends Equatable {
     PlayerRepeatMode? repeatMode,
     double? volume,
     Duration? crossfadeDuration,
+    Track? failedTrack,
   }) {
     return PlayerState(
       queue: queue ?? this.queue,
@@ -103,6 +111,8 @@ class PlayerState extends Equatable {
       repeatMode: repeatMode ?? this.repeatMode,
       volume: volume ?? this.volume,
       crossfadeDuration: crossfadeDuration ?? this.crossfadeDuration,
+      // Deliberately not `?? this.failedTrack`: see the field.
+      failedTrack: failedTrack,
     );
   }
 
@@ -119,5 +129,6 @@ class PlayerState extends Equatable {
     repeatMode,
     volume,
     crossfadeDuration,
+    failedTrack,
   ];
 }

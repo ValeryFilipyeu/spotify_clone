@@ -49,6 +49,9 @@ dependencies:
   # cache from depending on somebody else's transitive dependency staying put.
   path_provider: ^2.1.6
   crypto: ^3.0.6
+  # Same reasoning: flutter_web_plugins already pulls it, and the web audio cache
+  # should not depend on that staying true.
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

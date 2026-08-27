@@ -1,6 +1,9 @@
 import 'package:just_audio/just_audio.dart';
 
-import 'audio_cache_stub.dart' if (dart.library.io) 'audio_cache_io.dart' as platform;
+import 'audio_cache_stub.dart'
+    if (dart.library.io) 'audio_cache_io.dart'
+    if (dart.library.js_interop) 'audio_cache_web.dart'
+    as platform;
 
 /// Keeps the last few tracks played, so hearing one again costs nothing and
 /// works with no network.
@@ -12,12 +15,15 @@ import 'audio_cache_stub.dart' if (dart.library.io) 'audio_cache_io.dart' as pla
 /// This is the other one: opportunistic and invisible. They look alike from
 /// outside and are answerable to completely different expectations.
 abstract class AudioCache {
-  /// What to hand the engine for [url]: the local file if it is there, and
-  /// otherwise a source that streams it while writing it down.
+  /// What to hand the engine for [url]: the saved copy if there is one, and
+  /// otherwise a source that streams while the copy is made.
   Future<AudioSource> sourceFor(String url);
 }
 
-/// Opens the device's audio cache. Null on the web, where just_audio cannot play
-/// from a byte stream at all; that build streams as it always has.
+/// Opens the platform's audio cache, or null where there is nowhere to put one.
+///
+/// Both real implementations honour [keepTracks] and play with no network; they
+/// differ in that mobile writes while it streams and the web cannot. See
+/// [WebAudioCache].
 Future<AudioCache?> openAudioCache({int keepTracks = 5}) =>
     platform.openAudioCache(keepTracks: keepTracks);

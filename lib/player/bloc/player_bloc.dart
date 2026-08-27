@@ -432,7 +432,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
     } catch (_) {
       await _haltPlayback();
-      emit(state.copyWith(isLoading: false, isPlaying: false));
+      emit(state.copyWith(isLoading: false, isPlaying: false, failedTrack: track));
     } finally {
       _isCrossfading = false;
     }
@@ -833,7 +833,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     } catch (_) {
       // Nothing will sound, but the engine may still hold play intent.
       await _haltPlayback();
-      emit(state.copyWith(isLoading: false, isPlaying: false));
+      emit(state.copyWith(isLoading: false, isPlaying: false, failedTrack: track));
       return;
     }
     unawaited(_audioController.play().catchError((_) {}));
