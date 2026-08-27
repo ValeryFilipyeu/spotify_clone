@@ -7,7 +7,10 @@ import 'package:flutter/foundation.dart';
 /// changes -- without adding rxdart as a dependency.
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
+    // asBroadcastStream, so a single-subscription source does not throw the
+    // moment go_router attaches. No initial notifyListeners(): nothing can be
+    // listening yet, and go_router reads the current auth state on its first
+    // redirect regardless.
     _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
   }
 
