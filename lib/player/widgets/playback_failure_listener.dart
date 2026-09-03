@@ -23,12 +23,14 @@ class PlaybackFailureListener extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocListener<PlayerBloc, PlayerState>(
-      // Only the transition into failure: the state that carries it is cleared
-      // by whatever the player emits next, and one tap should say one thing.
+      // Only the transition into failure. The field now persists -- it also
+      // disables the transport -- so without this every later state would
+      // re-announce it. A retry clears it first, so a second failure still
+      // reads as a new one.
       listenWhen: (previous, current) =>
-          current.failedTrack != null && previous.failedTrack == null,
+          current.unplayableTrack != null && previous.unplayableTrack == null,
       listener: (context, state) {
-        final track = state.failedTrack;
+        final track = state.unplayableTrack;
         if (track == null) return;
 
         ScaffoldMessenger.of(context).showSnackBar(

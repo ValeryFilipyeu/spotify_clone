@@ -35,22 +35,39 @@ void main() {
       bloc.add(const PlayerTrackStarted(queue: _pair, startIndex: 0));
       await _settle();
 
-      expect(bloc.state.failedTrack, _pair.first);
+      expect(bloc.state.unplayableTrack, _pair.first);
     });
 
-    test('is reported once, not carried by every state after it', () async {
+    test('keeps saying so, because the transport stays disabled', () async {
+      audio.failNextLoad = true;
+      bloc.add(const PlayerTrackStarted(queue: _pair, startIndex: 0));
+      await _settle();
+
+      // Anything at all afterwards must not quietly re-enable the track.
+      bloc.add(const PlayerVolumeChanged(0.5));
+      await _settle();
+
+      expect(bloc.state.unplayableTrack, _pair.first);
+      expect(bloc.state.isUnplayable, isTrue);
+    });
+
+    test('announces once even so: the listener watches the transition', () async {
       final seen = <Track?>[];
-      final sub = bloc.stream.listen((state) => seen.add(state.failedTrack));
+      final sub = bloc.stream.listen((state) => seen.add(state.unplayableTrack));
 
       audio.failNextLoad = true;
       bloc.add(const PlayerTrackStarted(queue: _pair, startIndex: 0));
       await _settle();
-      // Anything at all afterwards: the failure must not still be attached.
       bloc.add(const PlayerVolumeChanged(0.5));
       await _settle();
 
-      expect(seen.where((track) => track != null), hasLength(1));
-      expect(bloc.state.failedTrack, isNull);
+      // Every state after the first carries the same track, so a listener keyed
+      // on null -> non-null fires exactly once.
+      final transitions = [
+        for (var i = 1; i < seen.length; i++)
+          if (seen[i - 1] == null && seen[i] != null) seen[i],
+      ];
+      expect(transitions, hasLength(1));
       await sub.cancel();
     });
 
@@ -88,7 +105,7 @@ void main() {
       await _settle();
 
       expect(audio.crossfades, hasLength(1), reason: 'the crossfade path must be the one tested');
-      expect(bloc.state.failedTrack, _pair[1]);
+      expect(bloc.state.unplayableTrack, _pair[1]);
     });
   });
 
@@ -96,12 +113,27 @@ void main() {
     bloc.add(const PlayerTrackStarted(queue: _pair, startIndex: 0));
     await _settle();
 
-    expect(bloc.state.failedTrack, isNull);
+    expect(bloc.state.unplayableTrack, isNull);
   });
 
-  test('copyWith drops a failure rather than carrying it', () {
-    final state = PlayerState(failedTrack: _pair.first);
+  group('PlayerState', () {
+    test('copyWith carries the verdict rather than dropping it', () {
+      final state = PlayerState(unplayableTrack: _pair.first);
 
-    expect(state.copyWith(isPlaying: true).failedTrack, isNull);
+      expect(state.copyWith(position: const Duration(seconds: 3)).unplayableTrack, _pair.first);
+    });
+
+    test('copyWith drops it only when asked', () {
+      final state = PlayerState(unplayableTrack: _pair.first);
+
+      expect(state.copyWith(clearUnplayable: true).unplayableTrack, isNull);
+    });
+
+    test('only the track that failed is unplayable, not the whole queue', () {
+      final state = PlayerState(queue: _pair, unplayableTrack: _pair.first);
+
+      expect(state.isUnplayable, isTrue);
+      expect(state.copyWith(currentIndex: 1).isUnplayable, isFalse);
+    });
   });
 }

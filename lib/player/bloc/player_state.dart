@@ -29,7 +29,7 @@ class PlayerState extends Equatable {
     this.repeatMode = PlayerRepeatMode.off,
     this.volume = 1,
     this.crossfadeDuration = Duration.zero,
-    this.failedTrack,
+    this.unplayableTrack,
   });
 
   /// The longest crossfade the settings UI offers.
@@ -59,11 +59,12 @@ class PlayerState extends Equatable {
   /// Overlap on a track change; [Duration.zero] (the default) means none.
   final Duration crossfadeDuration;
 
-  /// The track whose load just failed. Set for one state and cleared by the next
-  /// [copyWith], as LibraryState does with its message: it is a thing that
-  /// happened, not a thing that is true. Nothing draws it -- a listener turns it
-  /// into one message, because a dead play button explains nothing.
-  final Track? failedTrack;
+  /// The track whose load failed, kept until another load is attempted.
+  ///
+  /// Persistent, unlike the message it also triggers: a track that cannot be
+  /// loaded cannot be played, paused or scrubbed either, and the transport has
+  /// to stay disabled the whole time it is the current track.
+  final Track? unplayableTrack;
 
   bool get isCrossfadeEnabled => crossfadeDuration > Duration.zero;
 
@@ -71,6 +72,10 @@ class PlayerState extends Equatable {
       currentIndex >= 0 && currentIndex < queue.length ? queue[currentIndex] : null;
 
   bool get hasTrack => currentTrack != null;
+
+  /// Whether the track on screen is the one that would not load. Matched by id
+  /// rather than cleared on every queue move, so moving on is enough.
+  bool get isUnplayable => unplayableTrack != null && unplayableTrack!.id == currentTrack?.id;
 
   /// Whether [PlayerNextRequested] would go anywhere -- a later track, or
   /// [PlayerRepeatMode.all] wrapping to the front.
@@ -97,7 +102,8 @@ class PlayerState extends Equatable {
     PlayerRepeatMode? repeatMode,
     double? volume,
     Duration? crossfadeDuration,
-    Track? failedTrack,
+    Track? unplayableTrack,
+    bool clearUnplayable = false,
   }) {
     return PlayerState(
       queue: queue ?? this.queue,
@@ -111,8 +117,9 @@ class PlayerState extends Equatable {
       repeatMode: repeatMode ?? this.repeatMode,
       volume: volume ?? this.volume,
       crossfadeDuration: crossfadeDuration ?? this.crossfadeDuration,
-      // Deliberately not `?? this.failedTrack`: see the field.
-      failedTrack: failedTrack,
+      // Carried by default and dropped only on request, so a position tick
+      // cannot quietly re-enable a track that will not play.
+      unplayableTrack: clearUnplayable ? null : (unplayableTrack ?? this.unplayableTrack),
     );
   }
 
@@ -129,6 +136,6 @@ class PlayerState extends Equatable {
     repeatMode,
     volume,
     crossfadeDuration,
-    failedTrack,
+    unplayableTrack,
   ];
 }

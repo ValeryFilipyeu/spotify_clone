@@ -242,7 +242,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
 
   void _resume() {
     _pausedByInterruption = false;
-    if (!state.hasTrack) return;
+    // Nothing is loaded, so play() would only set play *intent* -- which turns
+    // the button to Pause and starts the ticker over silence.
+    if (!state.hasTrack || state.isUnplayable) return;
     unawaited(_claimSessionThen(_audioController.play));
   }
 
@@ -328,6 +330,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
   }
 
   Future<void> _onSeekRequested(PlayerSeekRequested event, Emitter<PlayerState> emit) async {
+    // There is no loaded source to seek within, and moving the thumb would
+    // claim otherwise.
+    if (state.isUnplayable) return;
     // Before the async seek, not after: on release the scrubber falls back to
     // state.position, so emitting late makes the thumb snap back for a frame.
     emit(state.copyWith(position: event.position));
@@ -432,7 +437,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
       if (duration != null && duration > Duration.zero) emit(state.copyWith(duration: duration));
     } catch (_) {
       await _haltPlayback();
-      emit(state.copyWith(isLoading: false, isPlaying: false, failedTrack: track));
+      emit(state.copyWith(isLoading: false, isPlaying: false, unplayableTrack: track));
     } finally {
       _isCrossfading = false;
     }
@@ -815,6 +820,9 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     final track = state.currentTrack;
     if (track == null) return;
     _needsLoad = false;
+    // A new attempt supersedes the last verdict: it lets a retry succeed, and
+    // makes a second failure a fresh event rather than a silent repeat.
+    if (state.unplayableTrack != null) emit(state.copyWith(clearUnplayable: true));
     // Claim the device before loading, so we take it from whatever else is
     // playing rather than mixing underneath it.
     await _audioSession.activate().catchError((_) {});
@@ -833,7 +841,7 @@ class PlayerBloc extends Bloc<PlayerEvent, PlayerState> {
     } catch (_) {
       // Nothing will sound, but the engine may still hold play intent.
       await _haltPlayback();
-      emit(state.copyWith(isLoading: false, isPlaying: false, failedTrack: track));
+      emit(state.copyWith(isLoading: false, isPlaying: false, unplayableTrack: track));
       return;
     }
     unawaited(_audioController.play().catchError((_) {}));

@@ -132,6 +132,10 @@ class _ScrubberState extends State<_Scrubber> {
 
   @override
   Widget build(BuildContext context) {
+    // Two ways to have nothing to scrub: no duration yet, or a track that never
+    // loaded. Both must leave the thumb inert rather than let it be dragged to a
+    // position nothing will ever play from.
+    final isInert = widget.state.duration.inMilliseconds == 0 || widget.state.isUnplayable;
     final totalMs = widget.state.duration.inMilliseconds;
     final positionMs = widget.state.position.inMilliseconds.clamp(0, totalMs == 0 ? 0 : totalMs);
     final sliderValue = _dragValue ?? positionMs.toDouble();
@@ -152,12 +156,12 @@ class _ScrubberState extends State<_Scrubber> {
             max: totalMs == 0 ? 1 : totalMs.toDouble(),
             // Slider has no semantics label, so the spoken value has to name
             // what it measures -- otherwise it reads out "124000".
-            semanticFormatterCallback: (value) => totalMs == 0
+            semanticFormatterCallback: (value) => isInert
                 ? 'Playback position unavailable'
                 : 'Position ${spokenDuration(Duration(milliseconds: value.round()))} '
                       'of ${spokenDuration(widget.state.duration)}',
-            onChanged: totalMs == 0 ? null : (value) => setState(() => _dragValue = value),
-            onChangeEnd: totalMs == 0
+            onChanged: isInert ? null : (value) => setState(() => _dragValue = value),
+            onChangeEnd: isInert
                 ? null
                 : (value) {
                     context.read<PlayerBloc>().add(
@@ -235,7 +239,12 @@ class _Controls extends StatelessWidget {
           width: _playButton,
           height: _playButton,
           child: DecoratedBox(
-            decoration: const BoxDecoration(color: SpotifyColors.green, shape: BoxShape.circle),
+            // Grey, not green: the filled circle is the loudest affordance on
+            // the screen and would still invite a press while disabled.
+            decoration: BoxDecoration(
+              color: state.isUnplayable ? SpotifyColors.surfaceBright : SpotifyColors.green,
+              shape: BoxShape.circle,
+            ),
             child: IconButton(
               iconSize: 32,
               // The outer SizedBox pins the circle against the glyph/spinner
@@ -246,11 +255,16 @@ class _Controls extends StatelessWidget {
                       height: 28,
                       child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black),
                     )
-                  : Icon(state.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.black),
+                  : Icon(
+                      state.isPlaying ? Icons.pause : Icons.play_arrow,
+                      color: state.isUnplayable ? SpotifyColors.textSecondary : Colors.black,
+                    ),
               // The spinner emits no semantics of its own, so while loading this
               // tooltip is the button's only name.
-              tooltip: state.isLoading ? 'Loading' : (state.isPlaying ? 'Pause' : 'Play'),
-              onPressed: () => bloc.add(const PlayerPlayPauseToggled()),
+              tooltip: state.isUnplayable
+                  ? 'Unavailable'
+                  : (state.isLoading ? 'Loading' : (state.isPlaying ? 'Pause' : 'Play')),
+              onPressed: state.isUnplayable ? null : () => bloc.add(const PlayerPlayPauseToggled()),
             ),
           ),
         ),

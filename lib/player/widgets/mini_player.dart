@@ -110,11 +110,16 @@ class MiniPlayer extends StatelessWidget {
                             )
                           : Icon(
                               state.isPlaying ? Icons.pause : Icons.play_arrow,
-                              color: Colors.white,
+                              color: state.isUnplayable ? Colors.white38 : Colors.white,
                             ),
-                      tooltip: state.isLoading ? 'Loading' : (state.isPlaying ? 'Pause' : 'Play'),
-                      onPressed: () =>
-                          context.read<PlayerBloc>().add(const PlayerPlayPauseToggled()),
+                      tooltip: state.isUnplayable
+                          ? 'Unavailable'
+                          : (state.isLoading ? 'Loading' : (state.isPlaying ? 'Pause' : 'Play')),
+                      // Null, not a no-op: a disabled button is the only honest
+                      // affordance, and it is what a screen reader announces.
+                      onPressed: state.isUnplayable
+                          ? null
+                          : () => context.read<PlayerBloc>().add(const PlayerPlayPauseToggled()),
                     ),
                     // PlayerStopped empties the queue, so this bar collapses.
                     IconButton(
